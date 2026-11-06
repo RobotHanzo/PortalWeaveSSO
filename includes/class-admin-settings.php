@@ -7,7 +7,7 @@ defined('ABSPATH') || exit;
 final class AdminSettings
 {
     private const FIELDS = [
-        'providers' => ['apps', 'new_app'],
+        'providers' => ['apps', 'new_app', 'provider_setup'],
         'login' => ['default_app', 'force_auth', 'disable_wp_login', 'single_flow', 'popup', 'logout_confirmation', 'login_redirect', 'logout_redirect', 'redirect_allowlist'],
         'access' => ['restrict_site', 'allowed_domains', 'blocked_domains', 'content_rules', 'protected_media', 'network_enforced'],
         'appearance' => ['button'],
@@ -31,6 +31,16 @@ final class AdminSettings
         $stored = $network ? get_site_option('portalweave_sso_settings', []) : get_option('portalweave_sso_settings', []);
         $stored = is_array($stored) ? $stored : [];
         if ($screen === 'providers') {
+            if (array_key_exists('provider_setup', $input)) {
+                if (!$creating || $provider !== '' || array_keys($input) !== ['provider_setup'] || !is_array($input['provider_setup'])) {
+                    return new \WP_Error('portalweave_sso_provider_target', __('Guided setup can only create one new identity provider.', 'portalweave-sso'));
+                }
+                $app = ProviderSetup::prepare($input['provider_setup']);
+                if (is_wp_error($app)) {
+                    return $app;
+                }
+                $input = ['new_app' => $app];
+            }
             return self::provider($input, $provider, $creating, $stored);
         }
         if ($provider !== '' || $creating) {

@@ -122,9 +122,12 @@ wp portalweave-sso commands use the current product name throughout.
 Earlier technical names have no compatibility aliases or automatic stored-data
 conversion. Existing deployments require the controlled replacement procedure
 in docs/provider-setup.md, including access rules and private-media provenance.
-All shipped code/assets are source-readable and covered by the bundled GPL
-license. The plugin has no bundled runtime package dependencies, copied
-provider logos, minified-only assets, advertising or public developer credits.
+All shipped code/assets are source-readable. Plugin code uses the bundled GPL
+license; provider artwork retains its documented upstream terms and notices
+in assets/providers and does not inherit the code's license. The plugin has no bundled runtime package
+dependencies, remote logo requests, minified-only assets, advertising or public
+developer credits. Provider marks identify the available integrations without
+implying endorsement.
 WordPress core APIs supply HTTP, settings, mail, roles, sessions and scheduling.
 The ZIP excludes test IdPs, test credentials, reports, CI tools and developer
 documentation. Its translation template uses the proposed directory domain.

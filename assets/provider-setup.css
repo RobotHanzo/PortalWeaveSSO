@@ -1,0 +1,634 @@
+.portalweave-sso-onboarding {
+    --portalweave-setup-ink: #1d2c3b;
+    --portalweave-setup-muted: #576879;
+    --portalweave-setup-line: #cbd5df;
+    --portalweave-setup-accent: #135e96;
+    --portalweave-setup-tint: #f3f6fa;
+    color: var(--portalweave-setup-ink);
+    font-family: inherit;
+    font-size: 14px;
+    line-height: 1.6;
+}
+
+.portalweave-sso-onboarding *,
+.portalweave-sso-onboarding *::before,
+.portalweave-sso-onboarding *::after {
+    box-sizing: border-box;
+}
+
+.portalweave-sso-onboarding [hidden],
+.portalweave-sso-onboarding[hidden] {
+    display: none !important;
+}
+
+.portalweave-sso-onboarding :where(a, button, input, select, textarea, summary):focus-visible {
+    outline: 2px solid var(--portalweave-setup-accent);
+    outline-offset: 3px;
+}
+
+.portalweave-sso-setup-heading {
+    max-width: 70ch;
+    margin: 0 0 24px;
+}
+
+.portalweave-sso-setup-heading h2,
+.portalweave-sso-onboarding h2.portalweave-sso-setup-heading,
+.portalweave-sso-onboarding h3.portalweave-sso-setup-heading,
+.portalweave-sso-onboarding [data-setup-step] > h2,
+.portalweave-sso-onboarding [data-setup-step] > h3 {
+    margin: 0 0 12px;
+    padding: 0;
+    color: var(--portalweave-setup-ink);
+    font-size: 28px;
+    font-weight: 600;
+    line-height: 1.25;
+    letter-spacing: -0.35px;
+}
+
+.portalweave-sso-setup-heading p {
+    margin: 8px 0 0;
+    color: var(--portalweave-setup-muted);
+    font-size: 14px;
+}
+
+.portalweave-sso-onboarding > :is(h2, h3).portalweave-sso-setup-heading {
+    padding: 28px 32px 0;
+}
+
+.portalweave-sso-setup-intro {
+    max-width: 70ch;
+    margin: 8px 0 24px;
+    color: var(--portalweave-setup-muted);
+    font-size: 14px;
+}
+
+.portalweave-sso-onboarding > .portalweave-sso-setup-intro {
+    padding: 0 32px;
+}
+
+.portalweave-sso-provider-options {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    padding: 0;
+    margin: 0;
+    border-top: 1px solid var(--portalweave-setup-line);
+    border-left: 1px solid var(--portalweave-setup-line);
+    background: #fff;
+    list-style: none;
+}
+
+.portalweave-sso-provider-options > li {
+    min-width: 0;
+    margin: 0;
+    border-right: 1px solid var(--portalweave-setup-line);
+    border-bottom: 1px solid var(--portalweave-setup-line);
+}
+
+.portalweave-sso-provider-choice {
+    display: grid;
+    grid-template-columns: 48px minmax(0, 1fr);
+    align-content: start;
+    column-gap: 14px;
+    min-height: 118px;
+    height: 100%;
+    padding: 22px 20px;
+    color: var(--portalweave-setup-ink);
+    text-decoration: none;
+}
+
+.portalweave-sso-provider-choice:hover {
+    color: var(--portalweave-setup-accent);
+    background: var(--portalweave-setup-tint);
+}
+
+.portalweave-sso-provider-choice:focus-visible {
+    position: relative;
+    z-index: 1;
+    outline-offset: -3px;
+}
+
+.portalweave-sso-provider-logo {
+    display: inline-flex;
+    flex: 0 0 48px;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
+    padding: 3px;
+    border: 1px solid var(--portalweave-setup-line);
+    border-radius: 4px;
+    background: #fff;
+}
+
+.portalweave-sso-provider-logo img {
+    display: block;
+    width: 40px;
+    height: 40px;
+    max-width: 100%;
+    object-fit: contain;
+}
+
+.portalweave-sso-provider-choice .portalweave-sso-provider-logo {
+    grid-row: 1 / span 2;
+}
+
+.portalweave-sso-provider-choice .provider-initial {
+    display: inline-flex;
+    grid-row: 1 / span 2;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--portalweave-setup-line);
+    border-radius: 4px;
+    background: var(--portalweave-setup-tint);
+    color: var(--portalweave-setup-accent);
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.portalweave-sso-provider-choice :is(.portalweave-sso-provider-label, .provider-label) {
+    display: block;
+    font-size: 16px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.portalweave-sso-provider-choice :is(.portalweave-sso-provider-summary, .provider-summary) {
+    display: block;
+    grid-column: 2;
+    margin-top: 5px;
+    color: var(--portalweave-setup-muted);
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+.portalweave-sso-onboarding [data-portalweave-setup],
+.portalweave-sso-onboarding[data-portalweave-setup] {
+    border: 1px solid var(--portalweave-setup-line);
+    background: #fff;
+}
+
+.portalweave-sso-setup-service {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 22px 32px;
+    border-bottom: 1px solid var(--portalweave-setup-line);
+}
+
+.portalweave-sso-setup-service .provider-initial {
+    display: inline-flex;
+    flex: 0 0 36px;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border: 1px solid var(--portalweave-setup-line);
+    border-radius: 4px;
+    background: var(--portalweave-setup-tint);
+    color: var(--portalweave-setup-accent);
+    font-size: 16px;
+    font-weight: 600;
+}
+
+.portalweave-sso-setup-service strong {
+    font-size: 16px;
+}
+
+.portalweave-sso-setup-service p {
+    margin: 2px 0 0;
+    color: var(--portalweave-setup-muted);
+    font-size: 13px;
+}
+
+.portalweave-sso-setup-form > fieldset {
+    padding: 0;
+    margin: 0;
+    border: 0;
+}
+
+.portalweave-sso-setup-progress {
+    display: flex;
+    counter-reset: portalweave-setup-step;
+    padding: 0 20px;
+    margin: 0;
+    border-bottom: 1px solid var(--portalweave-setup-line);
+    list-style: none;
+}
+
+.portalweave-sso-setup-progress > li {
+    flex: 1 1 0;
+    min-width: 0;
+    margin: 0;
+    counter-increment: portalweave-setup-step;
+}
+
+.portalweave-sso-setup-progress > li > :is(a, button) {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    width: 100%;
+    min-height: 76px;
+    padding: 14px 12px;
+    border: 0;
+    border-bottom: 3px solid transparent;
+    border-radius: 0;
+    box-shadow: none;
+    background: transparent;
+    color: var(--portalweave-setup-muted);
+    font: inherit;
+    font-size: 13px;
+    font-weight: 500;
+    line-height: 1.4;
+    text-align: start;
+    text-decoration: none;
+}
+
+.portalweave-sso-setup-progress > li > :is(a, button)::before {
+    display: inline-flex;
+    flex: 0 0 27px;
+    align-items: center;
+    justify-content: center;
+    width: 27px;
+    height: 27px;
+    border: 1px solid var(--portalweave-setup-line);
+    border-radius: 50%;
+    background: #fff;
+    content: counter(portalweave-setup-step);
+    font-size: 12px;
+    font-weight: 600;
+}
+
+.portalweave-sso-setup-progress > li.is-current > button,
+.portalweave-sso-setup-progress > li > [aria-current="step"] {
+    border-bottom-color: var(--portalweave-setup-accent);
+    color: var(--portalweave-setup-accent);
+    font-weight: 600;
+}
+
+.portalweave-sso-setup-progress > li.is-current > button::before,
+.portalweave-sso-setup-progress > li > [aria-current="step"]::before {
+    border-color: var(--portalweave-setup-accent);
+    background: var(--portalweave-setup-accent);
+    color: #fff;
+}
+
+.portalweave-sso-setup-progress button:disabled {
+    color: var(--portalweave-setup-muted);
+    cursor: default;
+}
+
+.portalweave-sso-onboarding .is-enhanced .portalweave-sso-setup-progress button:not(:disabled),
+.portalweave-sso-onboarding.is-enhanced .portalweave-sso-setup-progress button:not(:disabled) {
+    cursor: pointer;
+}
+
+.portalweave-sso-onboarding [data-setup-step] {
+    min-width: 0;
+    padding: 30px 32px 32px;
+    margin: 0;
+    border: 0;
+}
+
+.portalweave-sso-onboarding [data-setup-step] + [data-setup-step] {
+    border-top: 1px solid var(--portalweave-setup-line);
+}
+
+.portalweave-sso-onboarding .is-enhanced [data-setup-step],
+.portalweave-sso-onboarding.is-enhanced [data-setup-step] {
+    border-top: 0;
+}
+
+.portalweave-sso-onboarding [data-setup-step] > p {
+    max-width: 70ch;
+    margin: 0 0 24px;
+    color: var(--portalweave-setup-muted);
+    font-size: 14px;
+}
+
+.portalweave-sso-setup-step-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) minmax(220px, 1fr);
+    gap: 32px;
+    align-items: start;
+    margin-top: 0;
+}
+
+.portalweave-sso-setup-fields {
+    min-width: 0;
+}
+
+.portalweave-sso-setup-field {
+    min-width: 0;
+    margin: 0 0 24px;
+}
+
+.portalweave-sso-setup-field:last-child {
+    margin-bottom: 0;
+}
+
+.portalweave-sso-setup-field > label {
+    display: block;
+    margin-bottom: 7px;
+    font-size: 14px;
+    font-weight: 600;
+}
+
+.portalweave-sso-setup-field :is(input:not([type="checkbox"]):not([type="radio"]), select, textarea) {
+    width: 100%;
+    max-width: 100%;
+    min-height: 42px;
+    padding: 8px 11px;
+    border-color: #8c9ba9;
+    border-radius: 3px;
+    color: var(--portalweave-setup-ink);
+    background: #fff;
+    font: inherit;
+    font-size: 14px;
+}
+
+.portalweave-sso-setup-field textarea {
+    min-height: 100px;
+}
+
+.portalweave-sso-setup-field :is(.description, .portalweave-sso-field-help),
+.portalweave-sso-setup-field > p {
+    max-width: 68ch;
+    margin: 7px 0 0;
+    color: var(--portalweave-setup-muted);
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.portalweave-sso-setup-field [data-setup-toggle-secret] {
+    min-height: 32px;
+    margin-top: 8px;
+}
+
+.portalweave-sso-setup-guide {
+    min-width: 0;
+    padding-inline-start: 24px;
+    border-inline-start: 2px solid var(--portalweave-setup-line);
+    color: var(--portalweave-setup-muted);
+    font-size: 13px;
+    line-height: 1.65;
+}
+
+.portalweave-sso-setup-guide h3,
+.portalweave-sso-setup-guide h4 {
+    margin: 0 0 12px;
+    color: var(--portalweave-setup-ink);
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.portalweave-sso-setup-guide p {
+    margin: 0 0 12px;
+    font-size: 13px;
+}
+
+.portalweave-sso-setup-guide :is(ol, ul) {
+    padding-inline-start: 20px;
+    margin: 0 0 16px;
+}
+
+.portalweave-sso-setup-guide li + li {
+    margin-top: 10px;
+}
+
+.portalweave-sso-setup-guide a {
+    overflow-wrap: anywhere;
+    text-underline-offset: 3px;
+}
+
+.portalweave-sso-setup-callback {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 10px;
+    padding: 18px 20px;
+    margin: 24px 0;
+    border-inline-start: 3px solid var(--portalweave-setup-accent);
+    background: var(--portalweave-setup-tint);
+}
+
+.portalweave-sso-setup-callback > :is(label, p, .description) {
+    grid-column: 1 / -1;
+    margin: 0;
+}
+
+.portalweave-sso-setup-callback > label {
+    font-weight: 600;
+}
+
+.portalweave-sso-setup-callback input[readonly] {
+    width: 100%;
+    min-width: 0;
+    min-height: 40px;
+    padding: 8px 10px;
+    border: 1px solid var(--portalweave-setup-line);
+    border-radius: 3px;
+    background: #fff;
+    color: var(--portalweave-setup-ink);
+    font-size: 13px;
+}
+
+.portalweave-sso-setup-callback [data-setup-copy] {
+    min-height: 40px;
+    white-space: nowrap;
+}
+
+.portalweave-sso-setup-confirm {
+    display: flex;
+    align-items: flex-start;
+    gap: 8px;
+    min-height: 40px;
+    margin-top: 24px;
+    font-weight: 500;
+}
+
+.portalweave-sso-setup-confirm input[type="checkbox"] {
+    flex: 0 0 auto;
+    margin-top: 4px;
+}
+
+.portalweave-sso-setup-note {
+    max-width: 90ch;
+    padding-top: 16px;
+    margin: 24px 0 0;
+    border-top: 1px solid var(--portalweave-setup-line);
+    color: var(--portalweave-setup-muted);
+    font-size: 13px;
+}
+
+.portalweave-sso-setup-note + .portalweave-sso-setup-note {
+    padding-top: 0;
+    margin-top: 8px;
+    border-top: 0;
+}
+
+.portalweave-sso-setup-review {
+    margin: 0;
+}
+
+.portalweave-sso-setup-review > div {
+    display: grid;
+    grid-template-columns: minmax(110px, 1fr) minmax(0, 2fr);
+    gap: 20px;
+    padding: 14px 0;
+    border-bottom: 1px solid var(--portalweave-setup-line);
+}
+
+.portalweave-sso-setup-review dt {
+    color: var(--portalweave-setup-muted);
+}
+
+.portalweave-sso-setup-review dd {
+    margin: 0;
+    overflow-wrap: anywhere;
+    font-weight: 600;
+}
+
+.portalweave-sso-onboarding [data-setup-navigation] {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+    padding: 20px 32px;
+    border-top: 1px solid var(--portalweave-setup-line);
+    background: var(--portalweave-setup-tint);
+}
+
+.portalweave-sso-onboarding [data-setup-navigation] .button {
+    min-height: 40px;
+    padding: 5px 18px;
+    font-size: 14px;
+}
+
+.portalweave-sso-onboarding [data-setup-back] {
+    margin-inline-end: auto;
+}
+
+.portalweave-sso-onboarding [data-setup-fallback-submit] {
+    margin: 0 32px 28px;
+}
+
+.portalweave-sso-onboarding [data-setup-error] {
+    margin: 20px 32px 0;
+}
+
+.portalweave-sso-onboarding [data-setup-status]:not(.screen-reader-text) {
+    min-height: 22px;
+    margin: 10px 0;
+    color: var(--portalweave-setup-muted);
+    font-size: 13px;
+}
+
+@media (max-width: 1080px) {
+    .portalweave-sso-provider-options {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+
+    .portalweave-sso-setup-progress {
+        padding: 0 8px;
+    }
+
+    .portalweave-sso-setup-progress > li > :is(a, button) {
+        gap: 7px;
+        padding-inline: 7px;
+    }
+
+    .portalweave-sso-setup-step-layout {
+        gap: 24px;
+    }
+}
+
+@media (max-width: 780px) {
+    .portalweave-sso-onboarding > :is(h2, h3).portalweave-sso-setup-heading {
+        padding: 24px 20px 0;
+    }
+
+    .portalweave-sso-onboarding > .portalweave-sso-setup-intro {
+        padding-inline: 20px;
+    }
+
+    .portalweave-sso-setup-service {
+        padding: 20px;
+    }
+
+    .portalweave-sso-provider-options {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .portalweave-sso-provider-choice {
+        min-height: 88px;
+        padding: 18px;
+    }
+
+    .portalweave-sso-setup-progress {
+        flex-wrap: wrap;
+        padding: 8px;
+    }
+
+    .portalweave-sso-setup-progress > li {
+        flex: 1 1 140px;
+    }
+
+    .portalweave-sso-setup-progress > li > :is(a, button) {
+        min-height: 54px;
+        padding: 9px;
+    }
+
+    .portalweave-sso-onboarding [data-setup-step] {
+        padding: 24px 20px;
+    }
+
+    .portalweave-sso-setup-step-layout {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 28px;
+    }
+
+    .portalweave-sso-setup-guide {
+        padding-inline-start: 18px;
+    }
+
+    .portalweave-sso-setup-callback {
+        padding: 16px;
+    }
+
+    .portalweave-sso-onboarding [data-setup-navigation] {
+        padding: 18px 20px;
+    }
+
+    .portalweave-sso-onboarding [data-setup-fallback-submit] {
+        margin-inline: 20px;
+    }
+
+    .portalweave-sso-onboarding [data-setup-error] {
+        margin-inline: 20px;
+    }
+}
+
+@media (max-width: 420px) {
+    .portalweave-sso-setup-callback {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .portalweave-sso-setup-callback [data-setup-copy] {
+        justify-self: start;
+    }
+
+    .portalweave-sso-setup-review > div {
+        grid-template-columns: minmax(0, 1fr);
+        gap: 4px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .portalweave-sso-onboarding *,
+    .portalweave-sso-onboarding *::before,
+    .portalweave-sso-onboarding *::after {
+        scroll-behavior: auto;
+    }
+}

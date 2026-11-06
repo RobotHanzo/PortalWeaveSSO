@@ -72,6 +72,7 @@ jobs:
           node --check assets/admin.js
           node --check assets/auth.js
           node --check assets/login.js
+          node --check assets/provider-setup.js
           node --check tests/e2e.mjs
           bash -n scripts/*.sh tests/setup-tls.sh
       - name: Run release, reporting and deployment tooling tests
