@@ -768,8 +768,8 @@ final class Extensions {
         wp_set_current_user($user->ID);
         wp_set_auth_cookie($user->ID, false, true);
         update_user_meta($user->ID, Auth::app_meta_key(), $app['id']);
-        // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- This is WordPress core's authentication lifecycle hook.
-        do_action('wp_login', $user->user_login, $user);
+        // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core login event; internal context suppresses only its duplicate local audit event.
+        do_action('wp_login', $user->user_login, $user, 'portalweave-sso');
         do_action('portalweave_sso_authenticated', $user, $app, $attributes);
         Audit::record('success', $app['id'], $user);
     }
@@ -895,8 +895,8 @@ final class Extensions {
         wp_set_current_user($user->ID);
         wp_set_auth_cookie($user->ID, false, true);
         update_user_meta($user->ID, Auth::app_meta_key(), $app['id']);
-        // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Dispatch the core login hook for this authenticated WordPress session.
-        do_action('wp_login', $user->user_login, $user);
+        // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core login event; internal context suppresses only its duplicate local audit event.
+        do_action('wp_login', $user->user_login, $user, 'portalweave-sso');
         Audit::record('success', $app['id'], $user, 'portalweave_sso_shared_login');
         wp_safe_redirect(Redirect::current());
         exit;

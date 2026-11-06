@@ -1,5 +1,133 @@
 <?php
 /** Audit summaries use real UTC history and clean up only their own inserted rows. */
+function portalweave_sso_login_audit_fixture(callable $test): void {
+    global $wpdb;
+    $previous = [$_GET, $_COOKIE, get_current_user_id()];
+    $password = wp_generate_password(32);
+    $name = 'audit_login_' . bin2hex(random_bytes(5));
+    $id = wp_insert_user(['user_login' => $name, 'user_email' => $name . '@example.org', 'user_pass' => $password, 'role' => 'subscriber']);
+    portalweave_sso_assert(is_int($id), 'Unable to create the login audit fixture');
+    try {
+        $test(get_userdata($id), $password);
+    } finally {
+        [$_GET, $_COOKIE, $previous_user] = $previous;
+        wp_set_current_user($previous_user);
+        $wpdb->delete($wpdb->prefix . 'portalweave_sso_audit', ['user_id' => $id], ['%d']);
+        wp_delete_user($id);
+    }
+}
+
+portalweave_sso_test('Local password login is audited regardless of public SSO query context or stored provider links', function (): void {
+    portalweave_sso_login_audit_fixture(function ($user, $password): void {
+        update_user_meta($user->ID, \PortalWeaveSSO\Auth::app_meta_key(), 'previous-sso-provider');
+        $missing = [];
+        foreach (['ordinary' => '', 'unknown' => 'unused', 'structured' => ['unused'], 'callback' => 'callback'] as $case => $action) {
+            $_GET = ['portalweave_sso_action' => $action];
+            if ($case === 'unknown' || $case === 'structured') { \PortalWeaveSSO\Auth::dispatch(); }
+            $before = count(\PortalWeaveSSO\Audit::recent(['user_id' => $user->ID]));
+            wp_set_current_user(0);
+            $signed_in = wp_signon(['user_login' => $user->user_login, 'user_password' => $password], true);
+            portalweave_sso_assert($signed_in instanceof WP_User && $signed_in->ID === $user->ID, 'The legitimate password login failed');
+            $rows = \PortalWeaveSSO\Audit::recent(['user_id' => $user->ID]);
+            if (count($rows) !== $before + 1 || $rows[0]['status'] !== 'local_login') { $missing[] = $case; }
+        }
+        portalweave_sso_assert($missing === [], 'Public query context suppressed password-login audit events: ' . implode(', ', $missing));
+        portalweave_sso_assert(\PortalWeaveSSO\Config::save(['audit_enabled' => false]) === true, 'Unable to disable audit collection');
+        $before = count(\PortalWeaveSSO\Audit::recent(['user_id' => $user->ID]));
+        do_action('wp_login', $user->user_login, $user);
+        portalweave_sso_assert(count(\PortalWeaveSSO\Audit::recent(['user_id' => $user->ID])) === $before, 'Disabled audit collection recorded a login');
+    });
+});
+
+portalweave_sso_test('OAuth, JWT and shared SSO completions each audit one success while preserving core login hooks', function (): void {
+    portalweave_sso_login_audit_fixture(function ($user): void {
+        $app = portalweave_sso_app(['enabled' => true, 'protocol' => 'oauth2', 'link_existing' => true, 'shared_sso' => true]);
+        $attributes = ['sub' => 'audit-subject-' . $user->ID, 'email' => $user->user_email, 'email_verified' => true];
+        $home = static fn() => 'https://portal.example.test';
+        $http = static function ($pre, $args, $url) use ($app, $attributes) {
+            return $url === $app['userinfo_url'] ? ['response' => ['code' => 200], 'headers' => [], 'body' => wp_json_encode($attributes)] : $pre;
+        };
+        $redirected = false;
+        $redirect = static function ($url) use (&$redirected) {
+            $redirected = true;
+            throw new RuntimeException('portalweave_sso_expected_audit_redirect');
+        };
+        $die = static fn() => static function ($message): void {
+            throw new RuntimeException('Unexpected SSO completion failure: ' . wp_strip_all_tags($message));
+        };
+        $core_calls = 0;
+        $core = static function ($name, $logged_in) use ($user, &$core_calls): void {
+            portalweave_sso_assert($name === $user->user_login && $logged_in->ID === $user->ID, 'Core login hook arguments changed');
+            $core_calls++;
+        };
+        add_filter('pre_option_home', $home);
+        add_filter('pre_http_request', $http, 10, 3);
+        add_filter('wp_redirect', $redirect);
+        add_filter('wp_die_handler', $die);
+        add_action('wp_login', $core, 30, 2);
+        $failures = [];
+        try {
+            $secret = str_repeat('audit-shared-secret-', 3);
+            $sites = ['https://portal.example.test', 'https://source.example.test'];
+            $saved = \PortalWeaveSSO\Config::save(['apps' => ['fixture' => $app], 'default_app' => 'fixture',
+                'modules' => ['shared_sso' => true], 'shared_cookie_domain' => 'example.test', 'shared_secret' => $secret, 'shared_sites' => $sites]);
+            portalweave_sso_assert($saved === true, 'Unable to configure audit SSO fixture: ' . (is_wp_error($saved) ? $saved->get_error_message() : 'unknown error'));
+            foreach (['oauth', 'jwt', 'shared'] as $flow) {
+                $_GET = [];
+                wp_set_current_user(0);
+                $redirected = false;
+                $before = count(\PortalWeaveSSO\Audit::recent(['user_id' => $user->ID]));
+                try {
+                    if ($flow === 'oauth') {
+                        (new ReflectionMethod(\PortalWeaveSSO\Auth::class, 'complete'))->invoke(null, $app,
+                            ['nonce' => 'audit-nonce', 'redirect' => home_url('/')], ['access_token' => 'audit-fixture-access']);
+                    } elseif ($flow === 'jwt') {
+                        (new ReflectionMethod(\PortalWeaveSSO\Extensions::class, 'session'))->invoke(null, $user, $app, $attributes);
+                    } else {
+                        $claims = ['v' => 1, 'source' => $sites[1], 'aud' => $sites, 'app' => $app['id'], 'iss' => $app['issuer'],
+                            'iat' => time(), 'exp' => time() + 60, 'jti' => bin2hex(random_bytes(24)), 'attributes' => $attributes];
+                        $encoded = rtrim(strtr(base64_encode(wp_json_encode($claims)), '+/', '-_'), '=');
+                        $_COOKIE['__Secure-portalweave-sso-shared'] = $encoded . '.' . hash_hmac('sha256', $encoded, $secret);
+                        \PortalWeaveSSO\Extensions::shared_consume();
+                    }
+                } catch (RuntimeException $error) {
+                    if ($error->getMessage() !== 'portalweave_sso_expected_audit_redirect') { throw $error; }
+                }
+                portalweave_sso_assert($flow === 'jwt' || $redirected, 'SSO completion did not reach its terminal redirect: ' . $flow);
+                $rows = \PortalWeaveSSO\Audit::recent(['user_id' => $user->ID]);
+                if (count($rows) !== $before + 1 || $rows[0]['status'] !== 'success') { $failures[] = $flow; }
+            }
+            portalweave_sso_assert($core_calls === 3, 'A completion omitted or duplicated the core login hook');
+            portalweave_sso_assert($failures === [], 'SSO completion produced duplicate local-login events: ' . implode(', ', $failures));
+        } finally {
+            remove_action('wp_login', $core, 30);
+            remove_filter('wp_redirect', $redirect);
+            remove_filter('wp_die_handler', $die);
+            remove_filter('pre_http_request', $http, 10);
+            remove_filter('pre_option_home', $home);
+        }
+    });
+});
+
+portalweave_sso_test('Nested ordinary login events retain their own audit record during SSO completion', function (): void {
+    portalweave_sso_login_audit_fixture(function ($user): void {
+        $_GET = ['portalweave_sso_action' => 'callback'];
+        $nested = false;
+        $login = static function ($name, $logged_in) use (&$nested): void {
+            if (!$nested) {
+                $nested = true;
+                do_action('wp_login', $name, $logged_in);
+            }
+        };
+        add_action('wp_login', $login, 10, 2);
+        try { (new ReflectionMethod(\PortalWeaveSSO\Extensions::class, 'session'))->invoke(null, $user, portalweave_sso_app(), []); }
+        finally { remove_action('wp_login', $login, 10); }
+        $statuses = array_column(\PortalWeaveSSO\Audit::recent(['user_id' => $user->ID]), 'status');
+        sort($statuses);
+        portalweave_sso_assert($nested && $statuses === ['local_login', 'success'], 'Nested core login was lost or the SSO event was duplicated');
+    });
+});
+
 function portalweave_sso_activity_fixture(callable $test): void {
     global $wpdb;
     $table = $wpdb->prefix . 'portalweave_sso_audit';

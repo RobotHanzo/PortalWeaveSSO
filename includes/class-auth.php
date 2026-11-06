@@ -378,7 +378,7 @@ final class Auth {
         self::remember_sid($user->ID, $app, $attributes);
         wp_set_current_user($user->ID);
         wp_set_auth_cookie($user->ID, false, true);
-        do_action('wp_login', $user->user_login, $user); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Required WordPress core login event for session integrations.
+        do_action('wp_login', $user->user_login, $user, 'portalweave-sso'); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Required core login event; internal context suppresses only its duplicate local audit event.
         do_action('portalweave_sso_authenticated', $user, $app, $attributes);
         $redirect = apply_filters('portalweave_sso_login_redirect', $flow['redirect'], $app, $attributes, $user);
         $redirect = Redirect::validate(is_string($redirect) ? $redirect : '');
