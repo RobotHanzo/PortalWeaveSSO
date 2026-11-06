@@ -41,7 +41,7 @@ final class Admin {
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Only an allowlisted local task selects the canonical destination.
         $screen = self::request_key($_GET, 'tab');
         $args = [];
-        foreach (['provider', 'provider_section', 'new_provider', 'setup_provider', 'activity_view', 'activity_days', 'appearance_section', 'integration_section', 'audit_page', 'audit_per_page', 'portalweave_sso_notice'] as $key) {
+        foreach (['provider', 'provider_section', 'new_provider', 'setup_provider', 'activity_view', 'activity_days', 'appearance_section', 'integration_section', 'audit_page', 'audit_snapshot', 'portalweave_sso_notice'] as $key) {
             // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Scalar local navigation keys only; each screen validates its own presentation values.
             $value = self::request_key($_GET, $key);
             if ($value !== '') $args[$key] = $value;
