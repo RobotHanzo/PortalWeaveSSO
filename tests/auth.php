@@ -84,8 +84,8 @@ wpsso_test('Signed back-channel logout revokes only matching app identities and 
         return $input . '.' . $encode(hash_hmac('sha256', $input, $app['jwt_secret'], true));
     };
     try {
-        $saved = \WPSSO\Config::save(['apps' => [$app['id'] => $app]]);
-        wpsso_assert($saved === true, 'Unable to save back-channel fixture');
+        $saved = \WPSSO\Config::save(['apps' => [$app['id'] => $app], 'default_app' => $app['id']]);
+        wpsso_assert($saved === true, 'Unable to save back-channel fixture: ' . (is_wp_error($saved) ? $saved->get_error_message() : 'unknown error'));
         $first = wp_insert_user(['user_login' => 'bc_' . wp_generate_password(12, false), 'user_pass' => wp_generate_password(32), 'user_email' => wp_generate_password(12, false) . '@example.org', 'role' => 'subscriber']);
         $second = wp_insert_user(['user_login' => 'bc_' . wp_generate_password(12, false), 'user_pass' => wp_generate_password(32), 'user_email' => wp_generate_password(12, false) . '@example.org', 'role' => 'subscriber']);
         wpsso_assert(is_int($first) && is_int($second), 'Unable to create back-channel users');
@@ -123,5 +123,58 @@ wpsso_test('Signed back-channel logout revokes only matching app identities and 
         foreach ([$jti, $jti . '-subject'] as $id) {
             delete_option('wpsso_logout_' . hash('sha256', get_current_blog_id() . '|' . $app['id'] . '|' . $app['issuer'] . '|' . $app['client_id'] . '|' . $id));
         }
+    }
+});
+
+wpsso_test('Refresh rotates encrypted credentials, binds identity and requires account permission', function () {
+    $old = get_option('wpsso_settings', []);
+    $user_id = 0;
+    $mode = 'valid';
+    $seen = [];
+    $app = array_replace(\WPSSO\Config::app_defaults(), [
+        'id' => 'refresh-test', 'name' => 'Refresh test', 'enabled' => true,
+        'client_id' => 'refresh-client', 'client_secret' => 'secret:with-colon-and-32-plus-bytes',
+        'issuer' => 'https://example.org', 'authorize_url' => 'https://example.org/authorize',
+        'token_url' => 'https://example.org/refresh-fixture', 'jwt_secret' => str_repeat('R', 64), 'algorithms' => ['HS256'],
+    ]);
+    $encode = static function ($value) { return rtrim(strtr(base64_encode($value), '+/', '-_'), '='); };
+    $http = static function ($pre, $args, $url) use (&$mode, &$seen, $app, $encode) {
+        if ($url !== $app['token_url']) { return $pre; }
+        $seen = $args;
+        $claims = ['iss' => $app['issuer'], 'aud' => $app['client_id'], 'sub' => $mode === 'subject' ? 'attacker-subject' : 'original-subject', 'nonce' => $mode === 'nonce' ? 'wrong-nonce' : 'original-nonce', 'iat' => time(), 'exp' => time() + 300];
+        $input = $encode(json_encode(['alg' => 'HS256'])) . '.' . $encode(json_encode($claims));
+        $token = $input . '.' . $encode(hash_hmac('sha256', $input, $app['jwt_secret'], true));
+        return ['response' => ['code' => 200], 'headers' => [], 'body' => json_encode(['access_token' => 'rotated-access', 'refresh_token' => 'rotated-refresh', 'id_token' => $token, 'token_type' => 'Bearer', 'expires_in' => 300])];
+    };
+    add_filter('pre_http_request', $http, 10, 3);
+    try {
+        $saved = \WPSSO\Config::save(['apps' => [$app['id'] => $app], 'default_app' => $app['id']]);
+        wpsso_assert($saved === true, 'Unable to save refresh fixture: ' . (is_wp_error($saved) ? $saved->get_error_message() : 'unknown error'));
+        $user_id = wp_insert_user(['user_login' => 'refresh_' . wp_generate_password(10, false), 'user_pass' => wp_generate_password(32), 'user_email' => wp_generate_password(12, false) . '@example.org', 'role' => 'subscriber']);
+        wpsso_assert(is_int($user_id), 'Unable to create refresh user');
+        $meta = '_wpsso_tokens_' . $app['id'];
+        update_user_meta($user_id, $meta, \WPSSO\Secrets::encrypt(json_encode(['refresh_token' => 'original-refresh', '_subject' => 'original-subject', '_nonce' => 'original-nonce'])));
+        wp_set_current_user(0);
+        wpsso_error(\WPSSO\Auth::refresh($user_id, $app['id']), 'wpsso_permission');
+        wp_set_current_user($user_id);
+        $result = \WPSSO\Auth::refresh($user_id, $app['id']);
+        wpsso_assert(is_array($result) && $result['refresh_token'] === 'rotated-refresh', 'Refresh token not rotated');
+        parse_str($seen['body'], $body);
+        wpsso_assert(($body['grant_type'] ?? '') === 'refresh_token' && ($body['refresh_token'] ?? '') === 'original-refresh', 'Refresh request body incorrect');
+        wpsso_assert(!isset($body['client_secret']) && !isset($body['client_id']), 'Header credentials leaked into body');
+        wpsso_assert(($seen['headers']['Authorization'] ?? '') === 'Basic ' . base64_encode(urlencode($app['client_id']) . ':' . urlencode($app['client_secret'])), 'Basic credentials were not form-encoded');
+        $encrypted = get_user_meta($user_id, $meta, true);
+        wpsso_assert(strpos($encrypted, 'rotated-refresh') === false, 'Rotated credentials stored in plaintext');
+        $stored = json_decode(\WPSSO\Secrets::decrypt($encrypted), true);
+        wpsso_assert($stored['refresh_token'] === 'rotated-refresh' && $stored['_subject'] === 'original-subject', 'Encrypted rotation lost identity');
+        foreach (['subject', 'nonce'] as $invalid) {
+            $mode = $invalid;
+            wpsso_error(\WPSSO\Auth::refresh($user_id, $app['id']), 'wpsso_refresh_subject');
+            wpsso_assert(get_user_meta($user_id, $meta, true) === $encrypted, 'Rejected refresh changed stored credentials');
+        }
+    } finally {
+        remove_filter('pre_http_request', $http, 10);
+        update_option('wpsso_settings', $old, false);
+        if (is_int($user_id) && $user_id > 0) { wp_delete_user($user_id); }
     }
 });
