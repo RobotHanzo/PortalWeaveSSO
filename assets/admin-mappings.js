@@ -20,6 +20,12 @@
         if (!object(rule) || !keysOnly(rule, ['claim', 'equals', 'url'])
           || typeof rule.claim !== 'string' || typeof rule.url !== 'string'
           || !Object.hasOwn(rule, 'equals') || (rule.equals !== null && !['string', 'number', 'boolean'].includes(typeof rule.equals))) throw new Error('unsupported');
+        if (typeof rule.equals === 'number') {
+          if (!Number.isFinite(rule.equals)) throw new Error('unsupported');
+          // PHP can retain exact 64-bit integers that JSON.parse has already rounded.
+          // Leave their authoritative text in Advanced JSON rather than serializing a lossy row.
+          if (Number.isInteger(rule.equals) && !Number.isSafeInteger(rule.equals)) throw new Error('unsafe_number');
+        }
         return { claim: rule.claim, equals: rule.equals === null ? '' : String(rule.equals), value_type: rule.equals === null ? 'null' : typeof rule.equals, url: rule.url };
       });
     }
@@ -59,6 +65,7 @@
           // JSON number syntax, rather than Number('') or JavaScript-only numeric literals.
           if (!/^-?(?:0|[1-9]\d*)(?:\.\d+)?(?:[eE][+-]?\d+)?$/.test(equals) || !Number.isFinite(Number(equals))) throw new Error('invalid_value');
           equals = Number(equals);
+          if (Number.isInteger(equals) && !Number.isSafeInteger(equals)) throw new Error('unsafe_number');
         } else if (row.value_type === 'boolean') {
           if (!['true', 'false'].includes(equals)) throw new Error('invalid_value');
           equals = equals === 'true';

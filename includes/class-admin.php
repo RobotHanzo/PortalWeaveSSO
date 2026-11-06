@@ -1132,6 +1132,7 @@ final class Admin {
             'duplicate' => __('Each source must be unique. Change or remove the duplicate rule.', 'portalweave-sso'),
             'required' => __('Complete this rule or remove it.', 'portalweave-sso'),
             'invalid_value' => __('Enter a valid value for the selected type.', 'portalweave-sso'),
+            'unsafe_number' => __('Use Advanced JSON to preserve large integer matches exactly. The visual editor accepts integers from -9007199254740991 to 9007199254740991.', 'portalweave-sso'),
             'roles_help' => __('Select one or more roles. Existing administrator verification requirements still apply.', 'portalweave-sso'),
             'row' => __('Rule', 'portalweave-sso'),
         ];
