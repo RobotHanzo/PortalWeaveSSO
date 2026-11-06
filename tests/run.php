@@ -44,6 +44,7 @@ function wpsso_test(string $name, callable $test): void {
     $settings = get_option('wpsso_settings', []);
     $user_id = get_current_user_id();
     try {
+        update_option('wpsso_settings', \WPSSO\Config::defaults(), false);
         $test();
         $wpsso_results[] = ['name' => $name, 'pass' => true];
     } catch (Throwable $error) {

@@ -9,6 +9,11 @@ final class Accounts
         'install_plugins', 'activate_plugins', 'edit_plugins', 'update_plugins', 'delete_plugins',
         'install_themes', 'edit_themes', 'update_themes', 'delete_themes', 'switch_themes',
         'manage_network', 'manage_network_options', 'manage_network_plugins', 'manage_network_users', 'setup_network'];
+
+    public static function groups_meta_key(): string
+    {
+        return '_wpsso_groups' . (is_multisite() ? '_' . get_current_blog_id() : '');
+    }
     public static function claim(array $attributes, string $path, $default = null)
     {
         if ($path === '') {
@@ -38,7 +43,7 @@ final class Accounts
         return is_scalar($expected) && $value !== null && (string) $expected === (string) $value;
     }
 
-    public static function is_privileged(\WP_User $user): bool
+    public static function is_privileged(\WP_User $user, bool $network = true): bool
     {
         if (is_multisite() && is_super_admin($user->ID)) {
             return true;
@@ -46,6 +51,18 @@ final class Accounts
         foreach (self::ADMIN_CAPABILITIES as $capability) {
             if ($user->has_cap($capability)) {
                 return true;
+            }
+        }
+        // WordPress authentication cookies identify a global multisite user.
+        // A subscriber login on one site must not bypass admin SSO policy on another.
+        if ($network && is_multisite()) {
+            foreach (get_blogs_of_user($user->ID, true) as $blog) {
+                if ((int) $blog->userblog_id === (int) $user->get_site_id()) {
+                    continue;
+                }
+                if (self::is_privileged(new \WP_User($user->ID, '', (int) $blog->userblog_id), false)) {
+                    return true;
+                }
             }
         }
         return false;
@@ -234,8 +251,8 @@ final class Accounts
                 }
             }
             update_user_meta($id, $identity_key, $identity);
-            update_user_meta($id, '_wpsso_groups', $groups);
-            update_user_meta($id, '_wpsso_app', $app['id']);
+            update_user_meta($id, self::groups_meta_key(), $groups);
+            update_user_meta($id, Auth::app_meta_key(), $app['id']);
             if ($guest && $new) {
                 update_user_meta($id, '_wpsso_guest_expires', time() + (int) Config::get('guest_ttl', 3600));
             }

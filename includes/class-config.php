@@ -168,6 +168,9 @@ final class Config
                     return new \WP_Error('wpsso_shared_origin', 'Shared sites must be exact HTTPS origins.');
                 }
             }
+            if ($key === 'shared_sites') {
+                $settings[$key] = array_map(static fn($url) => rtrim($url, '/'), $settings[$key]);
+            }
         }
         foreach (['allowed_domains', 'blocked_domains'] as $key) {
             $settings[$key] = array_map('strtolower', self::list($settings[$key]));

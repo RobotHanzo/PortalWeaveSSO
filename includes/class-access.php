@@ -15,9 +15,12 @@ final class Access
         add_action('pre_get_posts', [self::class, 'filter_query']);
         add_filter('rest_authentication_errors', [self::class, 'rest_gate'], 100);
         add_filter('rest_pre_dispatch', [self::class, 'rest_content'], 20, 3);
-        foreach (get_post_types(['show_in_rest' => true]) as $type) {
-            add_filter('rest_' . $type . '_query', [self::class, 'rest_query'], 20);
-        }
+        add_action('init', static function () {
+            foreach (get_post_types(['show_in_rest' => true]) as $type) {
+                add_filter('rest_' . $type . '_query', [self::class, 'rest_query'], 20);
+            }
+        }, 100);
+        add_filter('oembed_response_data', static fn($data, $post) => self::can_post($post->ID) ? $data : false, 20, 2);
         add_filter('xmlrpc_enabled', static fn($enabled) => (Config::get('force_auth') || Config::get('restrict_site')) ? false : $enabled);
         add_filter('wp_get_attachment_url', [self::class, 'media_url'], 20, 2);
         add_filter('image_downsize', [self::class, 'image_size'], 20, 3);
@@ -38,7 +41,7 @@ final class Access
         if (!$user->exists()) {
             return false;
         }
-        if (Accounts::is_privileged($user)) {
+        if (Accounts::is_privileged($user, false)) {
             return true;
         }
         $roles = Config::list($rule['roles'] ?? []);
@@ -46,12 +49,16 @@ final class Access
         if (!$roles && !$groups) {
             return true;
         }
-        $user_groups = array_merge((array) get_user_meta($user->ID, '_wpsso_groups', true), (array) get_user_meta($user->ID, '_wpsso_scim_groups', true), (array) get_user_meta($user->ID, '_wpsso_scim_group_names', true));
+        $scim_groups = method_exists(Extensions::class, 'scim_groups') ? Extensions::scim_groups($user->ID) : array_merge((array) get_user_meta($user->ID, '_wpsso_scim_groups', true), (array) get_user_meta($user->ID, '_wpsso_scim_group_names', true));
+        $user_groups = array_merge((array) get_user_meta($user->ID, Accounts::groups_meta_key(), true), $scim_groups);
         return (bool) array_intersect($roles, $user->roles) || (bool) array_intersect($groups, $user_groups);
     }
 
     public static function can_post(int $id, ?\WP_User $user = null): bool
     {
+        if (wp_is_post_revision($id)) {
+            return self::can_post((int) wp_get_post_parent_id($id), $user);
+        }
         $rules = Config::get('content_rules', []);
         $rule = get_post_meta($id, '_wpsso_rule', true);
         if (!self::allows(is_array($rule) ? $rule : [], $user) || !self::allows((array) ($rules['posts'][$id] ?? []), $user)) {
@@ -156,12 +163,22 @@ final class Access
         if (is_admin() || $query->is_singular()) {
             return;
         }
-        $query->set('post__not_in', array_unique(array_merge((array) $query->get('post__not_in'), self::denied_ids())));
+        $denied = self::denied_ids();
+        $query->set('post__not_in', array_unique(array_merge((array) $query->get('post__not_in'), $denied)));
+        // WP_Query gives post__in precedence over post__not_in. Empty post__in
+        // means every post, so an exhausted explicit include must use [0].
+        if ($query->get('post__in')) {
+            $query->set('post__in', array_values(array_diff(array_map('intval', (array) $query->get('post__in')), $denied)) ?: [0]);
+        }
     }
 
     public static function rest_query(array $args): array
     {
-        $args['post__not_in'] = array_unique(array_merge((array) ($args['post__not_in'] ?? []), self::denied_ids()));
+        $denied = self::denied_ids();
+        $args['post__not_in'] = array_unique(array_merge((array) ($args['post__not_in'] ?? []), $denied));
+        if (!empty($args['post__in'])) {
+            $args['post__in'] = array_values(array_diff(array_map('intval', $args['post__in']), $denied)) ?: [0];
+        }
         return $args;
     }
 
@@ -183,8 +200,12 @@ final class Access
         if ($result !== null) {
             return $result;
         }
-        if (str_starts_with($request->get_route(), '/wp/v2/') && $request->get_param('id') && !self::can_post((int) $request->get_param('id'))) {
-            return new \WP_Error('wpsso_content_denied', 'You do not have access to this content.', ['status' => is_user_logged_in() ? 403 : 401]);
+        foreach (get_post_types(['show_in_rest' => true], 'objects') as $type) {
+            $base = $type->rest_base ?: $type->name;
+            $namespace = $type->rest_namespace ?: 'wp/v2';
+            if (preg_match('~^/' . preg_quote($namespace . '/' . $base, '~') . '/(\d+)(?:/|$)~', $request->get_route(), $match) && !self::can_post((int) $match[1])) {
+                return new \WP_Error('wpsso_content_denied', 'You do not have access to this content.', ['status' => is_user_logged_in() ? 403 : 401]);
+            }
         }
         return $result;
     }

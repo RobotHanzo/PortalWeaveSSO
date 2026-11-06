@@ -25,7 +25,7 @@ unset($wpsso_class);
 
 register_activation_hook(__FILE__, function ($network_wide) {
     if (is_multisite() && $network_wide) {
-        foreach (get_sites(['fields' => 'ids', 'number' => 0]) as $site_id) {
+        foreach (get_sites(['fields' => 'ids', 'number' => 0, 'network_id' => get_current_network_id()]) as $site_id) {
             switch_to_blog($site_id);
             \WPSSO\Audit::install();
             restore_current_blog();
@@ -35,16 +35,18 @@ register_activation_hook(__FILE__, function ($network_wide) {
     }
 });
 register_deactivation_hook(__FILE__, function ($network_wide) {
-    $sites = is_multisite() && $network_wide ? get_sites(['fields' => 'ids', 'number' => 0]) : [get_current_blog_id()];
+    $sites = is_multisite() && $network_wide ? get_sites(['fields' => 'ids', 'number' => 0, 'network_id' => get_current_network_id()]) : [get_current_blog_id()];
     foreach ($sites as $site_id) {
         switch_to_blog($site_id);
         wp_clear_scheduled_hook('wpsso_cleanup');
         wp_clear_scheduled_hook('wpsso_state_cleanup');
+        wp_clear_scheduled_hook('wpsso_extension_cleanup');
+        wp_unschedule_hook('wpsso_expire_claim');
         restore_current_blog();
     }
 });
 add_action('wp_initialize_site', function ($site) {
-    if (!is_plugin_active_for_network(plugin_basename(WPSSO_FILE))) {
+    if (!array_key_exists(plugin_basename(WPSSO_FILE), (array) get_site_option('active_sitewide_plugins', []))) {
         return;
     }
     switch_to_blog($site->blog_id);

@@ -42,3 +42,36 @@ wpsso_test('Audit retains useful metadata without query tokens and supports priv
         wpsso_assert(\WPSSO\Audit::recent(['user_id' => $id]) === [], 'Identifiable audit row remains');
     } finally { wp_delete_user($id); }
 });
+
+wpsso_test('Protected core posts cannot leak through REST collections, revisions or oEmbed', function () {
+    $post = wp_insert_post(['post_title' => 'SSO private embed', 'post_content' => 'Protected content', 'post_status' => 'publish']);
+    wpsso_assert($post > 0, 'Fixture post failed');
+    try {
+        update_post_meta($post, '_wpsso_rule', ['login' => true]);
+        wp_set_current_user(0);
+        wpsso_assert(apply_filters('oembed_response_data', ['title' => 'Private'], get_post($post), 600, 400) === false, 'oEmbed exposed a protected post');
+        $response = rest_do_request(new WP_REST_Request('GET', '/wp/v2/posts/' . $post));
+        wpsso_assert($response->get_status() === 401, 'REST individual read did not reject anonymous access');
+        $request = new WP_REST_Request('GET', '/wp/v2/posts/' . $post . '/revisions');
+        wpsso_error(\WPSSO\Access::rest_content(null, rest_get_server(), $request), 'wpsso_content_denied');
+        $request = new WP_REST_Request('GET', '/wp/v2/posts');
+        $request->set_param('include', [$post]);
+        $response = rest_do_request($request);
+        wpsso_assert($response->get_status() === 200 && $response->get_data() === [], 'REST collection exposed restricted content');
+        $category = new WP_REST_Request('GET', '/wp/v2/categories/' . $post);
+        $category->set_param('id', $post);
+        wpsso_assert(\WPSSO\Access::rest_content(null, rest_get_server(), $category) === null, 'Post rules were incorrectly applied to a category ID');
+    } finally { wp_delete_post($post, true); }
+});
+
+wpsso_test('Custom plugin-management roles receive administrator SSO protection', function () {
+    add_role('wpsso_installer_fixture', 'Installer fixture', ['read' => true, 'install_plugins' => true]);
+    $id = wp_insert_user(['user_login' => 'wpsso_installer_' . bin2hex(random_bytes(5)), 'user_pass' => wp_generate_password(40), 'user_email' => 'installer_' . bin2hex(random_bytes(5)) . '@example.org', 'role' => 'wpsso_installer_fixture']);
+    wpsso_assert(!is_wp_error($id), 'Fixture user failed');
+    try {
+        $user = get_userdata($id);
+        wpsso_assert(\WPSSO\Accounts::is_privileged($user), 'Custom installation capability escaped privilege detection');
+        $attrs = ['sub' => 'custom-admin-' . $id, 'email' => $user->user_email, 'email_verified' => true];
+        wpsso_error(\WPSSO\Accounts::resolve(wpsso_app(['link_existing' => true]), $attrs), 'wpsso_admin_disabled');
+    } finally { wp_delete_user($id); remove_role('wpsso_installer_fixture'); }
+});

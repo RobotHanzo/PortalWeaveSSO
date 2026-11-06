@@ -97,7 +97,7 @@ final class Display
         if (!current_user_can('edit_user', $user->ID)) {
             return;
         }
-        $app_id = get_user_meta($user->ID, '_wpsso_app', true);
+        $app_id = get_user_meta($user->ID, Auth::app_meta_key(), true);
         $app = $app_id ? Config::app($app_id) : null;
         if (!$app) {
             return;

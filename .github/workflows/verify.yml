@@ -1,0 +1,37 @@
+name: Verify WordPress SSO
+on: [push, pull_request]
+permissions:
+  contents: read
+jobs:
+  wordpress:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - name: Start disposable WordPress
+        run: |
+          docker compose -f compose.test.yml up -d wordpress
+          docker compose -f compose.test.yml run --rm cli wp core install --url=http://localhost:8098 --title='WPSSO Integration' --admin_user=wpsso_test_admin --admin_password=local-test-password-only --admin_email=admin@example.org --skip-email
+          docker compose -f compose.test.yml run --rm cli wp plugin activate wordpress-sso
+      - name: Syntax and integration checks
+        run: |
+          docker compose -f compose.test.yml exec -T wordpress php /var/www/html/wp-content/plugins/wordpress-sso/scripts/lint.php
+          node --check assets/login.js
+          node --check assets/admin.js
+          docker compose -f compose.test.yml exec -T wordpress php /var/www/html/wp-content/plugins/wordpress-sso/tests/run.php
+      - name: HTTPS OAuth protocol checks
+        run: |
+          docker compose -f compose.test.yml exec -T wordpress bash /var/www/html/wp-content/plugins/wordpress-sso/tests/setup-tls.sh
+          docker compose -f compose.test.yml exec -T wordpress php /var/www/html/wp-content/plugins/wordpress-sso/tests/setup-e2e.php
+          node tests/e2e.mjs
+          docker compose -f compose.test.yml exec -T wordpress php /var/www/html/wp-content/plugins/wordpress-sso/tests/setup-e2e.php --restore
+      - name: Build installable ZIP
+        shell: pwsh
+        run: ./scripts/build.ps1
+      - uses: actions/upload-artifact@v4
+        with:
+          name: wordpress-sso
+          path: dist/
+      - name: Stop services
+        if: always()
+        run: docker compose -f compose.test.yml down
