@@ -1,6 +1,6 @@
 # PortalWeave SSO provider setup and administrator guide
 
-Install `portalweave-sso-1.1.0.zip` through **Plugins → Add New → Upload Plugin**, activate **PortalWeave SSO**, and open **Settings → PortalWeave SSO**. On multisite, **Network Admin → PortalWeave SSO** can enforce a network-wide policy. Each WordPress network has its own network option.
+Install `portalweave-sso-1.1.0.zip` through **Plugins → Add New → Upload Plugin**, activate **PortalWeave SSO**, and open **PortalWeave SSO** in the WordPress admin sidebar. On multisite, **Network Admin → PortalWeave SSO** can enforce a network-wide policy. Each WordPress network has its own network option.
 
 The proposed directory slug and text domain are `portalweave-sso`. Use the `[sso_oauth_login]` shortcode, `PORTALWEAVE_SSO_*` server configuration constants, `PortalWeaveSSO` PHP namespace and `wp portalweave-sso` commands.
 
@@ -110,7 +110,7 @@ Domain allow/block policy uses exact lower-case domains. Domain mapping is an op
 
 ## Login display
 
-Insert `[sso_oauth_login]` or add the **PortalWeave SSO login** widget. WooCommerce's login form gets enabled-provider buttons. Customize global theme, shape, size, curve, spacing, shadow, and hover treatment. Each app can set text and an HTTPS icon URL. `##user##` and `##Sign Out##` are available in the logged-in message. Button assets load for the relevant login/widget/shortcode/account contexts; normal pages without those displays do not need them.
+Insert `[sso_oauth_login]` or add the **PortalWeave SSO login** widget. WooCommerce's login form gets enabled-provider buttons. Customize global theme, shape, size, curve, spacing, shadow, and hover treatment. In each provider's **Login button** section, set its text and choose or upload a custom logo using the WordPress media library, or paste an HTTPS image URL. Upload and selection require WordPress upload permission; a manual URL remains available. Selected media must be served over HTTPS. The preview and removal controls affect the current draft until **Save provider**; removing a custom logo restores the default appearance. The same provider logo is used by shared buttons and WordPress's provider-icon choice. `##user##` and `##Sign Out##` are available in the logged-in message. Button assets load for the relevant login/widget/shortcode/account contexts; normal pages without those displays do not need them.
 
 Open **Appearance → WordPress sign-in** to give the SSO buttons on `wp-login.php` their own appearance. Enable customization, then adjust text, normal and hover colors, borders, corners, font size, padding, width and shadows. The live preview follows the selected provider. Presets provide a starting point; save changes to apply your choices. The shared appearance remains in use until customization is enabled.
 

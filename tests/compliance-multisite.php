@@ -233,3 +233,53 @@ portalweave_sso_test('multisite: Activity summaries keep identical provider IDs 
         foreach ($inserted as $row) { $wpdb->delete($row['table'], ['id' => $row['id']], ['%d']); }
     }
 });
+
+portalweave_sso_test('multisite: audit pagination counts and reads only the current blog across page boundaries', function () {
+    global $wpdb, $portalweave_sso_blog_a, $portalweave_sso_blog_b;
+    $marker = 'pagination-' . bin2hex(random_bytes(5));
+    $inserted = [];
+    $snapshots = [];
+    try {
+        foreach ([$portalweave_sso_blog_a => 117, $portalweave_sso_blog_b => 3] as $blog => $count) {
+            portalweave_sso_compliance_multisite_at($blog, static function () use ($blog, $count, $marker, &$inserted, &$snapshots) {
+                global $wpdb;
+                \PortalWeaveSSO\Audit::install();
+                $baseline = \PortalWeaveSSO\Audit::page();
+                portalweave_sso_assert(is_array($baseline), 'Unable to read scoped pagination baseline');
+                $table = $wpdb->prefix . 'portalweave_sso_audit';
+                for ($index = 0; $index < $count; $index++) {
+                    portalweave_sso_assert($wpdb->insert($table, [
+                        'user_id' => 0, 'username' => $marker . '-site-' . $blog, 'email' => '', 'status' => 'success',
+                        'app' => $marker, 'error_code' => '', 'client_ip' => '', 'navigation' => '', 'created_at' => '2004-07-19 12:00:00',
+                    ], ['%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s']) === 1, 'Unable to create scoped pagination fixture');
+                    $inserted[] = ['table' => $table, 'id' => (int) $wpdb->insert_id];
+                }
+                $history = \PortalWeaveSSO\Audit::page();
+                portalweave_sso_assert(is_array($history) && $history['total'] === $baseline['total'] + $count, 'Audit count crossed a blog boundary');
+                $snapshots[$blog] = $history;
+                $found = 0;
+                $seen = [];
+                for ($page = 1; $page <= $history['pages']; $page++) {
+                    $result = \PortalWeaveSSO\Audit::page($page, 50, $history['snapshot']);
+                    portalweave_sso_assert(is_array($result) && $result['total'] === $history['total'], 'Scoped page lost its current-site count');
+                    foreach ($result['rows'] as $row) {
+                        portalweave_sso_assert(!isset($seen[$row['id']]), 'Scoped audit pages overlap');
+                        $seen[$row['id']] = true;
+                        if ($row['app'] === $marker) {
+                            portalweave_sso_assert($row['username'] === $marker . '-site-' . $blog, 'Private audit rows crossed a blog boundary');
+                            $found++;
+                        }
+                    }
+                }
+                portalweave_sso_assert($found === $count, 'Current-site pagination omitted rows past the first hundred');
+            });
+        }
+        portalweave_sso_compliance_multisite_at($portalweave_sso_blog_a, static function () use ($snapshots, $portalweave_sso_blog_a, $portalweave_sso_blog_b) {
+            $before = \PortalWeaveSSO\Audit::page(2, 50, $snapshots[$portalweave_sso_blog_a]['snapshot']);
+            portalweave_sso_compliance_multisite_at($portalweave_sso_blog_b, static fn() => \PortalWeaveSSO\Audit::page());
+            portalweave_sso_assert(\PortalWeaveSSO\Audit::page(2, 50, $snapshots[$portalweave_sso_blog_a]['snapshot']) === $before, 'Restoring the blog reused another site’s pagination');
+        });
+    } finally {
+        foreach ($inserted as $row) { $wpdb->delete($row['table'], ['id' => $row['id']], ['%d']); }
+    }
+});
