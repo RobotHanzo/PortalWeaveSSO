@@ -698,6 +698,7 @@ final class Extensions {
         if (is_wp_error($user) || !($user instanceof \WP_User)) {
             self::fail(is_wp_error($user) ? $user : new \WP_Error('wpsso_account', 'Unable to resolve this identity.'), $app['id']);
         }
+        Auth::remember_sid($user->ID, $app, $attributes);
         wp_set_current_user($user->ID);
         wp_set_auth_cookie($user->ID, false, true);
         update_user_meta($user->ID, '_wpsso_app', $app['id']);
@@ -760,7 +761,7 @@ final class Extensions {
             return;
         }
         // An assertion lives for one minute, never contains OAuth credentials, and is one-use at each relying site.
-        $paths = array_merge(['sub', $app['subject_attribute'] ?? 'sub', $app['verified_attribute'] ?? 'email_verified'],
+        $paths = array_merge(['sub', 'sid', $app['subject_attribute'] ?? 'sub', $app['verified_attribute'] ?? 'email_verified'],
             array_values($app['mapping'] ?? []), array_values($app['custom_mapping'] ?? []));
         $safe_attributes = [];
         foreach ($paths as $path) {
@@ -819,6 +820,7 @@ final class Extensions {
             return;
         }
         // Do not issue a fresh shared assertion while consuming one; that would turn one minute into an indefinite trust chain.
+        Auth::remember_sid($user->ID, $app, $claims['attributes']);
         wp_set_current_user($user->ID);
         wp_set_auth_cookie($user->ID, false, true);
         update_user_meta($user->ID, '_wpsso_app', $app['id']);
