@@ -31,7 +31,11 @@ Choose a service to open its setup guide, or enter your own OAuth/OIDC connectio
 ![Provider chooser with supported identity services and custom OAuth or OIDC](docs/screenshots/provider-chooser.png)
 
 <details>
-<summary>Registration, tenant details and saved providers</summary>
+<summary>WordPress sidebar, registration and saved providers</summary>
+
+Open PortalWeave SSO directly from the WordPress admin sidebar.
+
+<img src="docs/screenshots/admin-sidebar.png" alt="WordPress admin sidebar with a top-level PortalWeave SSO entry" width="208">
 
 Follow the provider-console instructions and register the displayed callback URL.
 
@@ -57,6 +61,10 @@ Configure an existing provider through focused tabs. Switching tabs keeps your e
 
 ![Provider configuration with Connection, Endpoints, Security, Mapping, Accounts, Integrations and Login button tabs](docs/screenshots/provider-settings.png)
 
+A floating reminder appears when you edit settings. Save the form or revert every change, including edits in other sections.
+
+![Integration settings with an unsaved-changes banner and Save changes and Revert all changes actions](docs/screenshots/unsaved-settings.png)
+
 </details>
 
 ### Add login buttons
@@ -80,6 +88,10 @@ Use **Appearance → WordPress sign-in** to customize colors, hover states, text
 
 ![WordPress sign-in button appearance controls with colors, sizing, icon choices and a live preview](docs/screenshots/wordpress-button-style.png)
 
+Each provider can use an uploaded logo from the WordPress media library or an HTTPS image URL. This fictional provider uses the PortalWeave mark to demonstrate image selection.
+
+![Provider login-button settings with an uploaded sample logo selected, its preview, and the save reminder](docs/screenshots/provider-logo.png)
+
 Choose a default provider, popup behavior and post-login destinations.
 
 ![Sign-in and logout behavior settings](docs/screenshots/login-settings.png)
@@ -95,9 +107,13 @@ Configure site-wide sign-in requirements, content rules and protected attachment
 <details>
 <summary>Attribute mapping and account policies</summary>
 
-Map profile fields and provider groups to WordPress roles.
+Map profile fields and provider groups to WordPress roles with labelled fields and rule controls.
 
-![Provider attribute and group mapping settings](docs/screenshots/attribute-mapping.png)
+![Visual provider attribute mapping, custom profile fields, and group and email-domain role rules](docs/screenshots/attribute-mapping.png)
+
+Switch an individual mapping field to **Advanced JSON** when you need to edit its JSON directly.
+
+![Standard attribute mapping in Advanced JSON mode with a switch back to the visual editor](docs/screenshots/mapping-advanced.png)
 
 Choose registration, email-linking and account-verification policies for each provider.
 
@@ -107,9 +123,9 @@ Choose registration, email-linking and account-verification policies for each pr
 
 ### Choose optional integrations
 
-Enable provisioning, shared sign-in, guest accounts, moderation and other modules as needed.
+Browse integrations by task, then configure the selected integration alongside its related provider settings.
 
-![Optional integration and module settings](docs/screenshots/integrations.png)
+![Grouped integration directory with SCIM provisioning settings selected](docs/screenshots/integrations.png)
 
 <details>
 <summary>Activity, backups and network administration</summary>
@@ -118,9 +134,9 @@ See daily trends, event types and provider activity over 7, 30 or 90 days.
 
 ![Activity overview showing daily event charts, event types and provider activity](docs/screenshots/activity-overview.png)
 
-Open **Audit logs** to inspect individual records, export CSV and choose collection and retention settings.
+Open **Audit logs** to page through 50 records at a time, export CSV and choose collection and retention settings. This excerpt shows the first six rows of the first page of fictional events.
 
-![Activity report containing fictional sample login events](docs/screenshots/activity.png)
+![Audit log first-page excerpt with event range, page count, and First, Previous, Next and Last controls](docs/screenshots/activity.png)
 
 Choose what to record and how long to retain it.
 
