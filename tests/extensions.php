@@ -142,3 +142,33 @@ wpsso_test('Moderation and guest expiry block authentication without changing ro
         wp_delete_user($id);
     }
 });
+
+wpsso_test('Native WordPress abilities register eight tools and enforce permission again at execution', function () {
+    if (!function_exists('wp_get_abilities')) {
+        wpsso_assert(!function_exists('wp_register_ability'), 'Native ability discovery is unexpectedly missing');
+        return;
+    }
+    $saved = get_option('wpsso_settings');
+    $current = get_current_user_id();
+    $admin = get_user_by('login', 'wpsso_test_admin');
+    wpsso_assert($admin instanceof WP_User, 'Integration administrator is missing');
+    try {
+        wp_set_current_user($admin->ID);
+        wpsso_assert(\WPSSO\Config::save(['abilities_enabled' => true]) === true, 'Could not enable abilities');
+        // The public discovery API lazily initializes the native registries and
+        // fires the category/ability registration actions exactly once.
+        $abilities = array_filter(wp_get_abilities(), static fn($ability) => str_starts_with($ability->get_name(), 'wpsso/'));
+        wpsso_assert(did_action('wp_abilities_api_categories_init') > 0 && did_action('wp_abilities_api_init') > 0, 'Native registration actions did not run');
+        wpsso_assert(count($abilities) === 8, 'Eight native tools were not registered');
+        $ability = wp_get_ability('wpsso/export-config');
+        $result = $ability->execute([]);
+        wpsso_assert(is_array($result) && array_key_exists('apps', $result), 'Native ability execute failed: ' . (is_wp_error($result) ? $result->get_error_message() : get_debug_type($result)));
+        \WPSSO\Config::save(['abilities_enabled' => false]);
+        $denied = $ability->execute([]);
+        wpsso_assert(is_wp_error($denied), 'A previously registered tool executed after being disabled');
+        wpsso_error(\WPSSO\Abilities::execute('export-config'), 'wpsso_ability_forbidden');
+    } finally {
+        wp_set_current_user($current);
+        update_option('wpsso_settings', $saved, false);
+    }
+});

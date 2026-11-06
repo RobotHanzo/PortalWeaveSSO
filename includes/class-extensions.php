@@ -37,6 +37,31 @@ final class Extensions {
         return !empty(Config::get('modules', [])[$module]);
     }
 
+    private static function scim_meta(string $name): string {
+        return '_wpsso_scim_' . $name . (is_multisite() ? '_' . get_current_blog_id() : '');
+    }
+
+    public static function scim_groups(int $user_id): array {
+        return array_values(array_unique(array_map('strval', array_merge(
+            (array) get_user_meta($user_id, self::scim_meta('groups'), true),
+            (array) get_user_meta($user_id, self::scim_meta('group_names'), true)
+        ))));
+    }
+
+    private static function scim_owned(int $user_id): bool {
+        return get_user_meta($user_id, self::scim_meta('managed'), true) === '1'
+            && (!is_multisite() || is_user_member_of_blog($user_id, get_current_blog_id()));
+    }
+
+    private static function scim_mutable(int $user_id): bool {
+        if (!self::scim_owned($user_id) || self::privileged($user_id)) {
+            return false;
+        }
+        // WordPress names/email and session tokens are global. A site's SCIM
+        // credential must never modify an identity shared with another site.
+        return !is_multisite() || count(get_blogs_of_user($user_id, true)) === 1;
+    }
+
     public static function routes(): void {
         if (!self::enabled('scim')) {
             return;
@@ -191,7 +216,7 @@ final class Extensions {
             // Batch querying prevents loading user objects for an entire large directory at once.
             $offset = 0;
             do {
-                $users = get_users(['meta_key' => '_wpsso_scim_managed', 'meta_value' => '1', 'number' => 200, 'offset' => $offset, 'orderby' => 'ID', 'order' => 'ASC']);
+                $users = get_users(['meta_key' => self::scim_meta('managed'), 'meta_value' => '1', 'number' => 200, 'offset' => $offset, 'orderby' => 'ID', 'order' => 'ASC']);
                 foreach ($users as $user) {
                     $resource = self::user_resource($user);
                     if (self::filter_matches($resource, $filter)) {
@@ -223,7 +248,7 @@ final class Extensions {
             }
         } elseif (ctype_digit($id)) {
             $user = get_user_by('id', (int) $id);
-            if ($user && get_user_meta($user->ID, '_wpsso_scim_managed', true) === '1') {
+            if ($user && self::scim_owned($user->ID)) {
                 $resource = self::user_resource($user);
             }
         }
@@ -233,14 +258,14 @@ final class Extensions {
         if ($request->get_method() === 'GET') {
             return self::response($resource);
         }
-        if (!$group && self::privileged((int) $id)) {
-            return self::error('SCIM cannot change privileged WordPress accounts.', 403, 'mutability');
+        if (!$group && !self::scim_mutable((int) $id)) {
+            return self::error('SCIM cannot change privileged accounts or identities shared with another site.', 403, 'mutability');
         }
         if ($request->get_method() === 'DELETE') {
             if ($group) {
                 return self::write_group($id, ['_delete' => true]);
             }
-            update_user_meta((int) $id, '_wpsso_scim_active', '0');
+            update_user_meta((int) $id, self::scim_meta('active'), '0');
             \WP_Session_Tokens::get_instance((int) $id)->destroy_all();
             Audit::record('provisioning', 'scim', get_user_by('id', (int) $id), 'wpsso_scim_deactivated');
             return self::response([], 204);
@@ -312,7 +337,7 @@ final class Extensions {
 
     private static function privileged(int $user_id): bool {
         $user = get_user_by('id', $user_id);
-        return !$user || is_super_admin($user_id) || user_can($user, 'manage_options') || user_can($user, 'edit_users') || user_can($user, 'promote_users');
+        return !$user || Accounts::is_privileged($user);
     }
 
     private static function write_user(int $id, array $body) {
@@ -359,8 +384,8 @@ final class Extensions {
             return self::error('Another provisioning write is in progress; retry.', 409, 'uniqueness');
         }
         try {
-            if ($id && self::privileged($id)) {
-                return self::error('SCIM cannot change privileged accounts.', 403, 'mutability');
+            if ($id && !self::scim_mutable($id)) {
+                return self::error('SCIM cannot change privileged accounts or identities shared with another site.', 403, 'mutability');
             }
             $existing = username_exists($username);
             if (($existing && (int) $existing !== $id) || ($email && ($owner = email_exists($email)) && (int) $owner !== $id)) {
@@ -370,7 +395,7 @@ final class Extensions {
                 return self::error('WordPress usernames cannot be renamed.', 400, 'mutability');
             }
             if ($external !== '') {
-                $owners = get_users(['meta_key' => '_wpsso_scim_external', 'meta_value' => $external, 'fields' => 'ID', 'number' => 2]);
+                $owners = get_users(['meta_key' => self::scim_meta('external'), 'meta_value' => $external, 'fields' => 'ID', 'number' => 2]);
                 if ($owners && (count($owners) > 1 || (int) $owners[0] !== $id)) {
                     return self::error('externalId is already assigned.', 409, 'uniqueness');
                 }
@@ -388,10 +413,10 @@ final class Extensions {
             if (is_wp_error($result)) {
                 return self::error('Unable to provision this account.', 409, 'uniqueness');
             }
-            update_user_meta($result, '_wpsso_scim_managed', '1');
-            update_user_meta($result, '_wpsso_scim_external', $external);
-            update_user_meta($result, '_wpsso_scim_active', ($body['active'] ?? true) ? '1' : '0');
-            update_user_meta($result, '_wpsso_scim_modified', gmdate('c'));
+            update_user_meta($result, self::scim_meta('managed'), '1');
+            update_user_meta($result, self::scim_meta('external'), $external);
+            update_user_meta($result, self::scim_meta('active'), ($body['active'] ?? true) ? '1' : '0');
+            update_user_meta($result, self::scim_meta('modified'), gmdate('c'));
             if (($body['active'] ?? true) === false) {
                 \WP_Session_Tokens::get_instance($result)->destroy_all();
             }
@@ -407,14 +432,14 @@ final class Extensions {
 
     private static function user_resource($user): array {
         return ['schemas' => [self::SCIM . 'User'], 'id' => (string) $user->ID,
-            'externalId' => (string) get_user_meta($user->ID, '_wpsso_scim_external', true),
+            'externalId' => (string) get_user_meta($user->ID, self::scim_meta('external'), true),
             'userName' => $user->user_login, 'displayName' => $user->display_name,
-            'active' => get_user_meta($user->ID, '_wpsso_scim_active', true) !== '0',
+            'active' => get_user_meta($user->ID, self::scim_meta('active'), true) !== '0',
             'name' => ['givenName' => (string) $user->first_name, 'familyName' => (string) $user->last_name],
             'emails' => $user->user_email ? [['value' => $user->user_email, 'primary' => true, 'type' => 'work']] : [],
-            'groups' => array_map(static fn($id) => ['value' => (string) $id], (array) get_user_meta($user->ID, '_wpsso_scim_groups', true)),
+            'groups' => array_map(static fn($id) => ['value' => (string) $id], (array) get_user_meta($user->ID, self::scim_meta('groups'), true)),
             'meta' => ['resourceType' => 'User', 'created' => gmdate('c', strtotime($user->user_registered . ' UTC')),
-                'lastModified' => (string) get_user_meta($user->ID, '_wpsso_scim_modified', true), 'location' => rest_url('wpsso/v1/scim/v2/Users/' . $user->ID)]];
+                'lastModified' => (string) get_user_meta($user->ID, self::scim_meta('modified'), true), 'location' => rest_url('wpsso/v1/scim/v2/Users/' . $user->ID)]];
     }
 
     private static function group_resource(string $id, array $group): array {
@@ -450,7 +475,7 @@ final class Extensions {
                 return self::error('Each member requires a numeric SCIM user ID.');
             }
             $user_id = (int) $member['value'];
-            if (get_user_meta($user_id, '_wpsso_scim_managed', true) !== '1' || self::privileged($user_id)) {
+            if (!self::scim_owned($user_id) || self::privileged($user_id)) {
                 return self::error('Group membership can only include provisioned nonprivileged accounts.', 403, 'mutability');
             }
             $members[] = $user_id;
@@ -488,8 +513,8 @@ final class Extensions {
                         $names[] = $group['displayName'];
                     }
                 }
-                update_user_meta($user_id, '_wpsso_scim_groups', $ids);
-                update_user_meta($user_id, '_wpsso_scim_group_names', array_values(array_unique($names)));
+                update_user_meta($user_id, self::scim_meta('groups'), $ids);
+                update_user_meta($user_id, self::scim_meta('group_names'), array_values(array_unique($names)));
             }
             Audit::record('provisioning', 'scim', null, !empty($body['_delete']) ? 'wpsso_scim_group_deleted' : 'wpsso_scim_group_saved');
             if (!empty($body['_delete'])) {
@@ -519,7 +544,7 @@ final class Extensions {
         if (is_wp_error($user) || !($user instanceof \WP_User)) {
             return $user;
         }
-        if (get_user_meta($user->ID, '_wpsso_scim_active', true) === '0') {
+        if (get_user_meta($user->ID, self::scim_meta('active'), true) === '0' || get_user_meta($user->ID, '_wpsso_scim_active', true) === '0') {
             return new \WP_Error('wpsso_account_inactive', 'This account has been deactivated by the identity provider.');
         }
         $expires = (int) get_user_meta($user->ID, '_wpsso_guest_expires', true);
