@@ -42,12 +42,96 @@ function portalweave_sso_admin_activity_page(array $args = []): string {
     }
 }
 
+portalweave_sso_test('Admin sidebar registration preserves site and network capabilities and existing bookmarks', function () {
+    require_once ABSPATH . 'wp-admin/includes/plugin.php';
+    $names = ['menu', 'submenu', 'admin_page_hooks', '_registered_pages', '_parent_pages', 'parent_file', 'plugin_page', 'pagenow'];
+    $previous = [];
+    foreach ($names as $name) {
+        $previous[$name] = ['exists' => array_key_exists($name, $GLOBALS), 'value' => $GLOBALS[$name] ?? null];
+        $GLOBALS[$name] = in_array($name, ['parent_file', 'plugin_page', 'pagenow'], true) ? '' : [];
+    }
+    $hook = 'toplevel_page_portalweave-sso';
+    $had_callback = has_action($hook, [\PortalWeaveSSO\Admin::class, 'page']);
+    try {
+        wp_set_current_user(get_user_by('login', 'portalweave_sso_test_admin')->ID);
+        \PortalWeaveSSO\Admin::menu();
+        $entry = array_values($GLOBALS['menu'])[0];
+        portalweave_sso_assert($entry[0] === 'PortalWeave SSO' && $entry[1] === 'manage_options'
+            && $entry[2] === 'portalweave-sso' && $entry[5] === $hook, 'Site settings were not registered as a capability-gated top-level page');
+        portalweave_sso_assert(empty($GLOBALS['submenu']['options-general.php']), 'Site menu retained a duplicate Settings entry');
+        portalweave_sso_assert(get_plugin_page_hook('portalweave-sso', 'admin.php') === $hook
+            && get_plugin_page_hook('portalweave-sso', 'options-general.php') === $hook, 'Existing Settings bookmarks lost the registered page callback');
+        $links = apply_filters('plugin_action_links_' . plugin_basename(PORTALWEAVE_SSO_FILE), []);
+        portalweave_sso_assert(str_contains(implode('', $links), admin_url('admin.php?page=portalweave-sso')), 'Plugin Settings action uses the old route');
+        $GLOBALS['menu'] = [];
+        \PortalWeaveSSO\Admin::network_menu();
+        $network = array_values($GLOBALS['menu'])[0];
+        portalweave_sso_assert($network[1] === 'manage_network_options' && $network[2] === 'portalweave-sso', 'Network menu lost its separate capability');
+        wp_set_current_user(0);
+        $level = ob_get_level();
+        ob_start();
+        try {
+            \PortalWeaveSSO\Admin::page();
+            portalweave_sso_assert(ob_get_contents() === '', 'An unauthorized visitor could render the settings page');
+        } finally {
+            while (ob_get_level() > $level) { ob_end_clean(); }
+        }
+    } finally {
+        if ($had_callback === false) remove_action($hook, [\PortalWeaveSSO\Admin::class, 'page']);
+        foreach ($previous as $name => $saved) {
+            if ($saved['exists']) $GLOBALS[$name] = $saved['value'];
+            else unset($GLOBALS[$name]);
+        }
+    }
+});
+
+portalweave_sso_test('Legacy admin bookmarks redirect with local navigation only and require administrator capability', function () {
+    $old_get = $_GET;
+    $old_page = $GLOBALS['pagenow'] ?? null;
+    $old_method = $_SERVER['REQUEST_METHOD'] ?? null;
+    $destination = '';
+    $redirect = static function ($url) use (&$destination) {
+        $destination = $url;
+        throw new RuntimeException('portalweave_sso_expected_legacy_redirect');
+    };
+    add_filter('wp_redirect', $redirect);
+    try {
+        $GLOBALS['pagenow'] = 'options-general.php';
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_GET = ['page' => 'portalweave-sso', 'tab' => 'providers', 'provider' => 'sample', 'provider_section' => 'mapping',
+            'redirect_to' => 'https://untrusted.example/', 'token' => 'must-not-be-copied', 'appearance_section' => ['wordpress']];
+        wp_set_current_user(get_user_by('login', 'portalweave_sso_test_admin')->ID);
+        $before = get_option('portalweave_sso_settings');
+        try {
+            \PortalWeaveSSO\Admin::redirect_legacy_page();
+        } catch (RuntimeException $error) {
+            if ($error->getMessage() !== 'portalweave_sso_expected_legacy_redirect') throw $error;
+        }
+        portalweave_sso_assert(wp_parse_url($destination, PHP_URL_PATH) === wp_parse_url(admin_url('admin.php'), PHP_URL_PATH), 'Legacy bookmark did not redirect to the canonical admin page');
+        parse_str((string) wp_parse_url($destination, PHP_URL_QUERY), $query);
+        portalweave_sso_assert($query === ['page' => 'portalweave-sso', 'tab' => 'providers', 'provider' => 'sample', 'provider_section' => 'mapping'], 'Legacy bookmark forwarded non-navigation or structured data');
+        portalweave_sso_assert(get_option('portalweave_sso_settings') === $before, 'Bookmark navigation mutated settings');
+        wp_set_current_user(0);
+        $destination = '';
+        \PortalWeaveSSO\Admin::redirect_legacy_page();
+        portalweave_sso_assert($destination === '', 'An unauthorized visitor received the legacy administrator redirect');
+    } finally {
+        remove_filter('wp_redirect', $redirect);
+        $_GET = $old_get;
+        if ($old_page === null) unset($GLOBALS['pagenow']);
+        else $GLOBALS['pagenow'] = $old_page;
+        if ($old_method === null) unset($_SERVER['REQUEST_METHOD']);
+        else $_SERVER['REQUEST_METHOD'] = $old_method;
+    }
+});
+
 portalweave_sso_test('Admin form saves one screen without changing hidden providers or login policy', function () {
     wp_set_current_user(get_user_by('login', 'portalweave_sso_test_admin')->ID);
     $app = portalweave_sso_app();
     portalweave_sso_assert(\PortalWeaveSSO\Config::save(['apps' => ['fixture' => $app], 'default_app' => 'fixture', 'popup' => true]) === true);
     $before = get_option('portalweave_sso_settings');
     $destination = portalweave_sso_admin_form_submit(['button' => ['shadow' => '0', 'text' => 'Continue with {app}']], ['portalweave_sso_screen' => 'appearance']);
+    portalweave_sso_assert(wp_parse_url($destination, PHP_URL_PATH) === wp_parse_url(admin_url('admin.php'), PHP_URL_PATH), 'Save did not return to the top-level admin page');
     $after = get_option('portalweave_sso_settings');
     portalweave_sso_assert($after['apps'] === $before['apps'], 'Appearance save changed provider credentials/configuration');
     portalweave_sso_assert($after['default_app'] === 'fixture' && $after['popup'] === true, 'Appearance save changed login policy');
@@ -452,7 +536,7 @@ portalweave_sso_test('Provider wizard renders only selected recipe fields with a
 });
 
 portalweave_sso_test('Every provider recipe displays a bundled local logo with an accessible service name', function () {
-    $base = admin_url('options-general.php?page=portalweave-sso&tab=providers&new_provider=1');
+    $base = admin_url('admin.php?page=portalweave-sso&tab=providers&new_provider=1');
     foreach (\PortalWeaveSSO\ProviderSetup::catalog() as $key => $recipe) {
         ob_start();
         \PortalWeaveSSO\ProviderWizard::render($key, false, false, $base);

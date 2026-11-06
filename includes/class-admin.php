@@ -9,6 +9,7 @@ final class Admin {
         add_action('admin_menu', [self::class, 'menu']);
         add_action('network_admin_menu', [self::class, 'network_menu']);
         add_action('admin_enqueue_scripts', [self::class, 'assets']);
+        add_action('admin_init', [self::class, 'redirect_legacy_page']);
         foreach (['save', 'export', 'import', 'support'] as $action) {
             add_action('admin_post_portalweave_sso_' . $action, [self::class, $action]);
         }
@@ -23,11 +24,30 @@ final class Admin {
     }
 
     public static function menu(): void {
-        add_options_page(__('PortalWeave SSO', 'portalweave-sso'), __('PortalWeave SSO', 'portalweave-sso'), 'manage_options', 'portalweave-sso', [self::class, 'page']);
+        add_menu_page(__('PortalWeave SSO', 'portalweave-sso'), __('PortalWeave SSO', 'portalweave-sso'), 'manage_options', 'portalweave-sso', [self::class, 'page'], 'dashicons-shield');
     }
 
     public static function network_menu(): void {
         add_menu_page(__('PortalWeave SSO for networks', 'portalweave-sso'), __('PortalWeave SSO', 'portalweave-sso'), 'manage_network_options', 'portalweave-sso', [self::class, 'page'], 'dashicons-shield');
+    }
+
+    /** Preserve old bookmarks without asking WordPress to render a removed submenu. */
+    public static function redirect_legacy_page(): void {
+        global $pagenow;
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Capability-gated, read-only bookmark navigation; no settings are read from the request or mutated.
+        if ($pagenow !== 'options-general.php' || is_network_admin() || !current_user_can('manage_options') || self::request_key($_SERVER, 'REQUEST_METHOD') !== 'get' || self::request_key($_GET, 'page') !== 'portalweave-sso') {
+            return;
+        }
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Only an allowlisted local task selects the canonical destination.
+        $screen = self::request_key($_GET, 'tab');
+        $args = [];
+        foreach (['provider', 'provider_section', 'new_provider', 'setup_provider', 'activity_view', 'activity_days', 'appearance_section', 'integration_section', 'audit_page', 'audit_snapshot', 'portalweave_sso_notice'] as $key) {
+            // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Scalar local navigation keys only; each screen validates its own presentation values.
+            $value = self::request_key($_GET, $key);
+            if ($value !== '') $args[$key] = $value;
+        }
+        wp_safe_redirect(self::screen_url($screen, false, $args));
+        exit;
     }
 
     public static function assets(string $hook): void {
@@ -204,7 +224,7 @@ final class Admin {
 
     private static function screen_url(string $screen, bool $network, array $args = []): string {
         $screen = isset(self::screens()[$screen]) ? $screen : 'overview';
-        $base = $network ? network_admin_url('admin.php') : admin_url('options-general.php');
+        $base = $network ? network_admin_url('admin.php') : admin_url('admin.php');
         return add_query_arg(array_merge(['page' => 'portalweave-sso', 'tab' => $screen], $args), $base);
     }
 

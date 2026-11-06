@@ -15,7 +15,7 @@ Requires **WordPress 6.5+**, **PHP 8.1+ with OpenSSL**, and **HTTPS**.
 ## Quick start
 
 1. [Download the plugin ZIP](https://github.com/RobotHanzo/PortalWeaveSSO/releases/download/v1.1.0/portalweave-sso-1.1.0.zip), upload it through **Plugins → Add New → Upload Plugin**, and activate **PortalWeave SSO**.
-2. Open **Settings → PortalWeave SSO → Identity providers → Add provider**. Follow the service's guide, register its callback URL and save your credentials. Run **Test SSO Config**, configure account mappings and test a regular user before enforcing login.
+2. Open **PortalWeave SSO → Identity providers → Add provider** from the WordPress admin sidebar. Follow the service's guide, register its callback URL and save your credentials. Run **Test SSO Config**, configure account mappings and test a regular user before enforcing login.
 3. Add `[sso_oauth_login]` to a page, use the **PortalWeave SSO login** widget, or sign in through the WordPress and WooCommerce login buttons.
 
 For earlier installations, follow the [replacement guide](docs/provider-setup.md#replacing-an-earlier-installation) before upgrading.
