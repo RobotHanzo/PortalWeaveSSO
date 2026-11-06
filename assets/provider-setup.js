@@ -178,6 +178,16 @@
     }
     form.addEventListener('input', changed);
     form.addEventListener('change', changed);
+    form.addEventListener('portalweave-sso:reverted', () => {
+      changed();
+      visited = 0;
+      showStep(0);
+    });
+    form.addEventListener('portalweave-sso:save-requested', event => {
+      event.preventDefault();
+      goTo(steps.length - 1);
+      if (current === steps.length - 1) form.requestSubmit(submit);
+    });
     form.addEventListener('keydown', event => {
       if (event.key !== 'Enter' || event.isComposing
         || !event.target.matches('input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"])')) return;

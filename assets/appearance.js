@@ -188,10 +188,12 @@
     }, true);
     editor.addEventListener('input', sync);
     editor.addEventListener('change', sync);
+    form.addEventListener('portalweave-sso:reverted', () => { sync(); announce(''); });
     editor.querySelectorAll('[data-appearance-swatch]').forEach(swatch => {
       swatch.hidden = false;
       swatch.addEventListener('input', () => {
         field('wp_login_button', swatch.dataset.appearanceSwatch).value = swatch.value;
+        field('wp_login_button', swatch.dataset.appearanceSwatch).dispatchEvent(new Event('input', { bubbles: true }));
         sync();
       });
     });
@@ -201,6 +203,7 @@
         if (preset.matches(':disabled') || !presets[preset.dataset.appearancePreset]) return;
         colors.forEach((key, index) => { field('wp_login_button', key).value = presets[preset.dataset.appearancePreset][index]; });
         field('wp_login_button', 'enabled').checked = true;
+        field('wp_login_button', 'enabled').dispatchEvent(new Event('change', { bubbles: true }));
         sync();
         announce(preset.dataset.presetMessage);
       });
@@ -210,6 +213,7 @@
       remove.addEventListener('click', () => {
         if (remove.matches(':disabled')) return;
         iconUrl.value = '';
+        iconUrl.dispatchEvent(new Event('input', { bubbles: true }));
         sync();
         announce(remove.dataset.removeMessage);
       });
@@ -226,6 +230,7 @@
             const url = safeUrl(attachment?.url);
             if (!url) { announce(editor.dataset.iconInvalid); return; }
             iconUrl.value = url;
+            iconUrl.dispatchEvent(new Event('input', { bubbles: true }));
             sync();
             announce(media.dataset.mediaMessage);
           });
