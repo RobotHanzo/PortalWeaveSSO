@@ -40,9 +40,7 @@ final class Audit
             return;
         }
         $user = $user instanceof \WP_User ? $user : ($user ? get_userdata((int) $user) : null);
-        $ip = Config::get('audit_ip') && isset($_SERVER['REMOTE_ADDR']) && is_string($_SERVER['REMOTE_ADDR']) ? sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'])) : '';
-        // Proxy headers are untrusted. Configure the web server's real IP module instead.
-        $ip = filter_var($ip, FILTER_VALIDATE_IP) ? $ip : '';
+        $ip = Config::get('audit_ip') ? ClientIp::current() : '';
         $navigation = $navigation ?: Redirect::current();
         $navigation = preg_replace('/[?#].*$/', '', (string) $navigation);
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Core has no higher-level API for this plugin-owned audit table; wpdb formats the inserted values and audit rows are not cached.

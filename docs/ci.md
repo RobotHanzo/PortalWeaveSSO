@@ -43,7 +43,7 @@ Open a run's **Summary** for per-suite passed/failed counts and failure details.
 
 Test artifacts are retained for 14 days and packages for 30 days. Test-report steps and artifact collection run after failures as well as success. Empty, malformed, incomplete, duplicate and missing expected reports fail the job. PHP bootstrap/early termination and unfinished Node runners produce explicit failures instead of silently returning success. Reports use fixture accounts and do not require live IdP or SVN credentials.
 
-The package artifact contains `portalweave-sso-1.2.0.zip` and its checksum for version 1.2.0. The PHP entry filename is `portalweave-sso.php`; the Docker source bind and production package both use the `portalweave-sso` directory.
+The package artifact contains `portalweave-sso-1.2.1.zip` and its checksum for version 1.2.1. The PHP entry filename is `portalweave-sso.php`; the Docker source bind and production package both use the `portalweave-sso` directory.
 
 The workflow uses read-only repository permission. Native job summaries and annotations do not require `checks: write` or PR comments, so fork PRs can run without publishing permissions. It does not use `pull_request_target` to execute untrusted code. Deployment credentials are never provided to CI jobs.
 

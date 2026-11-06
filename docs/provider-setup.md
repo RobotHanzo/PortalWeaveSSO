@@ -1,10 +1,57 @@
 # PortalWeave SSO provider setup and administrator guide
 
-Install `portalweave-sso-1.2.0.zip` through **Plugins → Add New → Upload Plugin**, activate **PortalWeave SSO**, and open **PortalWeave SSO** in the WordPress admin sidebar. On multisite, **Network Admin → PortalWeave SSO** can enforce a network-wide policy. Each WordPress network has its own network option.
+Install `portalweave-sso-1.2.1.zip` through **Plugins → Add New → Upload Plugin**, activate **PortalWeave SSO**, and open **PortalWeave SSO** in the WordPress admin sidebar. On multisite, **Network Admin → PortalWeave SSO** can enforce a network-wide policy. Each WordPress network has its own network option.
 
 The proposed directory slug and text domain are `portalweave-sso`. Use the `[sso_oauth_login]` shortcode, `PORTALWEAVE_SSO_*` server configuration constants, `PortalWeaveSSO` PHP namespace and `wp portalweave-sso` commands.
 
 SSO requires HTTPS. Configure WordPress's HTTPS detection for a trusted reverse proxy when TLS terminates there. Keep `AUTH_KEY`, `SECURE_AUTH_KEY` and the WordPress salts stable: stored secrets and tokens depend on them for encryption. Changing them requires re-entering credentials and signing in again. Include this server configuration in your protected recovery backup.
+
+## Client IPs behind Nginx and Cloudflare
+
+In **Activity**, enable **Include client IP addresses in audit events** only when needed and disclose the collection in the site's privacy policy. It remains off by default. With collection enabled, the plugin normally records the validated PHP `REMOTE_ADDR`. The deployment settings below affect new audit rows; existing rows and retention preferences are unchanged. They do not configure WordPress's HTTPS detection or change authentication policy.
+
+### Restore the address in Nginx
+
+For Cloudflare directly in front of Nginx, use Nginx's [real-IP module](https://nginx.org/en/docs/http/ngx_http_realip_module.html), trusting only the current [Cloudflare IPv4 and IPv6 ranges](https://www.cloudflare.com/ips/). For example, create an operator-managed include containing one `set_real_ip_from <CIDR>;` directive for every current Cloudflare range, then use this configuration in the existing `http` or site `server` block:
+
+```nginx
+include /etc/nginx/cloudflare-trusted-proxies.conf;
+real_ip_header CF-Connecting-IP;
+real_ip_recursive on;
+```
+
+Keep that include current; the plugin does not download proxy lists. The include contains Nginx directives, not a plain list of IPs. Follow [Cloudflare's web-server instructions](https://developers.cloudflare.com/support/troubleshooting/restoring-visitor-ips/restoring-original-visitor-ips/#web-server-instructions), validate the effective configuration before reloading, then verify the recorded address from a known client. For this example, keep Cloudflare Pseudo IPv4 **Off** or **Add Header** so the selected header retains the real address.
+
+When Nginx passes the restored address to PHP as `REMOTE_ADDR`, leave the plugin's trusted-proxy list empty. Applying a second forwarding-header interpretation could change an already restored address. If Nginx instead proxies HTTP to a separate WordPress web server, overwrite `X-Real-IP` with `$remote_addr` in that proxy location and configure the plugin to trust only that Nginx server with the `X-Real-IP` mode described below. Restrict the backend to the intended proxy. This makes Nginx responsible for validating the Cloudflare hop and emitting the canonical address.
+
+### Configure application-level proxy trust
+
+If the web server leaves a proxy address in `REMOTE_ADDR`, define the following in the protected `wp-config.php` before WordPress loads. These are fictional examples: replace them with the exact addresses or narrow ranges of proxies you operate.
+
+```php
+define('PORTALWEAVE_SSO_TRUSTED_PROXIES', ['192.0.2.10', '2001:db8:100::/64']);
+define('PORTALWEAVE_SSO_CLIENT_IP_HEADER', 'X-Forwarded-For');
+```
+
+The trust list defaults to empty and accepts at most 128 explicit IPv4/IPv6 addresses or CIDRs. Prefix lengths must be `/1` through `/32` for IPv4 or `/1` through `/128` for IPv6. Hostnames, `/0`, malformed entries or an invalid list disable forwarded-header trust for that request. Address families match strictly: an IPv4-mapped IPv6 peer needs a matching IPv6 trust entry. Keep this server policy out of plugin settings imports and exports.
+
+`PORTALWEAVE_SSO_CLIENT_IP_HEADER` accepts these names case-insensitively:
+
+| Mode | Deployment contract |
+| --- | --- |
+| `X-Forwarded-For` (default) | Every trusted proxy appends its observed peer. For a plain Nginx HTTP proxy without real-IP rewriting, use `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`. The plugin walks the chain from right to left, stopping at the first untrusted address. |
+| `X-Real-IP` | The trusted immediate proxy overwrites the header with one verified address, for example `proxy_set_header X-Real-IP $remote_addr;` after Nginx real-IP restoration. |
+| `CF-Connecting-IP` | The immediate peer is a configured Cloudflare edge, or a controlled relay that verifies Cloudflare provenance and strips or overwrites client-supplied Cloudflare headers. See the additional conditions below. |
+
+Nginx documents how [`$proxy_add_x_forwarded_for` appends the connecting peer](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#var_proxy_add_x_forwarded_for). Preserve that socket-peer provenance across each hop; real-IP rewriting changes `$remote_addr`, so review any combined rewriting/forwarding configuration rather than copying the plain-proxy example unchanged.
+
+Only the selected header and, in Cloudflare mode, its IPv6 companion described below are considered, and only when `REMOTE_ADDR` matches the trust list. Headers must contain bare IP addresses without ports, brackets or zone identifiers. The selected header is limited to 4,096 bytes; XFF is limited to 32 hops. Invalid configuration, missing headers, malformed consumed addresses and exceeded limits fall back to the validated `REMOTE_ADDR`; an invalid `REMOTE_ADDR` produces an empty IP. XFF entries to the left of the first untrusted address are ignored, including malformed caller-supplied prefixes. Private networks and localhost are never trusted automatically.
+
+### Cloudflare header mode
+
+For a direct Cloudflare connection, populate the trust list with all current official Cloudflare IPv4 and IPv6 CIDRs and select `CF-Connecting-IP`. For Cloudflare through another relay, trusting that relay's address is safe only if it authenticates or restricts its upstream to the intended Cloudflare traffic and controls both Cloudflare IP headers. A relay that merely forwards arbitrary incoming headers can let clients forge the recorded IP. Normalizing the address in Nginx and using `X-Real-IP` is the simpler relay configuration above.
+
+In Cloudflare's **Overwrite Headers** [Pseudo IPv4 mode](https://developers.cloudflare.com/network/pseudo-ipv4/), `CF-Connecting-IP` can contain a synthetic address in `240.0.0.0/4`. In the plugin's trusted Cloudflare mode, a valid `CF-Connecting-IPv6` then supplies the actual IPv6 address; a missing or invalid IPv6 value falls back to `REMOTE_ADDR`. The plugin ignores `CF-Pseudo-IPv4`. Cloudflare Workers and other upstream proxies can change which party the address identifies; [Cloudflare documents those header semantics](https://developers.cloudflare.com/fundamentals/reference/http-headers/#cf-connecting-ip). The plugin cannot recover an original browser address that the upstream did not preserve.
 
 ## Replacing an earlier installation
 
