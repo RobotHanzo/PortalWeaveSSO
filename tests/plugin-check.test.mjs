@@ -108,11 +108,34 @@ test('Plugin Check CLI fails on native errors and escapes bounded GitHub annotat
 
 test('Plugin Check CLI reports warning-only and clean output with the expected exit status', () => fixture(root => {
     assert.equal(invoke(root, clean).status, 0);
+    assert.equal(invoke(root, clean, ['--strict']).status, 0);
     const warnings = block('readme.txt', [finding({ type: 'WARNING' })]);
     assert.equal(invoke(root, warnings).status, 0);
     const strict = invoke(root, warnings, ['--strict']);
     assert.equal(strict.status, 1);
     assert.equal(summarizeTooling(readFileSync(path.join(strict.output, 'plugin-check.xml'), 'utf8')).failed, 1);
+}));
+
+test('Plugin Check strict gate fails every advisory while preserving native warning records', () => fixture(root => {
+    const values = Array.from({ length: 60 }, (_, index) => finding({
+        type: 'WARNING', code: 'WordPress.Review.Advisory_' + index,
+        message: 'Review this operation without hiding its original severity.',
+        docs: 'https://developer.wordpress.org/plugins/',
+    }));
+    // Native Plugin Check can exit zero with findings; our gate uses all parsed
+    // records rather than trusting the native command's success status.
+    const run = invoke(root, block('includes/example.php', values), ['--strict']);
+    assert.equal(run.status, 1);
+    const stored = JSON.parse(readFileSync(path.join(run.output, 'plugin-check.json'), 'utf8'));
+    assert.equal(stored.strict, true);
+    assert.deepEqual(stored.summary, { total: 60, errors: 0, warnings: 60, files: 1 });
+    assert.deepEqual(stored.findings, values.map(value => ({ file: 'includes/example.php', ...value })));
+    assert.ok(stored.tests.every(result => result.pass === false));
+    assert.equal(summarizeTooling(readFileSync(path.join(run.output, 'plugin-check.xml'), 'utf8')).failed, 60);
+    assert.equal(summarizeReports(run.output, ['plugin-check']).failed, 60);
+    assert.match(readFileSync(run.summary, 'utf8'), /errors and warnings fail/);
+    assert.equal((run.stdout.match(/^::warning /gm) || []).length, 50);
+    assert.match(run.stdout, /10 additional findings/);
 }));
 
 test('Plugin Check CLI writes failing JSON, JUnit and summary for missing, malformed and invalid UTF-8 input', () => fixture(root => {

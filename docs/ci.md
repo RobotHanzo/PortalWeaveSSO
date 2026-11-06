@@ -10,7 +10,7 @@
 | WordPress integration (minimum) | WordPress 6.5.5 with PHP 8.1; actual account, database and HTTPS OAuth tests |
 | WordPress integration (current) | Current official WordPress PHP 8.3 image; the same integration and HTTPS tests |
 | Multisite and multinetwork | Independent WordPress database, network policy, token/identity/SCIM isolation and multiple-network configuration |
-| WordPress.org directory compliance | Stages the production package as `portalweave-sso`, runs official Plugin Check, validates the complete native report and publishes JSON/JUnit evidence |
+| WordPress.org directory compliance | Stages the production package as `portalweave-sso`, runs every official static/runtime category including experimental checks, fails on errors or warnings, and publishes complete native/JSON/JUnit evidence |
 | Build verified plugin ZIP | Runs only after every verification job succeeds; stages allowlisted files, verifies hashes, builds the version-matched ZIP and checksum |
 | CI required | Stable branch-protection check that fails if any preceding required job fails, is cancelled or is skipped |
 
@@ -57,7 +57,9 @@ The fixture titles `PortalWeave SSO Integration` and `PortalWeave SSO Multisite 
 
 ## WordPress.org directory checks and approval
 
-The [WordPress.org directory review workflow](https://github.com/RobotHanzo/PortalWeaveSSO/actions/workflows/wordpress-review.yml) stages production files under the intended directory slug and runs the official Plugin Check action. CI calls this workflow before it can publish a package artifact; it can also be dispatched manually. Its native findings are annotated, parsed fail-closed by `scripts/plugin-check.mjs`, and retained with JSON/JUnit reports. Error findings are not ignored, and an empty, truncated or unfamiliar report cannot become a passing check. Warnings remain visible for manual review; the parser's optional `--strict` policy fails warnings as well.
+The [WordPress.org directory review workflow](https://github.com/RobotHanzo/PortalWeaveSSO/actions/workflows/wordpress-review.yml) stages production files under the intended directory slug and runs the official Plugin Check action. CI calls this workflow before it can publish a package artifact; it can also be dispatched manually. The action activates the target and enables runtime checks through the checker CLI bootstrap. No category/check filters are supplied, and `include-experimental: true` includes experimental checks as well. The complete native findings are annotated, parsed by `scripts/plugin-check.mjs --strict`, and retained with JSON/JUnit reports. Every error or warning fails this gate; empty, truncated, unfamiliar or missing output also fails. There are no ignored codes or report allowlists.
+
+Review legitimate protocol, custom-table, atomic-lock and private-file operations at their source. A necessary line-specific static-analysis exception must name the precise check and explain the actual authorization, validation or consistency guarantee. Do not add a browser-form nonce to OAuth callbacks, sanitize opaque credentials as text, or cache personal data solely to satisfy a heuristic. The functional suites verify these boundaries separately from static analysis.
 
 Directory checks can fail while functional test jobs pass, because coding and packaging requirements extend beyond runtime behavior. Initial WordPress.org approval is a separate external process even when all automated gates pass. Historical findings and current evidence requirements are recorded in [directory-review.md](directory-review.md).
 
