@@ -133,6 +133,8 @@
         event.preventDefault();
         return;
       }
+      // Draft connection tests post to a new tab and leave this Save form reusable.
+      if (form.matches('[data-setup-form]') && event.submitter?.matches('[data-setup-test]')) return;
       if (event.defaultPrevented) return;
       state.pending = true;
       state.buttons = Array.from(form.querySelectorAll('button[type="submit"]')).map(button => ({

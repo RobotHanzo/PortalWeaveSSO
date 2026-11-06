@@ -9,7 +9,7 @@ msgstr ""
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-06T16:27:43+00:00\n"
+"POT-Creation-Date: 2026-11-06T16:55:04+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: portalweave-sso\n"
@@ -638,7 +638,8 @@ msgid "Saving your changes…"
 msgstr ""
 
 #: includes/class-admin.php:551
-#: includes/class-provider-wizard.php:86
+#: includes/class-provider-wizard.php:85
+#: includes/class-provider-wizard.php:89
 msgid "Save provider"
 msgstr ""
 
@@ -724,7 +725,7 @@ msgstr ""
 
 #: includes/class-admin.php:593
 #: includes/class-display.php:204
-#: includes/class-provider-wizard.php:159
+#: includes/class-provider-wizard.php:167
 msgid "Provider"
 msgstr ""
 
@@ -854,7 +855,7 @@ msgid "Templates fill empty endpoint fields. Replace tenant and domain placehold
 msgstr ""
 
 #: includes/class-admin.php:630
-#: includes/class-provider-wizard.php:158
+#: includes/class-provider-wizard.php:166
 msgid "Display name"
 msgstr ""
 
@@ -864,7 +865,7 @@ msgstr ""
 
 #: includes/class-admin.php:632
 #: includes/class-provider-setup.php:73
-#: includes/class-provider-wizard.php:166
+#: includes/class-provider-wizard.php:174
 msgid "Client ID"
 msgstr ""
 
@@ -874,7 +875,7 @@ msgstr ""
 
 #: includes/class-admin.php:633
 #: includes/class-provider-setup.php:74
-#: includes/class-provider-wizard.php:166
+#: includes/class-provider-wizard.php:174
 msgid "Client secret"
 msgstr ""
 
@@ -1946,255 +1947,289 @@ msgstr ""
 msgid "Activity statistics could not be loaded. Please try again."
 msgstr ""
 
-#: includes/class-auth.php:67
+#: includes/class-auth.php:57
+msgid "The original administrator session is required to test a connection."
+msgstr ""
+
+#: includes/class-auth.php:60
+msgid "This network enforces its SSO configuration."
+msgstr ""
+
+#: includes/class-auth.php:63
+msgid "Submit one new provider from guided setup."
+msgstr ""
+
+#: includes/class-auth.php:77
+msgid "The provider details could not be prepared. Review the setup and try again."
+msgstr ""
+
+#: includes/class-auth.php:103
 msgid "SSO requires HTTPS on the WordPress site."
 msgstr ""
 
-#: includes/class-auth.php:80
+#: includes/class-auth.php:117
 msgid "The SSO request could not be completed. Contact the site administrator."
 msgstr ""
 
-#: includes/class-auth.php:89
+#: includes/class-auth.php:126
 msgid "The selected SSO provider is unavailable."
 msgstr ""
 
-#: includes/class-auth.php:93
+#: includes/class-auth.php:130
 msgid "A fresh administrator test link is required."
 msgstr ""
 
-#: includes/class-auth.php:97
+#: includes/class-auth.php:137
+msgid "Reload guided setup and try the connection test again."
+msgstr ""
+
+#: includes/class-auth.php:140
+msgid "The setup form was incomplete. Reload guided setup and try again."
+msgstr ""
+
+#: includes/class-auth.php:157
 msgid "The canonical callback must use HTTPS. Check the WordPress site URL."
 msgstr ""
 
-#: includes/class-auth.php:102
+#: includes/class-auth.php:162
 msgid "The callback must use the canonical WordPress origin."
 msgstr ""
 
-#: includes/class-auth.php:106
+#: includes/class-auth.php:166
 msgid "This legacy grant is disabled. Use Authorization Code with PKCE."
 msgstr ""
 
-#: includes/class-auth.php:135
+#: includes/class-auth.php:196
 msgid "Implicit login requires OpenID Connect and a signed ID token."
 msgstr ""
 
-#: includes/class-auth.php:142
+#: includes/class-auth.php:203
 msgid "Configure an authorization endpoint."
 msgstr ""
 
-#: includes/class-auth.php:148
+#: includes/class-auth.php:209
 msgid "The authorization endpoint must use HTTPS."
 msgstr ""
 
-#: includes/class-auth.php:165
-msgid "The selected provider is unavailable."
-msgstr ""
-
-#: includes/class-auth.php:168
-#: includes/class-auth.php:441
-msgid "The provider configuration changed. Start sign in again."
-msgstr ""
-
-#: includes/class-auth.php:171
-msgid "The original administrator session is required to view test results."
-msgstr ""
-
-#: includes/class-auth.php:174
+#: includes/class-auth.php:229
 msgid "The identity provider declined authentication."
 msgstr ""
 
-#: includes/class-auth.php:178
+#: includes/class-auth.php:233
 msgid "The authorization response issuer is incorrect."
 msgstr ""
 
-#: includes/class-auth.php:182
+#: includes/class-auth.php:237
 msgid "Invalid implicit callback."
 msgstr ""
 
-#: includes/class-auth.php:188
+#: includes/class-auth.php:243
 msgid "The callback did not contain an authorization code."
 msgstr ""
 
-#: includes/class-auth.php:219
+#: includes/class-auth.php:274
 msgid "The token endpoint returned an invalid bearer token."
 msgstr ""
 
-#: includes/class-auth.php:223
+#: includes/class-auth.php:278
 msgid "The token endpoint returned an invalid token field."
 msgstr ""
 
-#: includes/class-auth.php:239
+#: includes/class-auth.php:294
 msgid "OpenID Connect requires an ID token. Include openid in the scope."
 msgstr ""
 
-#: includes/class-auth.php:258
+#: includes/class-auth.php:313
 msgid "A valid bearer token is required for user information."
 msgstr ""
 
-#: includes/class-auth.php:267
+#: includes/class-auth.php:322
 msgid "The UserInfo subject does not match the verified ID token."
 msgstr ""
 
-#: includes/class-auth.php:274
+#: includes/class-auth.php:329
 msgid "Configure an immutable provider subject attribute."
 msgstr ""
 
-#: includes/class-auth.php:277
+#: includes/class-auth.php:332
 msgid "The provider did not supply an immutable subject."
 msgstr ""
 
-#: includes/class-auth.php:303
+#: includes/class-auth.php:359
+msgid "Connection test succeeded. Return to the setup tab to save your provider. These details have not been saved."
+msgstr ""
+
+#: includes/class-auth.php:361
 msgid "SSO configuration test"
 msgstr ""
 
-#: includes/class-auth.php:303
+#: includes/class-auth.php:361
 msgid "Authentication succeeded. These are the attributes returned by the configured provider. No user account was created or signed in."
 msgstr ""
 
-#: includes/class-auth.php:303
+#: includes/class-auth.php:361
 msgid "Return to settings"
 msgstr ""
 
-#: includes/class-auth.php:313
+#: includes/class-auth.php:371
 msgid "The identity could not be mapped to a user account."
 msgstr ""
 
-#: includes/class-auth.php:351
+#: includes/class-auth.php:409
 msgid "Encrypted token storage is unavailable."
 msgstr ""
 
-#: includes/class-auth.php:354
+#: includes/class-auth.php:412
 msgid "The encrypted session tokens could not be saved."
 msgstr ""
 
-#: includes/class-auth.php:362
+#: includes/class-auth.php:420
 msgid "You cannot refresh this user session."
 msgstr ""
 
-#: includes/class-auth.php:366
+#: includes/class-auth.php:424
 msgid "The provider is unavailable."
 msgstr ""
 
-#: includes/class-auth.php:374
+#: includes/class-auth.php:432
 msgid "A token refresh is already in progress."
 msgstr ""
 
-#: includes/class-auth.php:379
+#: includes/class-auth.php:437
 msgid "No refresh token is stored for this account."
 msgstr ""
 
-#: includes/class-auth.php:392
+#: includes/class-auth.php:450
 msgid "The refreshed identity differs from the stored account."
 msgstr ""
 
-#: includes/class-auth.php:423
+#: includes/class-auth.php:481
 msgid "This provider uses the legacy password grant. Your credentials are sent to the configured identity provider over HTTPS."
 msgstr ""
 
-#: includes/class-auth.php:423
+#: includes/class-auth.php:481
 msgid "Provider username"
 msgstr ""
 
-#: includes/class-auth.php:423
+#: includes/class-auth.php:481
 msgid "Provider password"
 msgstr ""
 
-#: includes/class-auth.php:423
-#: includes/class-auth.php:424
+#: includes/class-auth.php:481
+#: includes/class-auth.php:482
 msgid "Sign in"
 msgstr ""
 
-#: includes/class-auth.php:429
+#: includes/class-auth.php:487
 msgid "A POST request is required."
 msgstr ""
 
-#: includes/class-auth.php:438
+#: includes/class-auth.php:496
 msgid "The password grant is disabled."
 msgstr ""
 
-#: includes/class-auth.php:444
+#: includes/class-auth.php:499
+#: includes/class-auth.php:793
+msgid "The provider configuration changed. Start sign in again."
+msgstr ""
+
+#: includes/class-auth.php:502
 msgid "The original administrator session is required."
 msgstr ""
 
-#: includes/class-auth.php:449
+#: includes/class-auth.php:507
 msgid "Enter a valid provider username and password."
 msgstr ""
 
-#: includes/class-auth.php:466
+#: includes/class-auth.php:524
 msgid "The logout link has expired. Please try again."
 msgstr ""
 
-#: includes/class-auth.php:471
+#: includes/class-auth.php:529
 msgid "Sign out of this site and your identity provider?"
 msgstr ""
 
-#: includes/class-auth.php:471
+#: includes/class-auth.php:529
 #: includes/class-display.php:103
 msgid "Sign out"
 msgstr ""
 
-#: includes/class-auth.php:472
+#: includes/class-auth.php:530
 msgid "Confirm sign out"
 msgstr ""
 
-#: includes/class-auth.php:549
+#: includes/class-auth.php:607
 msgid "Back-channel logout is disabled for this provider."
 msgstr ""
 
-#: includes/class-auth.php:559
+#: includes/class-auth.php:617
 msgid "The logout event has already been processed."
 msgstr ""
 
-#: includes/class-auth.php:598
+#: includes/class-auth.php:656
 msgid "The login state could not be stored."
 msgstr ""
 
-#: includes/class-auth.php:602
+#: includes/class-auth.php:660
 msgid "The browser login cookie could not be created."
 msgstr ""
 
-#: includes/class-auth.php:611
+#: includes/class-auth.php:669
 msgid "The login state is missing or invalid. Start sign in again."
 msgstr ""
 
-#: includes/class-auth.php:617
+#: includes/class-auth.php:675
 msgid "The login state expired or belongs to a different browser. Start sign in again."
 msgstr ""
 
-#: includes/class-auth.php:622
+#: includes/class-auth.php:680
 msgid "This login state has already been used."
 msgstr ""
 
-#: includes/class-auth.php:643
+#: includes/class-auth.php:701
 msgid "Completing sign in…"
 msgstr ""
 
-#: includes/class-auth.php:643
+#: includes/class-auth.php:701
 msgid "JavaScript is required to complete legacy implicit sign in."
 msgstr ""
 
-#: includes/class-auth.php:644
+#: includes/class-auth.php:702
 msgid "Completing sign in"
 msgstr ""
 
-#: includes/class-auth.php:644
+#: includes/class-auth.php:702
 msgid "No login response was received. Start sign in again."
 msgstr ""
 
-#: includes/class-auth.php:648
+#: includes/class-auth.php:706
 msgid "Sign in completed. You can close this window."
 msgstr ""
 
-#: includes/class-auth.php:648
-#: includes/class-provider-wizard.php:86
+#: includes/class-auth.php:706
+#: includes/class-provider-wizard.php:83
 msgid "Continue"
 msgstr ""
 
-#: includes/class-auth.php:649
+#: includes/class-auth.php:707
 msgid "Signed in"
 msgstr ""
 
-#: includes/class-auth.php:718
+#: includes/class-auth.php:769
+#: includes/class-auth.php:789
+msgid "The original administrator session is required to view test results."
+msgstr ""
+
+#: includes/class-auth.php:774
+#: includes/class-auth.php:779
+msgid "The provider configuration changed. Start the connection test again."
+msgstr ""
+
+#: includes/class-auth.php:786
+msgid "The selected provider is unavailable."
+msgstr ""
+
+#: includes/class-auth.php:820
 msgid "SSO sign in failed"
 msgstr ""
 
@@ -3502,6 +3537,10 @@ msgstr ""
 msgid "OpenID Connect setup requires the exact issuer and the openid scope."
 msgstr ""
 
+#: includes/class-provider-setup.php:427
+msgid "Enter the provider client ID."
+msgstr ""
+
 #: includes/class-provider-wizard.php:14
 msgid "Which service will people sign in with?"
 msgstr ""
@@ -3515,7 +3554,7 @@ msgid "Review your connection"
 msgstr ""
 
 #: includes/class-provider-wizard.php:25
-msgid "Check the details, then save this provider. Your existing sign-in policy stays in effect."
+msgid "Check the details and test the connection before saving this provider. Your existing sign-in policy stays in effect."
 msgstr ""
 
 #: includes/class-provider-wizard.php:28
@@ -3543,106 +3582,110 @@ msgid "What happens next"
 msgstr ""
 
 #: includes/class-provider-wizard.php:63
-msgid "After saving, open Test SSO Config to inspect the returned attributes. Then test sign-in with an ordinary account before making this your default provider."
+msgid "Test connection opens a new tab to inspect the returned attributes without saving this provider. Keep this page open, review the test results, then return here to save."
 msgstr ""
 
 #: includes/class-provider-wizard.php:63
-msgid "A successful attribute test does not verify account linking, email verification or administrator access. Review those policies in the advanced editor."
+msgid "A successful attribute test does not verify account linking, email verification or administrator access. After saving, review those policies in the advanced editor and test sign-in with an ordinary account before making this your default provider."
 msgstr ""
 
 #: includes/class-provider-wizard.php:65
-msgid "Network providers can be tested here only when network configuration is active. Use a staging site to validate a new network policy before enforcing it."
-msgstr ""
-
-#: includes/class-provider-wizard.php:68
 msgid "In your provider console"
 msgstr ""
 
-#: includes/class-provider-wizard.php:77
+#: includes/class-provider-wizard.php:74
 msgid "Open the official setup guide"
 msgstr ""
 
-#: includes/class-provider-wizard.php:86
+#: includes/class-provider-wizard.php:83
+msgid "Opening the connection test in a new tab. This provider is still unsaved. Return here to save after reviewing the test results."
+msgstr ""
+
+#: includes/class-provider-wizard.php:83
 msgid "Back"
 msgstr ""
 
-#: includes/class-provider-wizard.php:110
+#: includes/class-provider-wizard.php:98
+msgid "Test connection"
+msgstr ""
+
+#: includes/class-provider-wizard.php:118
 msgid "Redirect URI"
 msgstr ""
 
-#: includes/class-provider-wizard.php:110
+#: includes/class-provider-wizard.php:118
 msgid "Paste this into the provider’s allowed redirect or callback URLs, exactly as shown."
 msgstr ""
 
-#: includes/class-provider-wizard.php:112
+#: includes/class-provider-wizard.php:120
 msgid "Sign-out redirect URI"
 msgstr ""
 
-#: includes/class-provider-wizard.php:112
+#: includes/class-provider-wizard.php:120
 msgid "If the provider asks for an allowed logout or sign-out return URL, register this separate URI."
 msgstr ""
 
-#: includes/class-provider-wizard.php:116
+#: includes/class-provider-wizard.php:124
 msgid "Sign-out redirect URI copied."
 msgstr ""
 
-#: includes/class-provider-wizard.php:116
+#: includes/class-provider-wizard.php:124
 msgid "Redirect URI copied."
 msgstr ""
 
-#: includes/class-provider-wizard.php:117
+#: includes/class-provider-wizard.php:125
 msgid "Copying URI…"
 msgstr ""
 
-#: includes/class-provider-wizard.php:117
+#: includes/class-provider-wizard.php:125
 msgid "Copy failed. The URI is selected; use your device’s copy command."
 msgstr ""
 
-#: includes/class-provider-wizard.php:117
+#: includes/class-provider-wizard.php:125
 msgid "Copying…"
 msgstr ""
 
-#: includes/class-provider-wizard.php:117
+#: includes/class-provider-wizard.php:125
 msgid "Copied"
 msgstr ""
 
-#: includes/class-provider-wizard.php:117
+#: includes/class-provider-wizard.php:125
 msgid "Try again"
 msgstr ""
 
-#: includes/class-provider-wizard.php:117
+#: includes/class-provider-wizard.php:125
 msgid "Copy URI"
 msgstr ""
 
-#: includes/class-provider-wizard.php:151
+#: includes/class-provider-wizard.php:159
 msgid "Show secret"
 msgstr ""
 
-#: includes/class-provider-wizard.php:151
+#: includes/class-provider-wizard.php:159
 msgid "Hide secret"
 msgstr ""
 
-#: includes/class-provider-wizard.php:158
+#: includes/class-provider-wizard.php:166
 msgid "Shown on your sign-in button. You can change it later."
 msgstr ""
 
-#: includes/class-provider-wizard.php:167
+#: includes/class-provider-wizard.php:175
 msgid "Entered"
 msgstr ""
 
-#: includes/class-provider-wizard.php:167
+#: includes/class-provider-wizard.php:175
 msgid "Not entered"
 msgstr ""
 
-#: includes/class-provider-wizard.php:167
+#: includes/class-provider-wizard.php:175
 msgid "Not required"
 msgstr ""
 
-#: includes/class-provider-wizard.php:167
+#: includes/class-provider-wizard.php:175
 msgid "Check the credentials above."
 msgstr ""
 
-#: includes/class-provider-wizard.php:169
+#: includes/class-provider-wizard.php:177
 msgid "Credentials are stored encrypted on this WordPress installation. They are excluded from configuration exports."
 msgstr ""
 

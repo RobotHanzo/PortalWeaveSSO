@@ -22,6 +22,37 @@ function portalweave_sso_setup_input(string $provider, array $overrides = []): a
     return array_replace($input, $overrides);
 }
 
+function portalweave_sso_setup_test_session(callable $test): void {
+    $previous_user = get_current_user_id();
+    $previous_cookie = $_COOKIE[LOGGED_IN_COOKIE] ?? null;
+    $unique = bin2hex(random_bytes(5));
+    $user = wp_insert_user(['user_login' => 'setup_test_' . $unique, 'user_pass' => wp_generate_password(40), 'user_email' => 'setup-test-' . $unique . '@example.org', 'role' => 'administrator']);
+    portalweave_sso_assert(is_int($user) && $user > 0, 'Unable to create the setup-test administrator');
+    $session = '';
+    try {
+        if (is_multisite()) { grant_super_admin($user); }
+        wp_set_current_user($user);
+        $expires = time() + HOUR_IN_SECONDS;
+        $session = WP_Session_Tokens::get_instance($user)->create($expires);
+        $_COOKIE[LOGGED_IN_COOKIE] = wp_generate_auth_cookie($user, $expires, 'logged_in', $session);
+        portalweave_sso_assert(wp_get_session_token() === $session, 'A real logged-in session cookie is required');
+        $test($user, $session);
+    } finally {
+        if ($session !== '') { WP_Session_Tokens::get_instance($user)->destroy($session); }
+        if ($previous_cookie === null) { unset($_COOKIE[LOGGED_IN_COOKIE]); }
+        else { $_COOKIE[LOGGED_IN_COOKIE] = $previous_cookie; }
+        wp_set_current_user($previous_user);
+        if (is_multisite()) { revoke_super_admin($user); wpmu_delete_user($user); }
+        else { wp_delete_user($user); }
+    }
+}
+
+function portalweave_sso_setup_test_flow(array $prepared): array {
+    $hash = new ReflectionMethod(\PortalWeaveSSO\Auth::class, 'config_hash');
+    return $prepared['context'] + ['kind' => 'login', 'app' => $prepared['app']['id'], 'blog_id' => get_current_blog_id(),
+        'grant' => 'authorization_code', 'config_hash' => $hash->invoke(null, $prepared['app']), 'redirect' => home_url('/')];
+}
+
 portalweave_sso_test('Provider setup catalog exposes complete local registration instructions and conditional field contracts', function () {
     $catalog = \PortalWeaveSSO\ProviderSetup::catalog();
     portalweave_sso_assert(array_keys($catalog) === ['cognito', 'auth0', 'authentik', 'b2c', 'classlink', 'custom', 'discord', 'google', 'keycloak', 'office365', 'entra', 'okta', 'onelogin', 'salesforce'], 'Provider choices must retain their IDs and follow alphabetical display-name order');
@@ -155,7 +186,168 @@ portalweave_sso_test('Provider wizard creation preserves prior providers and enc
     portalweave_sso_error($duplicate, 'portalweave_sso_app_exists');
 });
 
+portalweave_sso_test('Unsaved provider tests seal opaque credentials without changing configuration or administrator metadata', function () {
+    portalweave_sso_setup_test_session(function ($user, $session): void {
+        portalweave_sso_assert(\PortalWeaveSSO\Config::save(['apps' => ['existing' => portalweave_sso_app(['id' => 'existing'])], 'default_app' => 'existing', 'popup' => true]) === true, 'Unable to save the existing-provider fixture');
+        $before = get_option('portalweave_sso_settings');
+        $network = get_site_option('portalweave_sso_settings', []);
+        $metadata = get_user_meta($user);
+        $secret = "  unsaved-private-secret+<&>\\\"'\x00\xff\xfe bytes\r\n  ";
+        $prepared = \PortalWeaveSSO\Auth::prepare_setup_test(['provider_setup' => portalweave_sso_setup_input('google', ['client_secret' => $secret])]);
+        portalweave_sso_assert(is_array($prepared) && $prepared['app']['client_secret'] === $secret, 'Draft preparation corrupted opaque secret bytes');
+        $context = $prepared['context'];
+        portalweave_sso_assert($context['test_user'] === $user && $context['test_session'] === hash('sha256', $session) && $context['test_network'] === false
+            && $context['test_network_id'] === (is_multisite() ? get_current_network_id() : 0), 'Draft test lost its administrator, session or scope binding');
+        portalweave_sso_assert(str_starts_with($context['test_config'], 'enc:v1:') && !str_contains(serialize($context), $secret)
+            && !str_contains(serialize($context), $session), 'Draft context contains plaintext credentials or a raw session token');
+        $sealed = json_decode(\PortalWeaveSSO\Secrets::decrypt($context['test_config']), true);
+        portalweave_sso_assert(is_array($sealed) && base64_decode($sealed['client_secret'], true) === $secret, 'Encrypted draft did not encode credential bytes losslessly');
+        $resolve = new ReflectionMethod(\PortalWeaveSSO\Auth::class, 'flow_app');
+        portalweave_sso_assert($resolve->invoke(null, portalweave_sso_setup_test_flow($prepared)) === $prepared['app'], 'Draft resolution changed its validated provider');
+        portalweave_sso_assert(get_option('portalweave_sso_settings') === $before && get_site_option('portalweave_sso_settings', []) === $network
+            && get_user_meta($user) === $metadata && \PortalWeaveSSO\Config::app('wizard-google') === null, 'Preparing or resolving an unsaved test changed settings, account metadata or a saved provider');
+    });
+});
+
+portalweave_sso_test('Unsaved provider tests reject invalid creation input and preserve existing provider credentials', function () {
+    portalweave_sso_setup_test_session(function (): void {
+        portalweave_sso_assert(\PortalWeaveSSO\Config::save(['apps' => ['existing' => portalweave_sso_app(['id' => 'existing'])], 'default_app' => 'existing']) === true, 'Unable to save the duplicate-ID fixture');
+        $before = get_option('portalweave_sso_settings');
+        $valid = portalweave_sso_setup_input('google');
+        foreach ([[], ['provider_setup' => 'invalid'], ['provider_setup' => $valid, 'apps' => []],
+            ['provider_setup' => array_replace($valid, ['provider' => 'unknown'])], ['provider_setup' => array_replace($valid, ['client_id' => '   '])],
+            ['provider_setup' => array_replace($valid, ['client_secret' => ['nested']])]] as $input) {
+            $error = \PortalWeaveSSO\Auth::prepare_setup_test($input);
+            portalweave_sso_assert(is_wp_error($error) && !str_contains($error->get_error_message(), $valid['client_secret']), 'Malformed draft input was accepted or disclosed a credential');
+        }
+        portalweave_sso_error(\PortalWeaveSSO\Auth::prepare_setup_test(['provider_setup' => array_replace($valid, ['id' => 'existing'])]), 'portalweave_sso_app_exists');
+        portalweave_sso_assert(get_option('portalweave_sso_settings') === $before, 'Rejected draft preparation replaced saved configuration');
+    });
+});
+
+portalweave_sso_test('Unsaved provider tests and saving use the same normalized client ID and opaque secret bytes', function () {
+    portalweave_sso_setup_test_session(function (): void {
+        $secret = "  literal-private-secret+<&>\\\"' bytes  ";
+        $input = ['provider_setup' => portalweave_sso_setup_input('google', ['client_id' => '  application-client  ', 'client_secret' => $secret])];
+        $prepared = \PortalWeaveSSO\Auth::prepare_setup_test($input);
+        portalweave_sso_assert(is_array($prepared) && $prepared['app']['client_id'] === 'application-client'
+            && $prepared['app']['client_secret'] === $secret, 'Test preparation did not normalize the identifier independently of the opaque secret');
+        $candidate = \PortalWeaveSSO\AdminSettings::prepare($input, 'providers', '', true);
+        portalweave_sso_assert(is_array($candidate) && \PortalWeaveSSO\Config::save($candidate) === true, 'The tested provider could not be saved');
+        $saved = \PortalWeaveSSO\Config::app('wizard-google');
+        portalweave_sso_assert($saved['client_id'] === $prepared['app']['client_id'] && $saved['client_secret'] === $prepared['app']['client_secret'], 'Save changed the tested identifier or credential');
+    });
+});
+
+portalweave_sso_test('Unsaved provider callbacks require the same administrator session and reject altered encrypted context', function () {
+    portalweave_sso_setup_test_session(function ($user): void {
+        $input = ['provider_setup' => portalweave_sso_setup_input('google')];
+        $prepared = \PortalWeaveSSO\Auth::prepare_setup_test($input);
+        portalweave_sso_assert(is_array($prepared), 'Unable to prepare the callback guard fixture');
+        $flow = portalweave_sso_setup_test_flow($prepared);
+        $resolve = new ReflectionMethod(\PortalWeaveSSO\Auth::class, 'flow_app');
+        $cookie = $_COOKIE[LOGGED_IN_COOKIE];
+        try {
+            unset($_COOKIE[LOGGED_IN_COOKIE]);
+            portalweave_sso_error(\PortalWeaveSSO\Auth::prepare_setup_test($input), 'portalweave_sso_test_permission');
+            portalweave_sso_error($resolve->invoke(null, $flow), 'portalweave_sso_test_permission');
+        } finally { $_COOKIE[LOGGED_IN_COOKIE] = $cookie; }
+        wp_set_current_user(0);
+        try { portalweave_sso_error($resolve->invoke(null, $flow), 'portalweave_sso_test_permission'); }
+        finally { wp_set_current_user($user); }
+        $other_session = WP_Session_Tokens::get_instance($user)->create(time() + HOUR_IN_SECONDS);
+        try {
+            $_COOKIE[LOGGED_IN_COOKIE] = wp_generate_auth_cookie($user, time() + HOUR_IN_SECONDS, 'logged_in', $other_session);
+            portalweave_sso_error($resolve->invoke(null, $flow), 'portalweave_sso_test_permission');
+        } finally { $_COOKIE[LOGGED_IN_COOKIE] = $cookie; WP_Session_Tokens::get_instance($user)->destroy($other_session); }
+        $deny = static function ($caps, $cap, $id) use ($user) {
+            return $id === $user && in_array($cap, ['manage_options', 'manage_network_options'], true) ? ['do_not_allow'] : $caps;
+        };
+        add_filter('map_meta_cap', $deny, 10, 3);
+        try {
+            portalweave_sso_error(\PortalWeaveSSO\Auth::prepare_setup_test($input), 'portalweave_sso_test_permission');
+            portalweave_sso_error($resolve->invoke(null, $flow), 'portalweave_sso_test_permission');
+        } finally { remove_filter('map_meta_cap', $deny, 10); }
+        foreach (['test_user' => 0, 'test_session' => str_repeat('0', 64), 'test_network' => 'false',
+            'test_network_id' => $flow['test_network_id'] + 1, 'blog_id' => get_current_blog_id() + 1] as $key => $value) {
+            portalweave_sso_error($resolve->invoke(null, array_replace($flow, [$key => $value])), 'portalweave_sso_test_permission');
+        }
+        foreach ([['app', 'different-provider'], ['config_hash', str_repeat('0', 64)], ['test_config', ''],
+            ['test_config', 'enc:v1:invalid-ciphertext']] as [$key, $value]) {
+            portalweave_sso_error($resolve->invoke(null, array_replace($flow, [$key => $value])), 'portalweave_sso_config_changed');
+        }
+        $hash = new ReflectionMethod(\PortalWeaveSSO\Auth::class, 'config_hash');
+        foreach (['enabled' => false, 'grant' => 'password', 'id' => 'different-provider'] as $key => $value) {
+            $app = array_replace($prepared['app'], [$key => $value]);
+            $sealed = $app;
+            foreach (['client_secret', 'jwt_secret'] as $secret) { $sealed[$secret] = base64_encode($sealed[$secret]); }
+            $changed = array_replace($flow, ['test_config' => \PortalWeaveSSO\Secrets::encrypt(wp_json_encode($sealed)), 'config_hash' => $hash->invoke(null, $app)]);
+            portalweave_sso_error($resolve->invoke(null, $changed), 'portalweave_sso_config_changed');
+        }
+        portalweave_sso_assert($resolve->invoke(null, $flow) === $prepared['app'], 'A rejected callback altered the original draft');
+    });
+});
+
+portalweave_sso_test('Encrypted draft configuration is removed with its browser-bound single-use flow and expired cleanup', function () {
+    portalweave_sso_setup_test_session(function (): void {
+        $prepared = \PortalWeaveSSO\Auth::prepare_setup_test(['provider_setup' => portalweave_sso_setup_input('google')]);
+        portalweave_sso_assert(is_array($prepared), 'Unable to prepare the encrypted-state fixture');
+        $state = \PortalWeaveSSO\Auth::create_flow(portalweave_sso_setup_test_flow($prepared));
+        portalweave_sso_assert(is_string($state), 'Unable to create the encrypted test flow');
+        $key = 'portalweave_sso_state_' . hash('sha256', $state);
+        $name = '__Host-portalweave_sso_' . substr(hash('sha256', $state), 0, 24);
+        try {
+            $stored = get_option($key);
+            portalweave_sso_assert($stored['test_config'] === $prepared['context']['test_config']
+                && !str_contains(serialize($stored), $prepared['app']['client_secret']), 'Flow stored a plaintext draft credential');
+            $stored['browser'] = hash('sha256', 'setup-browser');
+            update_option($key, $stored, false);
+            $_COOKIE[$name] = 'wrong-browser';
+            portalweave_sso_error(\PortalWeaveSSO\Auth::consume_flow($state, 'login'), 'portalweave_sso_state');
+            $_COOKIE[$name] = 'setup-browser';
+            $consumed = \PortalWeaveSSO\Auth::consume_flow($state, 'login');
+            $resolve = new ReflectionMethod(\PortalWeaveSSO\Auth::class, 'flow_app');
+            portalweave_sso_assert(is_array($consumed) && $resolve->invoke(null, $consumed) === $prepared['app'] && get_option($key) === false, 'Consumed test state retained its encrypted draft or resolved another provider');
+            portalweave_sso_error(\PortalWeaveSSO\Auth::consume_flow($state, 'login'), 'portalweave_sso_state');
+        } finally { delete_option($key); unset($_COOKIE[$name]); }
+        $expired = \PortalWeaveSSO\Auth::create_flow(portalweave_sso_setup_test_flow($prepared));
+        portalweave_sso_assert(is_string($expired), 'Unable to create the expired draft fixture');
+        $expired_key = 'portalweave_sso_state_' . hash('sha256', $expired);
+        try {
+            $stored = get_option($expired_key);
+            $stored['expires'] = time() - 1;
+            update_option($expired_key, $stored, false);
+            \PortalWeaveSSO\Auth::cleanup();
+            portalweave_sso_assert(get_option($expired_key) === false, 'Expired-state cleanup retained the encrypted draft');
+        } finally { delete_option($expired_key); }
+    });
+});
+
 if (is_multisite()) {
+    portalweave_sso_test('Unsaved network tests isolate same-ID local providers and reject enforced site drafts', function () {
+        portalweave_sso_setup_test_session(function (): void {
+            $network = get_site_option('portalweave_sso_settings', []);
+            try {
+                update_site_option('portalweave_sso_settings', \PortalWeaveSSO\Config::defaults());
+                $input = ['provider_setup' => portalweave_sso_setup_input('google')];
+                portalweave_sso_assert(\PortalWeaveSSO\Config::save(['apps' => ['wizard-google' => portalweave_sso_app(['id' => 'wizard-google', 'name' => 'Local provider'])]]) === true, 'Unable to save the same-ID local fixture');
+                $local = get_option('portalweave_sso_settings');
+                $network_before = get_site_option('portalweave_sso_settings');
+                $prepared = \PortalWeaveSSO\Auth::prepare_setup_test($input, true);
+                portalweave_sso_assert(is_array($prepared) && $prepared['context']['test_network'] === true && $prepared['context']['test_network_id'] === get_current_network_id(), 'Inactive network candidate could not be prepared in its own scope');
+                $resolve = new ReflectionMethod(\PortalWeaveSSO\Auth::class, 'flow_app');
+                portalweave_sso_assert($resolve->invoke(null, portalweave_sso_setup_test_flow($prepared)) === $prepared['app']
+                    && \PortalWeaveSSO\Config::app('wizard-google')['name'] === 'Local provider', 'Network test resolved or replaced the local provider with the same ID');
+                portalweave_sso_assert(get_option('portalweave_sso_settings') === $local && get_site_option('portalweave_sso_settings') === $network_before, 'Network test changed local or network settings');
+                $saved = \PortalWeaveSSO\Config::app('wizard-google');
+                $hash = new ReflectionMethod(\PortalWeaveSSO\Auth::class, 'config_hash');
+                portalweave_sso_assert($resolve->invoke(null, ['app' => 'wizard-google', 'config_hash' => $hash->invoke(null, $saved), 'test_user' => 0]) === $saved, 'Draft support overrode an ordinary saved-provider flow');
+                portalweave_sso_assert(\PortalWeaveSSO\Config::save(['network_enforced' => true], true) === true, 'Unable to enforce the network policy');
+                portalweave_sso_error(\PortalWeaveSSO\Auth::prepare_setup_test(['provider_setup' => portalweave_sso_setup_input('auth0')]), 'portalweave_sso_network_enforced');
+            } finally { update_site_option('portalweave_sso_settings', $network); }
+        });
+    });
+
     portalweave_sso_test('Provider wizard network creation preserves local settings and network credentials', function () {
         $network = get_site_option('portalweave_sso_settings', []);
         $local = get_option('portalweave_sso_settings', []);

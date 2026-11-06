@@ -43,6 +43,10 @@ Each guide explains where to find the provider's credentials.
 
 ![Discord credential step with client ID and secret fields and console instructions](docs/screenshots/discord-credentials.png)
 
+On the final step, **Test connection** opens a separate tab to check sign-in before saving. Your setup entries stay ready for **Save provider**. This example shows fictional credentials entered for review.
+
+![Final provider setup review with secondary Test connection and primary Save provider buttons](docs/screenshots/onboarding-review.png)
+
 Return to the provider list to configure an existing connection.
 
 ![Identity provider list with sample saved connections](docs/screenshots/providers.png)

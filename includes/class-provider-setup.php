@@ -419,6 +419,13 @@ final class ProviderSetup
                 $app['verified_attribute'] = $values['verified_attribute'];
             }
         }
+        // Match Config::save() before a draft can be tested. Secrets remain opaque.
+        foreach (['client_id', 'scope', 'subject_attribute', 'verified_attribute'] as $key) {
+            $app[$key] = sanitize_text_field($app[$key]);
+        }
+        if ($app['client_id'] === '') {
+            return self::error(__('Enter the provider client ID.', 'portalweave-sso'));
+        }
         return $app;
     }
 
