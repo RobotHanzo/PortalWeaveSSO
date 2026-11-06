@@ -50,16 +50,61 @@ final class Display
 
     public static function assets(): void
     {
-        $button = Config::get('button');
+        $settings = Config::all();
+        $button = $settings['button'];
+        $custom = self::wp_login_options($settings);
         wp_enqueue_script('portalweave-sso-login', PORTALWEAVE_SSO_URL . 'assets/login.js', [], PORTALWEAVE_SSO_VERSION, ['in_footer' => true, 'strategy' => 'defer']);
-        if (($GLOBALS['pagenow'] ?? '') === 'wp-login.php' && empty($button['admin_style'])) {
+        if (($GLOBALS['pagenow'] ?? '') === 'wp-login.php' && empty($button['admin_style']) && $custom === null) {
             return;
         }
-        wp_enqueue_style('portalweave-sso-buttons', PORTALWEAVE_SSO_URL . 'assets/login.css', [], PORTALWEAVE_SSO_VERSION);
+        $path = PORTALWEAVE_SSO_DIR . 'assets/login.css';
+        $revision = PORTALWEAVE_SSO_VERSION . '-' . (string) filemtime($path);
+        wp_enqueue_style('portalweave-sso-buttons', PORTALWEAVE_SSO_URL . 'assets/login.css', [], $revision);
         $css = sprintf('.portalweave-sso-login{--portalweave-sso-size:%dpx;--portalweave-sso-radius:%dpx;--portalweave-sso-spacing:%dpx}', $button['size'], $button['radius'], $button['spacing']);
         if (!wp_style_is('portalweave-sso-buttons', 'done') && !wp_styles()->get_data('portalweave-sso-buttons', 'after')) {
-            wp_add_inline_style('portalweave-sso-buttons', $css . "\n" . wp_strip_all_tags($button['custom_css']));
+            wp_add_inline_style('portalweave-sso-buttons', $css . "\n" . ($custom !== null ? self::wp_login_css($custom) : wp_strip_all_tags($button['custom_css'])));
         }
+    }
+
+    /** Explicit WordPress-page context keeps shortcode and WooCommerce styles shared. */
+    private static function wp_login_options(array $settings): ?array
+    {
+        if (($GLOBALS['pagenow'] ?? '') !== 'wp-login.php') {
+            return null;
+        }
+        $style = Config::validate_wp_login_button($settings['wp_login_button'] ?? []);
+        return !is_wp_error($style) && $style['enabled'] ? $style : null;
+    }
+
+    /** Shared with the administrator preview; values are validated at this boundary too. */
+    public static function wp_login_css(array $options): string
+    {
+        $style = Config::validate_wp_login_button($options);
+        if (is_wp_error($style)) {
+            return '';
+        }
+        $values = [
+            'background' => $style['background'], 'color' => $style['text_color'], 'border' => $style['border_color'],
+            'hover-background' => $style['hover_background'], 'hover-color' => $style['hover_text_color'],
+            'radius' => $style['radius'] . 'px', 'size' => $style['font_size'] . 'px',
+            'padding-y' => $style['padding_y'] . 'px', 'padding-x' => $style['padding_x'] . 'px',
+            'icon-size' => $style['icon_size'] . 'px', 'width' => $style['full_width'] ? '100%' : 'fit-content',
+        ];
+        $css = '.portalweave-sso-login.portalweave-sso-login-screen{';
+        foreach ($values as $key => $value) {
+            $css .= '--portalweave-sso-wp-' . $key . ':' . $value . ';';
+        }
+        return $css . '}';
+    }
+
+    /** Provider images stay external images; bundled paths come from a fixed map. */
+    public static function provider_icon(array $app): string
+    {
+        if (isset($app['icon_url']) && is_string($app['icon_url']) && Config::https_url($app['icon_url'])) {
+            return $app['icon_url'];
+        }
+        $provider = isset($app['provider']) && is_string($app['provider']) ? $app['provider'] : '';
+        return ProviderSetup::logo_url($provider) ?: ProviderSetup::logo_url('custom');
     }
 
     /** Shortcodes in templates can render after wp_head has printed styles. */
@@ -96,8 +141,12 @@ final class Display
     {
         $settings = Config::all();
         $style = $settings['button'];
+        $custom = self::wp_login_options($settings);
+        if ($custom !== null) {
+            $style = array_replace($style, ['theme' => 'custom', 'shape' => 'round-edge', 'shadow' => $custom['shadow'], 'transform' => false]);
+        }
         self::assets();
-        $html = '<div class="portalweave-sso-login">';
+        $html = '<div class="portalweave-sso-login' . ($custom !== null ? ' portalweave-sso-login-screen' : '') . '">';
         if (is_user_logged_in()) {
             $user = wp_get_current_user();
             $link = !empty($style['logout_link']) ? '<a class="portalweave-sso-logout" href="' . esc_url(Auth::logout_url()) . '">' . esc_html__('Sign out', 'portalweave-sso') . '</a>' : '';
@@ -119,13 +168,26 @@ final class Display
                 continue;
             }
             $text = $app['button_text'] ?: str_replace('{app}', $app['name'] ?: $id, $style['text']);
+            if ($custom !== null) {
+                if ($custom['text'] !== '') {
+                    $text = str_replace('{app}', $app['name'] ?: $id, $custom['text']);
+                } elseif ($text === '') {
+                    /* translators: %s: provider name. */
+                    $text = sprintf(__('Sign in with %s', 'portalweave-sso'), $app['name'] ?: $id);
+                }
+            }
             $class = 'portalweave-sso-button portalweave-sso-theme-' . $theme . ' portalweave-sso-shape-' . $shape;
             $class .= !empty($style['shadow']) ? ' portalweave-sso-shadow' : '';
             $class .= !empty($style['transform']) ? ' portalweave-sso-transform' : '';
+            $class .= $custom !== null && $custom['icon_position'] === 'right' ? ' portalweave-sso-icon-right' : '';
             $html .= '<a class="' . esc_attr($class) . '" href="' . esc_url(Auth::login_url($id, $redirect, false, $popup)) . '"' . ($popup ? ' data-portalweave-sso-popup="1"' : '') . '>';
-            if ($app['icon_url']) {
-                $html .= '<img class="portalweave-sso-icon" src="' . esc_url($app['icon_url']) . '" alt="" loading="lazy" referrerpolicy="no-referrer">';
-            } else {
+            $icon = $app['icon_url'];
+            if ($custom !== null) {
+                $icon = $custom['icon_source'] === 'custom' ? $custom['icon_url'] : ($custom['icon_source'] === 'provider' ? self::provider_icon($app) : '');
+            }
+            if ($icon !== '') {
+                $html .= '<img class="portalweave-sso-icon" src="' . esc_url($icon) . '" alt="" loading="lazy" referrerpolicy="no-referrer">';
+            } elseif ($custom === null) {
                 $html .= '<span class="portalweave-sso-mark" aria-hidden="true">' . esc_html(strtoupper(mb_substr($app['name'] ?: $id, 0, 1))) . '</span>';
             }
             $html .= '<span>' . esc_html($text) . '</span></a>';

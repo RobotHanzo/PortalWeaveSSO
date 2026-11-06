@@ -10,7 +10,7 @@ final class AdminSettings
         'providers' => ['apps', 'new_app', 'provider_setup'],
         'login' => ['default_app', 'force_auth', 'disable_wp_login', 'single_flow', 'popup', 'logout_confirmation', 'login_redirect', 'logout_redirect', 'redirect_allowlist'],
         'access' => ['restrict_site', 'allowed_domains', 'blocked_domains', 'content_rules', 'protected_media', 'network_enforced'],
-        'appearance' => ['button'],
+        'appearance' => ['button', 'wp_login_button'],
         'modules' => ['modules', 'scim_token', 'clear_scim_token', 'shared_secret', 'clear_shared_secret', 'shared_cookie_domain', 'shared_sites', 'guest_ttl', 'abilities_enabled'],
         'reports' => ['audit_enabled', 'audit_ip', 'audit_retention_days', 'debug'],
         'tools' => ['support', 'delete_data_on_uninstall'],
@@ -46,7 +46,7 @@ final class AdminSettings
         if ($provider !== '' || $creating) {
             return new \WP_Error('portalweave_sso_provider_target', __('This settings screen does not edit an identity provider.', 'portalweave-sso'));
         }
-        foreach (['button', 'modules', 'support'] as $key) {
+        foreach (['button', 'wp_login_button', 'modules', 'support'] as $key) {
             if (!array_key_exists($key, $input)) {
                 continue;
             }

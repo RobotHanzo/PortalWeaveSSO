@@ -6,6 +6,13 @@ defined('ABSPATH') || exit;
 /** Local, server-validated setup recipes. This class never requests provider metadata. */
 final class ProviderSetup
 {
+    /** Only bundled files from this closed map can supply a provider logo. */
+    public static function logo_url(string $provider): string
+    {
+        $files = ['custom' => 'custom.svg', 'authentik' => 'authentik.svg', 'discord' => 'discord.svg', 'keycloak' => 'keycloak.svg', 'auth0' => 'auth0.svg', 'okta' => 'okta.svg', 'entra' => 'entra.svg', 'office365' => 'office365.svg', 'cognito' => 'cognito.svg', 'google' => 'google.svg', 'salesforce' => 'salesforce.svg', 'onelogin' => 'onelogin.png', 'b2c' => 'b2c.svg', 'classlink' => 'classlink.png'];
+        return isset($files[$provider]) ? plugins_url('assets/providers/' . $files[$provider], PORTALWEAVE_SSO_FILE) : '';
+    }
+
     public static function catalog(): array
     {
         $credentials = [
