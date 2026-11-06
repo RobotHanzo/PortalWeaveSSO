@@ -1,6 +1,6 @@
 # Product screenshot maintenance
 
-These PNGs show PortalWeave SSO 1.0.1 in a disposable WordPress 7.1.4 fixture. Providers, accounts, domains and audit records are fictional examples; they do not establish successful registration or authentication with an external provider.
+These PNGs were captured in disposable WordPress 7.1.4 fixtures. The gallery began with PortalWeave SSO 1.0.1; settings views containing the shared header were refreshed on 2026-11-07 from source after v1.1.0 to show the new plugin logo. Unchanged section and public views retain their earlier captures. Providers, accounts, domains and audit records are fictional examples; they do not establish successful registration or authentication with an external provider.
 
 Capture the actual interface with Playwright. Keep the WordPress styling and use a consistent desktop viewport; crop to the plugin workspace or the relevant complete section. Public sign-in captures must use an anonymous browser context. Use ordinary UI navigation to show the provider guide steps and expanded settings. Never fill or reveal a real secret for a screenshot.
 

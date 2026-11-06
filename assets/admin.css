@@ -47,6 +47,30 @@
     margin-bottom: 28px;
 }
 
+.portalweave-sso-brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+}
+
+.portalweave-sso-brand-logo {
+    display: block;
+    flex: 0 0 48px;
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+}
+
+.portalweave-sso-brand-copy {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.portalweave-sso-header > .portalweave-sso-version {
+    flex-shrink: 0;
+}
+
 .portalweave-sso-header h1 {
     margin: 0;
     padding: 0;
@@ -1012,6 +1036,18 @@
         gap: 12px;
         padding: 20px 0;
         margin-bottom: 20px;
+    }
+
+    .portalweave-sso-brand {
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .portalweave-sso-brand-logo {
+        flex-basis: 40px;
+        width: 40px;
+        height: 40px;
+        margin-top: 2px;
     }
 
     .portalweave-sso-header h1 {
