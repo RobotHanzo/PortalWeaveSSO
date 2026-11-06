@@ -501,7 +501,10 @@ final class Auth {
             // Keep the bounded set of active/recent provider sessions. No bearer
             // token, ID token or raw provider session identifier is indexed.
             if (count($existing) >= 100) {
-                delete_user_meta($user_id, $key, reset($existing));
+                // Never forget a sid while leaving its WordPress session live.
+                // At the cap, revoke the old sessions before recording the new one.
+                \WP_Session_Tokens::get_instance($user_id)->destroy_all();
+                delete_user_meta($user_id, $key);
             }
             add_user_meta($user_id, $key, $digest, false);
         }
