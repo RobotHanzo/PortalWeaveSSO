@@ -1,5 +1,4 @@
-=== WPSSO OAuth & OpenID Connect ===
-Contributors: stsa
+=== PortalWeave SSO ===
 Tags: oauth, openid-connect, sso, scim, login
 Requires at least: 6.5
 Tested up to: 7.1
@@ -8,21 +7,76 @@ Stable tag: 1.0.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
-Multi-provider OAuth/OIDC sign-in, account policies, access controls, provisioning and audit tools.
+OAuth and OpenID Connect sign-in with account mapping, access controls, SCIM provisioning and local audit reports.
 
 == Description ==
-Connect OAuth 2.0 and OpenID Connect providers with Authorization Code and PKCE. Configure attribute and role mappings, verified account linking and administrator policies. Includes login widgets, shortcodes, WooCommerce integration, private media, audit reports, network configuration, optional SCIM, JWT SSO, moderation and eight opt-in WordPress abilities.
+PortalWeave SSO connects a site to administrator-configured OAuth 2.0 and OpenID Connect identity providers. Authorization Code with S256 PKCE is the default. Public clients can use PKCE without a client secret.
 
-SSO requires HTTPS and PHP OpenSSL. Client credentials and tokens are encrypted using WordPress salts. Optional features are disabled by default. Live identity-provider registration is required. WordPress 6.9+ and the WordPress MCP Adapter are required for MCP transport.
+* Configure multiple providers, attribute mappings and group/email-domain role policies.
+* Register users at first login or allow only existing accounts. Account linking requires explicit configuration and a verified, unique email.
+* Keep administrator SSO disabled by default; enable it per provider with a verified account claim.
+* Display login buttons using the login widget, [wpsso_oauth_login] shortcode, WordPress login screen or WooCommerce login form.
+* Restrict posts, pages, categories and media using login, role or group rules.
+* Review local authentication transactions and export CSV reports. Debug logging, client IP collection and optional modules are administrator controlled.
+* Enable SCIM Users/Groups, JWT sign-in, temporary guest accounts, moderation, mapped pictures, attribute redirects or a short shared-subdomain handoff.
+* Use site/network settings, WP-CLI and eight optional administrator-only WordPress abilities.
+
+All bundled functionality is available without a developer account, license key, paid upgrade or trial expiry. Optional module switches are configuration controls. Guest-account expiry is a site access policy, not a limit on plugin functionality. Identity providers may impose their own account, subscription or usage requirements.
+
+SSO requires HTTPS and PHP OpenSSL. Client credentials and tokens are encrypted using this installation's WordPress salts; keep those salts stable. Native abilities require WordPress 6.9+. External MCP clients also require the separately installed WordPress MCP Adapter. This plugin does not call an AI model service.
+
+This is an independent plugin. Provider names describe integrations and do not imply endorsement or affiliation.
+
+== External services ==
+
+The plugin has no developer-hosted authentication, tracking, licensing or update service. It sends no telemetry to its author and downloads no remote executable code. All plugin JavaScript and CSS are distributed locally.
+
+After an administrator configures a provider, sign-in redirects the browser to that provider with the client identifier, requested scopes, callback URL, random state/nonce and PKCE challenge. The server exchanges the code and requests signing keys, profile or groups at the configured HTTPS endpoints. Returned account/profile/group data is used for local authentication and authorization. Optional refresh and logout requests go to the same configured provider. Tokens are never included in audit or support exports.
+
+Preset service policy references:
+
+* Microsoft identity services: [privacy](https://privacy.microsoft.com/privacystatement), [terms](https://www.microsoft.com/servicesagreement).
+* Amazon Cognito: [privacy](https://aws.amazon.com/privacy/), [service terms](https://aws.amazon.com/service-terms/).
+* Google identity services: [privacy](https://policies.google.com/privacy), [terms](https://policies.google.com/terms).
+* Okta and Auth0: see the current official links and provider-specific details in the distributed docs/external-services.md.
+* Salesforce, OneLogin, Discord and ClassLink: see the current official links in docs/external-services.md.
+* Keycloak, authentik and custom providers: the administrator chooses the deployment, endpoint and applicable operator terms/privacy policy. Selecting a self-hosted preset does not contact the software project's developer.
+
+Optional mapped pictures and custom provider icons are browser requests to administrator-selected image hosts. Those hosts receive browser network information. Support email is sent only after an administrator explicitly submits a message or requests sending through the support ability; its recipient is administrator configured. MCP transport and any data handling by a connected AI client belong to the separately configured adapter/client.
+
+The external-services document is included in the ZIP. Its maintained source is [available here](https://github.com/RobotHanzo/WordPressSSO/blob/compliance/wordpress-org-submission/docs/external-services.md). Site operators must publish the policies applicable to their configured providers.
+
+== Privacy and data retention ==
+
+The plugin stores local identity links, mapped profile fields, group memberships and encrypted tokens. Authentication auditing can be disabled. When enabled, it retains username, email, provider, status, time and navigation path for the configured retention period (90 days by default). IP recording is a separate opt-in and defaults off. Debug records expire after seven days; local support drafts expire after one day. Scheduled cleanup requires working WordPress cron.
+
+Login/logout state cookies last up to ten minutes. Optional JWT sign-in uses a five-minute challenge cookie; optional shared-subdomain sign-in uses a signed one-minute cookie containing selected identity attributes, not OAuth tokens. WordPress manages its normal login cookies.
+
+Suggested privacy-policy text is available in the WordPress privacy tools. Personal-data exports include audit and linked profile information but exclude credentials. Erasure anonymizes audit data, removes local provider links/tokens/groups and known plugin-mapped custom fields, and revokes sessions. It preserves the WordPress account, roles, content, moderation/provisioning blocks and private files. Other multisite sites and external providers manage their own retained data. Later sign-in/provisioning may supply profile data again.
+
+Deactivation preserves data. Uninstall preserves settings unless the administrator enables data removal. Even with removal enabled, WordPress accounts, content, public mapped profile values, private-media files and their recovery metadata are retained. Review docs/privacy.md and include the private vault in server backups. The plugin does not claim to provide or guarantee legal compliance.
 
 == Installation ==
-Upload the plugin ZIP, activate it and open Settings > WordPress SSO. Add a provider, register its callback, enter credentials and endpoints, then run Test SSO Config before enforcing login.
+1. Upload portalweave-sso-1.0.0.zip or copy the portalweave-sso directory into wp-content/plugins.
+2. Activate PortalWeave SSO and open Settings > PortalWeave SSO.
+3. Add a provider, register the displayed callback URL, enter its credentials/endpoints/signing settings and save.
+4. Run Test SSO Config as an administrator to inspect returned attributes. Configure mappings and test an ordinary user before enforcing login.
+5. Add [wpsso_oauth_login], the PortalWeave SSO login widget or use the WordPress/WooCommerce login form integration.
 
-Use [wpsso_oauth_login] to render buttons. See README.md and docs/ for deployment, media vault, recovery and integration instructions.
+Optional features start disabled. Use the distributed user guides for provider, SCIM, media and MCP setup. Development source and build tools are [publicly maintained](https://github.com/RobotHanzo/WordPressSSO).
 
 == Frequently Asked Questions ==
 = Can media be private? =
 Yes. Selected originals and registered sizes move to a writable directory outside the document root, and use authenticated delivery. Purge existing CDN copies and include the vault in backups. Review custom image/storage integrations before rollout.
+
+= Does this require a developer-hosted service or paid plugin upgrade? =
+No. Authentication uses the provider selected by the administrator. All bundled modules are included; provider service requirements are separate.
+
+= Which grants and logout methods are supported? =
+Authorization Code with PKCE and refresh tokens are supported. Legacy Password and signed OIDC Implicit flows require explicit per-provider opt-in. Implicit requires a signed ID token with an access-token hash; unsolicited URL bearer-token login is rejected. OIDC RP-initiated and signed back-channel logout are supported; iframe front-channel logout is not implemented.
+
+= Does shared sign-in revoke every participating site's session? =
+No. It is a one-minute handoff between explicitly trusted HTTPS subdomains and creates independent WordPress sessions. Normal IdP sign-in remains available after that handoff expires.
 
 = How do I recover local login? =
 Run wp wpsso recover (or --network), or temporarily define WPSSO_ALLOW_LOCAL_LOGIN in wp-config.php.
@@ -33,3 +87,4 @@ No. Re-enter credentials on a new installation. Same-site restores retain existi
 == Changelog ==
 = 1.0.0 =
 Initial multi-provider OAuth/OIDC, access policy, provisioning and operations release.
+Includes private-media recovery, privacy-policy guidance, data export/erasure and administrator-controlled retention.

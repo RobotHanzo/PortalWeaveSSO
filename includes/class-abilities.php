@@ -16,23 +16,23 @@ final class Abilities {
 
     public static function category(): void {
         if (Config::get('abilities_enabled', false) && function_exists('wp_register_ability_category')) {
-            wp_register_ability_category('wpsso', ['label' => __('STSA Identity SSO', 'stsa-identity-sso'), 'description' => __('Configure and diagnose SSO with administrator permissions.', 'stsa-identity-sso')]);
+            wp_register_ability_category('wpsso', ['label' => __('PortalWeave SSO', 'portalweave-sso'), 'description' => __('Configure and diagnose SSO with administrator permissions.', 'portalweave-sso')]);
         }
     }
 
     public static function definitions(): array {
         $id = ['type' => 'string', 'pattern' => '^[a-z0-9_-]+$', 'maxLength' => 100];
         return [
-            'list-providers' => [__('List SSO providers', 'stsa-identity-sso'), __('Return provider names and configuration status without credentials.', 'stsa-identity-sso'), [], [], true],
-            'get-provider' => [__('Get SSO provider', 'stsa-identity-sso'), __('Return the redacted settings of one provider.', 'stsa-identity-sso'), ['id' => $id], ['id'], true],
-            'configure-provider' => [__('Configure SSO provider', 'stsa-identity-sso'), __('Create or update one provider. Input credentials are encrypted and never returned.', 'stsa-identity-sso'), ['id' => $id, 'settings' => ['type' => 'object']], ['id', 'settings'], false],
-            'diagnose' => [__('Diagnose SSO configuration', 'stsa-identity-sso'), __('Report local configuration errors, callback URL and safe corrective actions.', 'stsa-identity-sso'), ['id' => $id], [], true],
-            'fix-common-error' => [__('Fix a common SSO error', 'stsa-identity-sso'), __('Apply an explicit safe fix: enable PKCE, use code grant, restore openid scope or clear callback override.', 'stsa-identity-sso'),
+            'list-providers' => [__('List SSO providers', 'portalweave-sso'), __('Return provider names and configuration status without credentials.', 'portalweave-sso'), [], [], true],
+            'get-provider' => [__('Get SSO provider', 'portalweave-sso'), __('Return the redacted settings of one provider.', 'portalweave-sso'), ['id' => $id], ['id'], true],
+            'configure-provider' => [__('Configure SSO provider', 'portalweave-sso'), __('Create or update one provider. Input credentials are encrypted and never returned.', 'portalweave-sso'), ['id' => $id, 'settings' => ['type' => 'object']], ['id', 'settings'], false],
+            'diagnose' => [__('Diagnose SSO configuration', 'portalweave-sso'), __('Report local configuration errors, callback URL and safe corrective actions.', 'portalweave-sso'), ['id' => $id], [], true],
+            'fix-common-error' => [__('Fix a common SSO error', 'portalweave-sso'), __('Apply an explicit safe fix: enable PKCE, use code grant, restore openid scope or clear callback override.', 'portalweave-sso'),
                 ['id' => $id, 'fix' => ['type' => 'string', 'enum' => ['enable-pkce', 'use-code-grant', 'openid-scope', 'clear-callback']]], ['id', 'fix'], false],
-            'export-config' => [__('Export redacted SSO configuration', 'stsa-identity-sso'), __('Export settings with client identifiers, credentials, provisioning and shared secrets removed.', 'stsa-identity-sso'), [], [], true],
-            'login-audit' => [__('Read SSO login audit', 'stsa-identity-sso'), __('Read recent SSO transaction records. This includes user personal data and requires administrator access.', 'stsa-identity-sso'),
+            'export-config' => [__('Export redacted SSO configuration', 'portalweave-sso'), __('Export settings with client identifiers, credentials, provisioning and shared secrets removed.', 'portalweave-sso'), [], [], true],
+            'login-audit' => [__('Read SSO login audit', 'portalweave-sso'), __('Read recent SSO transaction records. This includes user personal data and requires administrator access.', 'portalweave-sso'),
                 ['limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 200], 'app' => $id], [], true],
-            'support-query' => [__('Prepare or send an SSO support query', 'stsa-identity-sso'), __('Prepare a local support draft with redacted configuration. Send only when send=true and a support email is configured.', 'stsa-identity-sso'),
+            'support-query' => [__('Prepare or send an SSO support query', 'portalweave-sso'), __('Prepare a local support draft with redacted configuration. Send only when send=true and a support email is configured.', 'portalweave-sso'),
                 ['subject' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 160], 'message' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 10000], 'send' => ['type' => 'boolean']], ['subject', 'message'], false],
         ];
     }

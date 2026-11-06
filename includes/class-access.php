@@ -90,7 +90,7 @@ final class Access
     {
         nocache_headers();
         if (is_user_logged_in()) {
-            wp_die(esc_html__('Your account does not have access to this content.', 'stsa-identity-sso'), 'SSO access denied', ['response' => 403]);
+            wp_die(esc_html__('Your account does not have access to this content.', 'portalweave-sso'), 'SSO access denied', ['response' => 403]);
         }
         $app = Config::get('default_app');
         if ($app && !empty(Config::app($app)['enabled'])) {

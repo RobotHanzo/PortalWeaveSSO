@@ -132,7 +132,7 @@ wpsso_test('Provider groups remain local while privileged network identities req
         wpmu_delete_user($id);
     }
 });
-foreach (['multisite-auth', 'multisite-extensions'] as $suite) {
+foreach (['multisite-auth', 'multisite-extensions', 'compliance-multisite'] as $suite) {
     if (is_file(__DIR__ . '/' . $suite . '.php')) { require __DIR__ . '/' . $suite . '.php'; }
     else { $wpsso_results[] = ['pass' => false, 'name' => $suite, 'error' => 'Missing test suite']; }
 }

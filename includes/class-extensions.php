@@ -595,13 +595,13 @@ final class Extensions {
             return;
         }
         $status = get_user_meta($user->ID, self::moderation_meta(), true);
-        echo '<h2>' . esc_html__('SSO account moderation', 'stsa-identity-sso') . '</h2><table class="form-table"><tr><th><label for="wpsso-moderation">' . esc_html__('Approval', 'stsa-identity-sso') . '</label></th><td>';
+        echo '<h2>' . esc_html__('SSO account moderation', 'portalweave-sso') . '</h2><table class="form-table"><tr><th><label for="wpsso-moderation">' . esc_html__('Approval', 'portalweave-sso') . '</label></th><td>';
         wp_nonce_field('wpsso_moderate_' . $user->ID, 'wpsso_moderation_nonce');
         echo '<select id="wpsso-moderation" name="wpsso_moderation">';
-        foreach (['' => __('No moderation policy', 'stsa-identity-sso'), 'pending' => __('Pending approval', 'stsa-identity-sso'), 'approved' => __('Approved', 'stsa-identity-sso'), 'blocked' => __('Blocked', 'stsa-identity-sso')] as $value => $label) {
+        foreach (['' => __('No moderation policy', 'portalweave-sso'), 'pending' => __('Pending approval', 'portalweave-sso'), 'approved' => __('Approved', 'portalweave-sso'), 'blocked' => __('Blocked', 'portalweave-sso')] as $value => $label) {
             echo '<option value="' . esc_attr($value) . '" ' . selected($status, $value, false) . '>' . esc_html($label) . '</option>';
         }
-        echo '</select><p class="description">' . esc_html__('Approval never changes WordPress roles.', 'stsa-identity-sso') . '</p></td></tr></table>';
+        echo '</select><p class="description">' . esc_html__('Approval never changes WordPress roles.', 'portalweave-sso') . '</p></td></tr></table>';
     }
 
     public static function moderation_save(int $user_id): void {
@@ -766,7 +766,7 @@ final class Extensions {
 
     private static function fail(\WP_Error $error, string $app = ''): void {
         Audit::record('failure', $app, null, $error->get_error_code());
-        wp_die(esc_html($error->get_error_message()), esc_html__('SSO login failed', 'stsa-identity-sso'), ['response' => 403]);
+        wp_die(esc_html($error->get_error_message()), esc_html__('SSO login failed', 'portalweave-sso'), ['response' => 403]);
     }
 
     public static function consume(string $purpose, string $id, int $ttl): bool {

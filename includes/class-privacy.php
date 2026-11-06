@@ -18,29 +18,29 @@ final class Privacy
         if (!function_exists('wp_add_privacy_policy_content') || !is_admin() || !did_action('admin_init')) {
             return;
         }
-        $text = '<p class="privacy-policy-tutorial">' . esc_html__('Adapt this suggested text to your configured identity providers, support recipient and retention policy. This plugin does not determine your legal obligations.', 'stsa-identity-sso') . '</p>';
-        $text .= '<h2>' . esc_html__('Single sign-on and provisioning', 'stsa-identity-sso') . '</h2>';
-        $text .= '<p>' . esc_html__('If you use single sign-on, your browser visits the identity provider selected by this site. The site sends the registered client identifier, scopes, callback URL, random state and nonce, and a PKCE challenge where applicable. Token exchange, signing-key lookup and profile/group requests use the configured provider endpoints over HTTPS. We receive the account identifier, email, profile fields and groups needed to identify your local account and apply the site access policy.', 'stsa-identity-sso') . '</p>';
-        $text .= '<p>' . esc_html__('Provider account links, selected profile fields and groups are stored in the WordPress database. Access, refresh and ID tokens are encrypted using this installation’s WordPress salts. Tokens are never included in personal-data or support exports. Passwords entered for an explicitly enabled legacy password grant are sent only to the configured provider and are not stored by this plugin.', 'stsa-identity-sso') . '</p>';
+        $text = '<p class="privacy-policy-tutorial">' . esc_html__('Adapt this suggested text to your configured identity providers, support recipient and retention policy. This plugin does not determine your legal obligations.', 'portalweave-sso') . '</p>';
+        $text .= '<h2>' . esc_html__('Single sign-on and provisioning', 'portalweave-sso') . '</h2>';
+        $text .= '<p>' . esc_html__('If you use single sign-on, your browser visits the identity provider selected by this site. The site sends the registered client identifier, scopes, callback URL, random state and nonce, and a PKCE challenge where applicable. Token exchange, signing-key lookup and profile/group requests use the configured provider endpoints over HTTPS. We receive the account identifier, email, profile fields and groups needed to identify your local account and apply the site access policy.', 'portalweave-sso') . '</p>';
+        $text .= '<p>' . esc_html__('Provider account links, selected profile fields and groups are stored in the WordPress database. Access, refresh and ID tokens are encrypted using this installation’s WordPress salts. Tokens are never included in personal-data or support exports. Passwords entered for an explicitly enabled legacy password grant are sent only to the configured provider and are not stored by this plugin.', 'portalweave-sso') . '</p>';
         /* translators: %d: Number of days configured for local authentication audit retention. */
-        $text .= '<p>' . esc_html(sprintf(__('When authentication auditing is enabled, the site stores the account name, email, provider, result, time and navigation path for up to %d days. IP recording is a separate opt-in and is disabled by default. Diagnostic records contain status and error codes, not tokens, and expire after seven days. Scheduled deletion depends on working WordPress cron.', 'stsa-identity-sso'), (int) Config::get('audit_retention_days', 90))) . '</p>';
-        $text .= '<p>' . esc_html__('Short-lived Secure, HttpOnly cookies bind login and logout responses to the initiating browser. WordPress creates its normal authentication cookies after sign-in. Optional JWT sign-in uses a five-minute challenge cookie. Optional shared-subdomain sign-in uses a signed parent-domain cookie lasting one minute, accessible to participating trusted sites; it contains mapped identity fields and never OAuth tokens.', 'stsa-identity-sso') . '</p>';
-        $text .= '<p>' . esc_html__('Optional SCIM provisioning receives profile and group information from the configured provisioning client. Optional mapped profile pictures and custom provider icons are fetched by the visitor’s browser from the administrator-selected HTTPS image host. Enabling those images discloses the browser’s network information to that host. This plugin sends no usage analytics or telemetry to its developer and downloads no executable code.', 'stsa-identity-sso') . '</p>';
-        $text .= '<p>' . esc_html__('Support information is emailed only when an administrator explicitly submits the support form or enables sending in a support ability. The destination is configured by the administrator. Client identifiers, credentials and tokens are omitted from the attached configuration. MCP abilities are off by default; enabling them allows an authenticated administrator’s configured MCP client to request information, including personal audit data, through the separately installed WordPress MCP Adapter.', 'stsa-identity-sso') . '</p>';
-        $text .= '<p>' . esc_html__('WordPress personal-data tools can export or anonymize local audit data and export or erase provider links, tokens, groups and plugin-mapped custom fields. Erasure revokes local sessions. It does not delete the WordPress account, content, role assignments, moderation or provisioning blocks, protected files, or the account at an external provider. Other sites in a multisite installation have their own retained records. After a later sign-in or provisioning request, the provider may supply profile data again.', 'stsa-identity-sso') . '</p>';
-        $text .= '<p>' . esc_html__('Deactivation preserves data. Uninstall also preserves it unless an administrator has selected the data-removal setting. Private-media files and their recovery metadata are retained even with cleanup selected, so deleting the plugin does not publish or destroy private content. The site administrator manages the private vault, backups, external provider policies and any retained records.', 'stsa-identity-sso') . '</p>';
-        wp_add_privacy_policy_content('STSA Identity SSO', wp_kses_post($text));
+        $text .= '<p>' . esc_html(sprintf(__('When authentication auditing is enabled, the site stores the account name, email, provider, result, time and navigation path for up to %d days. IP recording is a separate opt-in and is disabled by default. Diagnostic records contain status and error codes, not tokens, and expire after seven days. Scheduled deletion depends on working WordPress cron.', 'portalweave-sso'), (int) Config::get('audit_retention_days', 90))) . '</p>';
+        $text .= '<p>' . esc_html__('Short-lived Secure, HttpOnly cookies bind login and logout responses to the initiating browser. WordPress creates its normal authentication cookies after sign-in. Optional JWT sign-in uses a five-minute challenge cookie. Optional shared-subdomain sign-in uses a signed parent-domain cookie lasting one minute, accessible to participating trusted sites; it contains mapped identity fields and never OAuth tokens.', 'portalweave-sso') . '</p>';
+        $text .= '<p>' . esc_html__('Optional SCIM provisioning receives profile and group information from the configured provisioning client. Optional mapped profile pictures and custom provider icons are fetched by the visitor’s browser from the administrator-selected HTTPS image host. Enabling those images discloses the browser’s network information to that host. This plugin sends no usage analytics or telemetry to its developer and downloads no executable code.', 'portalweave-sso') . '</p>';
+        $text .= '<p>' . esc_html__('Support information is emailed only when an administrator explicitly submits the support form or enables sending in a support ability. The destination is configured by the administrator. Client identifiers, credentials and tokens are omitted from the attached configuration. MCP abilities are off by default; enabling them allows an authenticated administrator’s configured MCP client to request information, including personal audit data, through the separately installed WordPress MCP Adapter.', 'portalweave-sso') . '</p>';
+        $text .= '<p>' . esc_html__('WordPress personal-data tools can export or anonymize local audit data and export or erase provider links, tokens, groups and plugin-mapped custom fields. Erasure revokes local sessions. It does not delete the WordPress account, content, role assignments, moderation or provisioning blocks, protected files, or the account at an external provider. Other sites in a multisite installation have their own retained records. After a later sign-in or provisioning request, the provider may supply profile data again.', 'portalweave-sso') . '</p>';
+        $text .= '<p>' . esc_html__('Deactivation preserves data. Uninstall also preserves it unless an administrator has selected the data-removal setting. Private-media files and their recovery metadata are retained even with cleanup selected, so deleting the plugin does not publish or destroy private content. The site administrator manages the private vault, backups, external provider policies and any retained records.', 'portalweave-sso') . '</p>';
+        wp_add_privacy_policy_content('PortalWeave SSO', wp_kses_post($text));
     }
 
     public static function exporters(array $exporters): array
     {
-        $exporters['wpsso-profile'] = ['exporter_friendly_name' => __('STSA Identity SSO linked profile', 'stsa-identity-sso'), 'callback' => [self::class, 'export']];
+        $exporters['wpsso-profile'] = ['exporter_friendly_name' => __('PortalWeave SSO linked profile', 'portalweave-sso'), 'callback' => [self::class, 'export']];
         return $exporters;
     }
 
     public static function erasers(array $erasers): array
     {
-        $erasers['wpsso-profile'] = ['eraser_friendly_name' => __('STSA Identity SSO linked profile', 'stsa-identity-sso'), 'callback' => [self::class, 'erase']];
+        $erasers['wpsso-profile'] = ['eraser_friendly_name' => __('PortalWeave SSO linked profile', 'portalweave-sso'), 'callback' => [self::class, 'erase']];
         return $erasers;
     }
 
@@ -102,7 +102,7 @@ final class Privacy
                 }
             }
             if ($fields) {
-                $items[] = ['group_id' => 'stsa-identity-sso-profile', 'group_label' => __('Single sign-on profile', 'stsa-identity-sso'), 'item_id' => 'stsa-sso-' . get_current_blog_id() . '-' . $id, 'data' => $fields];
+                $items[] = ['group_id' => 'portalweave-sso-profile', 'group_label' => __('Single sign-on profile', 'portalweave-sso'), 'item_id' => 'portalweave-sso-' . get_current_blog_id() . '-' . $id, 'data' => $fields];
             }
         }
         return ['data' => $items, 'done' => count($ids) < 100];
@@ -137,7 +137,7 @@ final class Privacy
         return [
             'items_removed' => $removed,
             'items_retained' => $retained,
-            'messages' => $retained ? [__('Account moderation, provisioning activity and guest-expiry policy are retained to prevent erasure from enabling a blocked account. WordPress accounts, roles, content and private files are managed separately.', 'stsa-identity-sso')] : [],
+            'messages' => $retained ? [__('Account moderation, provisioning activity and guest-expiry policy are retained to prevent erasure from enabling a blocked account. WordPress accounts, roles, content and private files are managed separately.', 'portalweave-sso')] : [],
             'done' => count($ids) < 100,
         ];
     }

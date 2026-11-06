@@ -27,7 +27,7 @@ final class Audit
             KEY user_id (user_id),
             KEY status (status)
         ) {$collate};");
-        update_option('wpsso_db_version', WPSSO_VERSION, false);
+        update_option('wpsso_db_version', PORTALWEAVE_SSO_VERSION, false);
         if (!wp_next_scheduled('wpsso_cleanup')) {
             wp_schedule_event(time() + HOUR_IN_SECONDS, 'daily', 'wpsso_cleanup');
         }
@@ -52,7 +52,6 @@ final class Audit
             'client_ip' => $ip, 'navigation' => substr(esc_url_raw($navigation), 0, 2048),
             'created_at' => current_time('mysql', true),
         ]);
-        self::invalidate();
         do_action('wpsso_audit_recorded', $status, $app, $user ? $user->ID : 0, $code);
         if (Config::get('debug')) {
             $logs = (array) get_option('wpsso_debug_log', []);
@@ -69,17 +68,11 @@ final class Audit
         $user_id = isset($args['user_id']) && $args['user_id'] !== '' ? absint($args['user_id']) : -1;
         $limit = max(1, min(10000, (int) ($args['limit'] ?? 100)));
         $offset = max(0, (int) ($args['offset'] ?? 0));
-        $generation = wp_cache_get('generation', 'stsa_identity_sso_audit') ?: 'initial';
-        $key = hash('sha256', wp_json_encode([$generation, $status, $app, $user_id, $limit, $offset]));
-        $rows = wp_cache_get($key, 'stsa_identity_sso_audit');
-        if ($rows !== false) {
-            return $rows;
-        }
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Security reports must be current; a secondary PII cache would outlive privacy erasure.
         $rows = $wpdb->get_results($wpdb->prepare(
             "SELECT * FROM %i WHERE (%s = '' OR status = %s) AND (%s = '' OR app = %s) AND (%d < 0 OR user_id = %d) ORDER BY id DESC LIMIT %d OFFSET %d",
             $wpdb->prefix . 'wpsso_audit', $status, $status, $app, $app, $user_id, $user_id, $limit, $offset
         ), ARRAY_A) ?: [];
-        wp_cache_set($key, $rows, 'stsa_identity_sso_audit', MINUTE_IN_SECONDS);
         return $rows;
     }
 
@@ -87,10 +80,11 @@ final class Audit
     {
         global $wpdb;
         // Privacy exports must read the current authoritative records, without retaining PII in a secondary cache.
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Privacy export intentionally bypasses caches containing personal data.
         return $wpdb->get_results($wpdb->prepare(
             'SELECT * FROM %i WHERE email = %s ORDER BY id LIMIT 100 OFFSET %d',
             $wpdb->prefix . 'wpsso_audit', sanitize_email($email), (max(1, $page) - 1) * 100
-        ), ARRAY_A) ?: []; // phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching -- Privacy export intentionally bypasses caches containing personal data.
+        ), ARRAY_A) ?: [];
     }
 
     public static function anonymize(string $email): int
@@ -100,13 +94,7 @@ final class Audit
             "UPDATE %i SET email = '', username = '', user_id = 0, client_ip = '', navigation = '' WHERE email = %s",
             $wpdb->prefix . 'wpsso_audit', sanitize_email($email)
         ));
-        self::invalidate();
         return (int) $count;
-    }
-
-    private static function invalidate(): void
-    {
-        wp_cache_set('generation', wp_generate_uuid4(), 'stsa_identity_sso_audit');
     }
 
     public static function cleanup(): void
@@ -114,7 +102,6 @@ final class Audit
         global $wpdb;
         $days = max(1, (int) Config::get('audit_retention_days', 90));
         $wpdb->query($wpdb->prepare('DELETE FROM %i WHERE created_at < %s', $wpdb->prefix . 'wpsso_audit', gmdate('Y-m-d H:i:s', time() - $days * DAY_IN_SECONDS)));
-        self::invalidate();
         $logs = array_values(array_filter((array) get_option('wpsso_debug_log', []), static fn($row) => ($row['at'] ?? 0) >= time() - WEEK_IN_SECONDS));
         update_option('wpsso_debug_log', $logs, false);
         // Expired locks and used flow records are not autoloaded; bound their lifetime.

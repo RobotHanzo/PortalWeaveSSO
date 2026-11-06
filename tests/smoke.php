@@ -22,7 +22,7 @@ wpsso_test('Administrator settings render all panels without revealing stored cr
             ob_start();
             \WPSSO\Admin::page();
             $html = ob_get_clean();
-            wpsso_assert(str_contains($html, 'STSA Identity SSO'), 'Admin page missing title');
+            wpsso_assert(str_contains($html, 'PortalWeave SSO'), 'Admin page missing title');
             wpsso_assert(!str_contains($html, $app['client_secret']), 'Stored secret rendered');
         }
     } finally { $_GET = $original_get; }
@@ -93,7 +93,7 @@ wpsso_test('Global media protection cannot be removed through an individual chec
 });
 
 wpsso_test('Plugin lifecycle cleanup runs on single-site WordPress', function () {
-    do_action('deactivate_' . plugin_basename(WPSSO_FILE), false);
+    do_action('deactivate_' . plugin_basename(PORTALWEAVE_SSO_FILE), false);
     wpsso_assert(wp_next_scheduled('wpsso_cleanup') === false, 'Audit cleanup remained scheduled');
     wpsso_assert(wp_next_scheduled('wpsso_state_cleanup') === false, 'State cleanup remained scheduled');
     wpsso_assert(wp_next_scheduled('wpsso_extension_cleanup') === false, 'Extension cleanup remained scheduled');
