@@ -176,10 +176,14 @@
       try {
         const next = writeRows(type, rowValues());
         source.value = next;
+        delete source.dataset.unsavedDraft;
         status.textContent = '';
         source.dispatchEvent(new Event('input', { bubbles: true }));
         return true;
       } catch (error) {
+        // An unfinished visual row is still a draft, even though it cannot replace valid JSON yet.
+        source.dataset.unsavedDraft = 'true';
+        source.dispatchEvent(new Event('input', { bubbles: true }));
         message(error);
         const first = visual.querySelector('[data-mapping-key]');
         if (first) first.setCustomValidity(status.textContent);
@@ -240,6 +244,7 @@
 
     function render() {
       let rows = readRows(type, source.value);
+      delete source.dataset.unsavedDraft;
       visual.replaceChildren();
       visual.classList.toggle('portalweave-sso-mapping-standard', type === 'mapping');
       if (type === 'mapping') rows = standardKeys.map(key => rows.find(row => row.key === key) || { key, value: config.defaults[key] || '' });
@@ -288,6 +293,8 @@
     function reset() {
       queueMicrotask(() => {
         try { render(); setMode('visual'); } catch (error) { setMode('advanced'); message(error); }
+        delete source.dataset.unsavedDraft;
+        source.dispatchEvent(new Event('input', { bubbles: true }));
       });
     }
     form.addEventListener('reset', reset);
