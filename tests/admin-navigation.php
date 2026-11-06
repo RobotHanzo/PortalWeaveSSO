@@ -298,6 +298,11 @@ portalweave_sso_test('Provider sections render one complete secret-free form and
             foreach (['name', 'token_url', 'algorithms', 'mapping', 'verified_attribute', 'avatar_attribute', 'button_text'] as $field) {
                 portalweave_sso_assert(substr_count($html, 'name="settings[apps][alpha][' . $field . ']"') === 1, 'A section field is missing or duplicated: ' . $field);
             }
+            foreach (['mapping', 'custom_mapping', 'role_mapping', 'domain_roles', 'domain_mapping', 'redirect_rules'] as $field) {
+                portalweave_sso_assert(substr_count($html, 'data-mapping-editor="' . $field . '"') === 1, 'A mapping has no progressive visual editor: ' . $field);
+                portalweave_sso_assert(preg_match('/<textarea\b(?=[^>]*\bname="settings\[apps\]\[alpha\]\[' . $field . '\]")([^>]*)>/', $html, $textarea) === 1
+                    && !str_contains($textarea[1], 'hidden') && !str_contains($textarea[1], 'disabled'), 'A mapping JSON fallback is unavailable without JavaScript: ' . $field);
+            }
             foreach (['client_secret', 'jwt_secret'] as $key) {
                 portalweave_sso_assert(!str_contains($html, $app[$key]) && !str_contains($html, $stored['apps']['alpha'][$key]), 'Section rendering disclosed a stored credential: ' . $key);
                 portalweave_sso_assert(preg_match('/<input\b(?=[^>]*\bname="settings\[apps\]\[alpha\]\[' . $key . '\]")(?=[^>]*\btype="password")(?=[^>]*\bvalue="")[^>]*>/', $html) === 1, 'Stored secret is not represented by an empty password input: ' . $key);

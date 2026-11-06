@@ -42,6 +42,8 @@ final class Admin {
         $script_version = $version . '-' . (is_file($script) ? (string) filemtime($script) : '0');
         wp_enqueue_style('portalweave-sso-admin', plugins_url('../assets/admin.css', __FILE__), [], $style_version);
         wp_enqueue_script('portalweave-sso-admin', plugins_url('../assets/admin.js', __FILE__), [], $script_version, ['in_footer' => true, 'strategy' => 'defer']);
+        wp_enqueue_style('portalweave-sso-mappings', plugins_url('../assets/admin-mappings.css', __FILE__), ['portalweave-sso-admin'], $version . '-' . (string) filemtime(dirname(__DIR__) . '/assets/admin-mappings.css'));
+        wp_enqueue_script('portalweave-sso-mappings', plugins_url('../assets/admin-mappings.js', __FILE__), ['portalweave-sso-admin'], $version . '-' . (string) filemtime(dirname(__DIR__) . '/assets/admin-mappings.js'), ['in_footer' => true, 'strategy' => 'defer']);
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation decides whether to load the local setup interface; saves retain their own nonce and capability checks.
         if (self::request_key($_GET, 'tab') === 'providers' && self::request_key($_GET, 'new_provider') === '1') {
             $setup_style = dirname(__DIR__) . '/assets/provider-setup.css';
@@ -684,14 +686,14 @@ final class Admin {
         self::field($prefix . '[subject_attribute]', $app['subject_attribute'], __('Immutable subject attribute', 'portalweave-sso'), 'text', __('OIDC uses the signed sub claim. OAuth-only providers need a stable unique ID.', 'portalweave-sso'));
         echo '</div>';
         self::provider_panel('mapping', __('Attributes and role mapping', 'portalweave-sso'));
-        self::json($prefix . '[mapping]', $app['mapping'], __('Standard attribute paths', 'portalweave-sso'), __('Dot paths for username, email, first_name, last_name, display_name, groups. Example: {"email":"email","groups":"realm_access.roles"}.', 'portalweave-sso'));
-        self::json($prefix . '[custom_mapping]', $app['custom_mapping'], __('Custom profile attributes', 'portalweave-sso'), __('Object of safe user-meta key → provider attribute path. Privilege and internal WordPress meta keys are blocked.', 'portalweave-sso'));
-        self::json($prefix . '[role_mapping]', $app['role_mapping'], __('Group → WordPress roles', 'portalweave-sso'), __('Example: {"members":["subscriber"],"editors":["editor"]}.', 'portalweave-sso'));
-        self::json($prefix . '[domain_roles]', $app['domain_roles'], __('Email domain → WordPress roles', 'portalweave-sso'), __('Example: {"school.example":["author"]}.', 'portalweave-sso'));
+        self::json($prefix . '[mapping]', $app['mapping'], __('Standard attribute paths', 'portalweave-sso'), __('Map WordPress profile fields to provider attributes. Use dot paths for nested attributes, such as realm_access.roles.', 'portalweave-sso'));
+        self::json($prefix . '[custom_mapping]', $app['custom_mapping'], __('Custom profile attributes', 'portalweave-sso'), __('Map safe public profile keys to provider attribute paths. Privilege and internal WordPress metadata are blocked.', 'portalweave-sso'));
+        self::json($prefix . '[role_mapping]', $app['role_mapping'], __('Group → WordPress roles', 'portalweave-sso'), __('Choose the WordPress roles assigned for each matching provider group. Use Ctrl or Command to select multiple roles.', 'portalweave-sso'));
+        self::json($prefix . '[domain_roles]', $app['domain_roles'], __('Email domain → WordPress roles', 'portalweave-sso'), __('Choose roles for exact email domains, such as school.example. Use Ctrl or Command to select multiple roles.', 'portalweave-sso'));
         self::field($prefix . '[default_role]', $app['default_role'], __('Default WordPress role', 'portalweave-sso'));
         echo '</div>';
         self::provider_panel('accounts', __('Account access and verification', 'portalweave-sso'));
-        self::json($prefix . '[domain_mapping]', $app['domain_mapping'], __('Email domain mapping', 'portalweave-sso'), __('Example: {"old.example":"new.example"}. Identity verification uses the original provider claim.', 'portalweave-sso'));
+        self::json($prefix . '[domain_mapping]', $app['domain_mapping'], __('Email domain mapping', 'portalweave-sso'), __('Replace an exact email domain with another domain. Identity verification still uses the original provider claim.', 'portalweave-sso'));
         foreach ([
             'auto_register' => [__('Automatically register users at first SSO login', 'portalweave-sso'), __('Turn off to allow existing linked or eligible local accounts only.', 'portalweave-sso')],
             'link_existing' => [__('Link existing users by verified email', 'portalweave-sso'), __('Only a verified provider email may link an existing account.', 'portalweave-sso')],
@@ -714,7 +716,7 @@ final class Admin {
         self::check($prefix . '[shared_sso]', $app['shared_sso'] ?? false, __('Issue a shared subdomain SSO ticket', 'portalweave-sso'), __('Also enable and configure the Shared SSO module.', 'portalweave-sso'));
         self::check($prefix . '[jwt_sso]', $app['jwt_sso'] ?? false, __('Allow signed JWT SSO for this app', 'portalweave-sso'), __('Also enable the JWT SSO module.', 'portalweave-sso'));
         self::field($prefix . '[avatar_attribute]', $app['avatar_attribute'] ?? 'picture', __('Profile picture attribute', 'portalweave-sso'), 'text', __('Used when the Profile Picture module is enabled.', 'portalweave-sso'));
-        self::json($prefix . '[redirect_rules]', $app['redirect_rules'], __('Attribute based redirect rules', 'portalweave-sso'), __('Array of {"claim":"department","equals":"sales","url":"https://example.com/sales/"}. URLs must pass the redirect allowlist.', 'portalweave-sso'));
+        self::json($prefix . '[redirect_rules]', $app['redirect_rules'], __('Attribute based redirect rules', 'portalweave-sso'), __('Match a provider attribute to a value and choose its redirect URL. Rules run in order and URLs must pass the redirect allowlist.', 'portalweave-sso'));
         echo '</div>';
         self::provider_panel('button', __('Login button', 'portalweave-sso'));
         self::field($prefix . '[button_text]', $app['button_text'], __('Button text', 'portalweave-sso'), 'text', __('Leave blank to use the global text and provider name.', 'portalweave-sso'));
@@ -759,7 +761,7 @@ final class Admin {
             self::check('settings[restrict_site]', $settings['restrict_site'], __('Restrict the site to logged-in users', 'portalweave-sso'));
         self::field('settings[allowed_domains]', implode("\n", $settings['allowed_domains']), __('Allowed email domains', 'portalweave-sso'), 'textarea', __('One exact domain per line. Leave empty to allow all domains except blocked ones.', 'portalweave-sso'));
         self::field('settings[blocked_domains]', implode("\n", $settings['blocked_domains']), __('Blocked email domains', 'portalweave-sso'), 'textarea', __('One exact domain per line. A blocked domain always takes precedence.', 'portalweave-sso'));
-        self::json('settings[content_rules]', $settings['content_rules'], __('Advanced content rules', 'portalweave-sso'), __('Optional bulk rules; individual post and category editors also expose role/group restrictions. See the documentation for the schema.', 'portalweave-sso'));
+        self::json('settings[content_rules]', $settings['content_rules'], __('Content access rules', 'portalweave-sso'), __('Add bulk rules by post, page or category ID. Individual editors also expose access restrictions. When roles or groups are selected, a user must match either one.', 'portalweave-sso'));
         self::field('settings[protected_media]', implode(', ', $settings['protected_media']), __('Protected attachment IDs', 'portalweave-sso'), 'text', __('Comma separated. Original files and derivatives are relocated outside the document root and served through authenticated delivery. Purge old copies from web-server and CDN caches.', 'portalweave-sso'));
         /* translators: %s: private media directory configuration constant, displayed as code. */
         $media_help = sprintf(__('Protecting an attachment relocates its original and derivatives outside the web document root. WordPress URLs then use the authenticated delivery endpoint. Configure a writable %s in wp-config.php; the default is a private sibling directory of ABSPATH. Purge previously cached files from web-server and CDN caches. Restoring public access moves files back to their original upload paths.', 'portalweave-sso'), '<code>PORTALWEAVE_SSO_PRIVATE_MEDIA_DIR</code>');
@@ -964,7 +966,42 @@ final class Admin {
     }
 
     private static function json(string $name, array $value, string $label, string $help): void {
+        preg_match('/\[([a-z_]+)\]$/', $name, $match);
+        $type = $match[1] ?? '';
+        $roles = [];
+        foreach (wp_roles()->roles as $key => $role) {
+            $roles[$key] = translate_user_role($role['name']);
+        }
+        $labels = [
+            'visual' => __('Visual editor', 'portalweave-sso'), 'advanced' => __('Advanced JSON', 'portalweave-sso'),
+            'add' => __('Add rule', 'portalweave-sso'), 'remove' => __('Remove rule', 'portalweave-sso'),
+            'path' => __('Provider attribute path', 'portalweave-sso'), 'meta' => __('Profile field key', 'portalweave-sso'),
+            'group' => __('Provider group', 'portalweave-sso'), 'domain' => __('Email domain', 'portalweave-sso'),
+            'target_domain' => __('Replacement email domain', 'portalweave-sso'), 'roles' => __('WordPress roles', 'portalweave-sso'),
+            'claim' => __('Provider attribute path', 'portalweave-sso'), 'equals' => __('Matches value', 'portalweave-sso'),
+            'value_type' => __('Value type', 'portalweave-sso'), 'string' => __('Text', 'portalweave-sso'),
+            'number' => __('Number', 'portalweave-sso'), 'boolean' => __('Boolean', 'portalweave-sso'), 'null' => __('Null', 'portalweave-sso'),
+            'url' => __('Redirect URL', 'portalweave-sso'), 'target' => __('Content type', 'portalweave-sso'),
+            'posts' => __('Post or page', 'portalweave-sso'), 'categories' => __('Category', 'portalweave-sso'),
+            'id' => __('Content ID', 'portalweave-sso'), 'login' => __('Require sign-in', 'portalweave-sso'),
+            'groups' => __('Provider groups (one per line)', 'portalweave-sso'),
+            'empty' => __('No rules configured. Add a rule to get started.', 'portalweave-sso'),
+            'unsupported' => __('This JSON uses a structure the visual editor cannot represent. Continue editing JSON; your values have been kept.', 'portalweave-sso'),
+            'invalid' => __('Enter a valid JSON object or array before switching to the visual editor.', 'portalweave-sso'),
+            'duplicate' => __('Each source must be unique. Change or remove the duplicate rule.', 'portalweave-sso'),
+            'required' => __('Complete this rule or remove it.', 'portalweave-sso'),
+            'invalid_value' => __('Enter a valid value for the selected type.', 'portalweave-sso'),
+            'roles_help' => __('Select one or more roles. Existing administrator verification requirements still apply.', 'portalweave-sso'),
+            'row' => __('Rule', 'portalweave-sso'),
+        ];
+        $standard = [
+            'username' => __('Username', 'portalweave-sso'), 'email' => __('Email', 'portalweave-sso'),
+            'first_name' => __('First name', 'portalweave-sso'), 'last_name' => __('Last name', 'portalweave-sso'),
+            'display_name' => __('Display name', 'portalweave-sso'), 'groups' => __('Groups', 'portalweave-sso'),
+        ];
+        echo '<div class="portalweave-sso-mapping" data-mapping-editor="' . esc_attr($type) . '" data-mapping-config="' . esc_attr(wp_json_encode(['labels' => $labels, 'roles' => $roles, 'standard' => $standard, 'defaults' => Config::app_defaults()['mapping']])) . '">';
         self::field($name, wp_json_encode($value ?: new \stdClass(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), $label, 'textarea', $help);
+        echo '</div>';
     }
 
     private static function activity_navigation(string $view, int $days, bool $network): void {
