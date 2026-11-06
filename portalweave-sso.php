@@ -3,7 +3,7 @@
  * Plugin Name: PortalWeave SSO
  * Plugin URI: https://github.com/RobotHanzo/PortalWeaveSSO
  * Description: Multi-provider OAuth/OIDC sign-in, provisioning, access control and audit tools.
- * Version: 1.0.0
+ * Version: 1.0.1
  * Requires at least: 6.5
  * Requires PHP: 8.1
  * Author: RobotHanzo
@@ -16,7 +16,7 @@
 
 defined('ABSPATH') || exit;
 
-define('PORTALWEAVE_SSO_VERSION', '1.0.0');
+define('PORTALWEAVE_SSO_VERSION', '1.0.1');
 define('PORTALWEAVE_SSO_FILE', __FILE__);
 define('PORTALWEAVE_SSO_DIR', plugin_dir_path(__FILE__));
 define('PORTALWEAVE_SSO_URL', plugin_dir_url(__FILE__));

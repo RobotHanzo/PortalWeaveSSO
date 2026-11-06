@@ -3,7 +3,7 @@ Tags: oauth, openid-connect, sso, scim, login
 Requires at least: 6.5
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 1.0.0
+Stable tag: 1.0.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -63,7 +63,7 @@ Deactivation preserves data. Uninstall preserves settings unless the administrat
 == Installation ==
 This release replaces the technical namespace without aliases or automatic conversion of earlier stored data. Existing installations must restrict access externally and follow the replacement procedure in docs/provider-setup.md before reopening, including settings, identity links, access rules, provider URLs and private-media metadata.
 
-1. Upload portalweave-sso-1.0.0.zip or copy the portalweave-sso directory into wp-content/plugins.
+1. Upload portalweave-sso-1.0.1.zip or copy the portalweave-sso directory into wp-content/plugins.
 2. Activate PortalWeave SSO and open Settings > PortalWeave SSO.
 3. Add a provider, register the displayed callback URL, enter its credentials/endpoints/signing settings and save.
 4. Run Test SSO Config as an administrator to inspect returned attributes. Configure mappings and test an ordinary user before enforcing login.
@@ -91,6 +91,13 @@ Run wp portalweave-sso recover (or --network), or temporarily define PORTALWEAVE
 No. Re-enter credentials on a new installation. Same-site restores retain existing credentials.
 
 == Changelog ==
+= 1.0.1 =
+* Replace the technical namespace with PortalWeave SSO identifiers and use [sso_oauth_login] for login buttons. Earlier installations require the documented controlled replacement procedure.
+* Add provider-specific guided setup, credential instructions and bundled provider logos.
+* Sort provider choices alphabetically and remove logo borders.
+* Address Plugin Check advisories and enforce complete strict checks in CI.
+* Add Bash helper entrypoints, verified ZIP packaging and resilient CI image downloads.
+
 = 1.0.0 =
 Initial multi-provider OAuth/OIDC, access policy, provisioning and operations release.
 Includes private-media recovery, privacy-policy guidance, data export/erasure and administrator-controlled retention.
