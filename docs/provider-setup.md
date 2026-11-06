@@ -4,6 +4,8 @@ Install `portalweave-sso-1.0.1.zip` through **Plugins → Add New → Upload Plu
 
 The proposed directory slug and text domain are `portalweave-sso`. Use the `[sso_oauth_login]` shortcode, `PORTALWEAVE_SSO_*` server configuration constants, `PortalWeaveSSO` PHP namespace and `wp portalweave-sso` commands.
 
+SSO requires HTTPS. Configure WordPress's HTTPS detection for a trusted reverse proxy when TLS terminates there. Keep `AUTH_KEY`, `SECURE_AUTH_KEY` and the WordPress salts stable: stored secrets and tokens depend on them for encryption. Changing them requires re-entering credentials and signing in again. Include this server configuration in your protected recovery backup.
+
 ## Replacing an earlier installation
 
 This release replaces the entire technical namespace. It provides no earlier-name aliases, automatic database conversion or fallback to previous storage. Treat replacement as a controlled deployment rather than an in-place compatible update:
@@ -22,12 +24,14 @@ The Overview screen links to each setup task. Identity providers, Login & logout
 
 1. Open **Identity providers > Add provider** and choose your service. Its guide shows one task at a time, with the relevant provider-console instructions beside the fields. Existing providers open in the advanced editor through **Configure**.
 2. Supply the server, tenant or application details requested by that recipe. Discord and Google skip server configuration entirely. The server derives known endpoints; ClassLink and custom services ask for authoritative connection details instead of guessing them.
-3. Follow **Register** in the provider console and copy the exact **Redirect URI** shown in the guide. Providers that use a sign-out return URI also show that separate value. Confirm registration after adding the URI. This confirmation records your setup step; it does not contact or verify the external registration.
+3. Follow **Register** in the provider console and copy the exact **Redirect URI** shown in the guide. The callback uses the canonical WordPress origin; the initiating page is kept separately as the post-login destination and checked against the redirect policy. Providers that use a sign-out return URI also show that separate value. Confirm registration after adding the URI. This confirmation records your setup step; it does not contact or verify the external registration.
 4. Follow the provider-specific credential instructions. Copy the actual client ID and secret value, not a tenant ID, secret identifier, API key, bot token or account password. The documented OneLogin public-client recipe uses PKCE and needs only its client ID. **Back** retains unsaved fields in the current form; the wizard does not store secrets in browser storage or a saved draft.
 5. Review the connection and optionally change its display name, then **Save provider**. A unique internal app ID is generated for the form and shown in the advanced editor after saving. Other providers, the default provider and site-wide access policies are preserved. Endpoint derivation and all required fields are validated again on the server; JavaScript controls presentation only. Without JavaScript, the selected recipe remains a complete ordered form with the same final save.
 6. Run **Test SSO Config** while signed in as an administrator. The protected result shows raw provider attributes without changing your WordPress session. It does not test account eligibility, verification claims or role assignment. A network provider can be tested from the network UI only while that network configuration is active; use staging to validate a network policy before enforcing it.
 7. Configure mappings and account policies from the actual returned attributes. Guided OIDC profiles use Authorization Code, S256 PKCE and pinned RS256/JWKS validation; verified-email checks remain enabled, email linking remains opt-in and administrator SSO remains disabled. A provider that omits a trustworthy verification claim needs deliberate claim configuration; the wizard never fabricates one or disables verification to make a test pass.
 8. Test a non-admin user and any explicitly permitted administrator before forcing site authentication or disabling WordPress password login. Retain filesystem or WP-CLI recovery access. Advanced edits can configure a documented alternate issuer, client-authentication method, signing algorithm or callback override without weakening signature/state checks.
+
+Advanced JWT configuration supports RS256, RS384, RS512, HS256, HS384 and HS512. Pin only the algorithms used by the provider, and select either RSA or HMAC for one connection. RSA verification uses the configured trusted JWKS; HMAC verification uses the configured shared secret. Never accept an algorithm or key URL chosen by an incoming token.
 
 ### Details requested by each guide
 
@@ -66,6 +70,8 @@ The Overview screen links to each setup task. Identity providers, Login & logout
 
 Multiple apps can be enabled at once. Each button selects its own app. The default app is used for forced and single-flow login.
 
+Email verification is required by default. An OAuth-only provider without a trustworthy verification claim can authenticate an already-linked immutable identity or use a deliberately configured less restrictive user policy. Email linking and administrator SSO still require the configured verification claim.
+
 Review [external services and provider policy links](external-services.md) before enabling each provider. Setup derives local configuration and links official instructions; it does not fetch discovery documents or contact an identity service. Actual authentication exchanges occur when login/test/refresh/logout flows run; optional remote icons and mapped pictures also make browser requests. Choose necessary scopes and mappings, and disclose the actual recipients to your users.
 
 For provider-initiated OIDC session revocation, enable **signed OIDC back-channel logout** on the app and register the displayed back-channel URL with your provider. The provider must send a signed logout token; the endpoint validates the provider signature and logout-token claims and rejects replays. The ordinary end-session URL is used for browser-initiated logout.
@@ -86,9 +92,19 @@ Insert `[sso_oauth_login]` or add the **PortalWeave SSO login** widget. WooComme
 
 ## Content restrictions and media
 
+On multisite, network enforcement overrides site configuration only within the current network; other networks retain their own settings. Configure site-local post, category and attachment rules through their individual editors. Network settings do not accept those site-local content IDs. Provider identities, groups and tokens are site-scoped even though WordPress users and sessions can be global; see the [multisite integration boundaries](integrations.md#scim-20-inbound-provisioning) before provisioning shared accounts.
+
 Post/page editors and category forms expose login, allowed-role, and allowed-group controls. A matching configured role or group grants access. Attachment editing includes a protected checkbox; the global protected-ID list provides the same file protection.
 
 Protecting an attachment relocates its original, thumbnails, and other recorded derivatives outside the web document root. WordPress generates authenticated delivery URLs and applies the attachment and parent-content access policies before serving files. Unprotecting moves the files back to their original upload paths. Configure a writable `PORTALWEAVE_SSO_PRIVATE_MEDIA_DIR` in `wp-config.php` when the default private sibling directory of `ABSPATH` is not writable. The plugin rejects a vault inside the web document root. Purge previously cached copies from the web server and CDN when protecting media. An attachment-page role restriction alone does not relocate static files; select file protection as well.
+
+For example, use an absolute directory outside the actual document root that the PHP worker can read and write:
+
+```php
+define('PORTALWEAVE_SSO_PRIVATE_MEDIA_DIR', '/srv/private/wordpress-media');
+```
+
+Protected delivery uses WordPress no-cache headers; keep public caches from storing restricted responses. Protection cannot retract downloaded files or independently cached copies. Check custom image optimizers, offloaded storage and image-size regeneration on the actual deployment; do not regenerate public derivatives of protected files. Include originals, recorded backup sizes and the vault in your encrypted server backups.
 
 Before removal, back up the database and vault together. If a file should become public again, remove its ID from the global protected-ID list and save, then clear its per-attachment protected checkbox if set. Verify the restored original and derivatives through an uncached browser request. A conflicting public file causes restoration to fail rather than overwrite it; resolve the conflict before removing the plugin. If the file must remain private, keep the vault and attachment recovery metadata and plan to restore the plugin or provide a separate authenticated delivery service. Do not move vault files into public uploads merely to make old links work.
 
@@ -114,4 +130,4 @@ The plugin does not contact an AI service itself. A configured authenticated cli
 
 ## Legacy grants
 
-Implicit and Password flows require a separate explicit opt-in for each app. Prefer Authorization Code with PKCE. Password flow exposes the provider password to the client and does not support many modern MFA flows. Implicit flow returns tokens through the browser and requires signed identity-token validation and transaction binding. Enable these only for an existing provider integration that requires them.
+Implicit and Password flows require a separate explicit opt-in for each app. Prefer Authorization Code with PKCE. Password flow exposes the provider password to the client and does not support many modern MFA flows. Implicit flow returns tokens through the browser and requires a signed OIDC identity token, transaction binding and an `at_hash` claim that binds the access token to the identity token. Enable these only for an existing provider integration that requires them.

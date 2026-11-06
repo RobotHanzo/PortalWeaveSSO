@@ -2,103 +2,130 @@
 
 [![CI](https://github.com/RobotHanzo/PortalWeaveSSO/actions/workflows/verify.yml/badge.svg)](https://github.com/RobotHanzo/PortalWeaveSSO/actions/workflows/verify.yml)
 
-An installable WordPress plugin for multiple OAuth 2.0 and OpenID Connect providers. PHP 8.1+ with OpenSSL and WordPress 6.5+ are required. There are no Composer or production JavaScript dependencies. All modules are bundled.
+Download the [v1.0.1 plugin ZIP](https://github.com/RobotHanzo/PortalWeaveSSO/releases/download/v1.0.1/portalweave-sso-1.0.1.zip), with [release notes](https://github.com/RobotHanzo/PortalWeaveSSO/releases/tag/v1.0.1) and a [SHA-256 checksum](https://github.com/RobotHanzo/PortalWeaveSSO/releases/download/v1.0.1/portalweave-sso-1.0.1.zip.sha256).
 
-## Installation
+Add OAuth 2.0 and OpenID Connect sign-in to WordPress with multiple identity providers, guided setup, account mapping and access policies for content and private media. Manage login appearance, optional integrations and activity from the WordPress administrator screens.
 
-1. Build `dist/portalweave-sso-1.0.1.zip` with `bash scripts/build.sh --slug portalweave-sso`, then upload it through **Plugins → Add New → Upload Plugin**.
-2. Activate **PortalWeave SSO** and open **Settings → PortalWeave SSO**.
-3. Add a provider, copy its callback URL into the provider registration, and configure its issuer, credentials, endpoints and signing algorithms. The callback always uses the canonical WordPress origin; the initiating page is retained separately as the post-login destination.
-4. Run **Test SSO Config** to inspect attributes. Configure username/email/group mappings and account policies, then test a regular user before enforcing SSO.
-5. Add `[sso_oauth_login]`, the **PortalWeave SSO login** widget, or use the automatic WordPress/WooCommerce login buttons.
+![PortalWeave SSO overview with setup tasks and configuration summary](docs/screenshots/overview.png)
 
-SSO requires HTTPS. Configure HTTPS detection correctly when WordPress is behind a trusted reverse proxy. Keep `AUTH_KEY`, `SECURE_AUTH_KEY` and WordPress salts stable: they protect stored secrets and tokens. Changing them requires re-entering credentials and signing in again.
+Requires **WordPress 6.5+**, **PHP 8.1+ with OpenSSL**, and **HTTPS**.
 
-`portalweave-sso` is the proposed WordPress.org slug and the plugin's text domain; directory approval is still required. PHP classes use `PortalWeaveSSO`, hooks/options use `portalweave_sso_*`, server configuration constants use `PORTALWEAVE_SSO_*`, and WP-CLI commands use `wp portalweave-sso`. Local Docker tests mount the same `portalweave-sso` directory.
+## Quick start
 
-This is a breaking namespace replacement with no aliases or automatic conversion of earlier stored data. Existing settings, identity links, access rules and vault metadata must be deliberately transitioned before deployment. Keep an existing site behind an external maintenance/access restriction until its policies and private-media delivery have been verified. Follow [replacing an earlier installation](docs/provider-setup.md#replacing-an-earlier-installation), including provider URL and integration updates.
+1. [Download the plugin ZIP](https://github.com/RobotHanzo/PortalWeaveSSO/releases/download/v1.0.1/portalweave-sso-1.0.1.zip), upload it through **Plugins → Add New → Upload Plugin**, and activate **PortalWeave SSO**.
+2. Open **Settings → PortalWeave SSO → Identity providers → Add provider**. Follow the service's guide, register its callback URL and save your credentials. Run **Test SSO Config**, configure account mappings and test a regular user before enforcing login.
+3. Add `[sso_oauth_login]` to a page, use the **PortalWeave SSO login** widget, or sign in through the WordPress and WooCommerce login buttons.
 
-## Features
+For earlier installations, follow the [replacement guide](docs/provider-setup.md#replacing-an-earlier-installation) before upgrading.
 
-| Area | Included behavior |
-| --- | --- |
-| Providers | Multiple generic OAuth/OIDC apps; presets for Entra ID/Azure AD, Azure B2C, Cognito, Keycloak, Okta, Office 365, Salesforce, Google, Auth0, OneLogin, Discord, ClassLink and authentik; custom endpoints and claim paths |
-| Protocol | Authorization Code, S256 PKCE, opt-in legacy Password and signed OIDC Implicit flows, refresh-token exchange/rotation, HS256/384/512 and RS256/384/512 JWT validation, pinned JWKS, RP-initiated and signed back-channel logout |
-| Configuration | Scope, header/body/public-client credentials, custom state data inside random state, dynamic same-origin callbacks, user-info/group-info endpoints, administrator-only raw attribute testing |
-| Accounts | First-login registration or linked users only, verified email linking, standard/custom attribute mapping, groups and email-domain role maps, default role, explicit-match requirement, keep-existing attributes/email/roles, duplicate emails, domain rewrites, per-provider verified administrator policy |
-| Login | Allowed redirect origins/path prefixes, login/logout redirects, logout confirmation and templates, popup completion, single flow, standard-login blocking, whole-site authentication |
-| Access | Login/role/group restrictions on posts, pages, categories and attachment delivery; core archives, feeds, search, REST and oEmbed filtering; private media vault |
-| Presentation | Shortcode, widget, WooCommerce and wp-login integration; five themes, four shapes, custom icons/CSS/text, spacing/radius/size/shadow/hover controls, keyboard focus and reduced-motion support |
-| Operations | Transaction/audit report and CSV, optional IP recording, audit retention/disable control, bounded debug logs with seven-day expiry, privacy export/erasure and policy-guide text, opt-in uninstall cleanup, configuration backup/restore, support form and configurable support links, troubleshooting |
-| Administration | Site and enforced network settings scoped to the current network, developer hooks, WP-CLI, eight opt-in administrator-only WordPress abilities compatible with MCP Adapter |
-| Optional modules | Inbound SCIM Users/Groups, JWT SSO, shared subdomain handoff, temporary guest accounts, moderation, profile pictures, attribute redirects |
+## Screenshots
 
-OAuth providers vary. Presets are editable templates; a working registration and provider-supported protocol/claims are required. OIDC discovery metadata can be copied into the endpoint fields; discovery is not fetched automatically. Email verification is required by default. A pure OAuth provider without a verification claim can use existing immutable linked identities or an explicitly configured less restrictive user policy; linking and administrator SSO still require the configured verification claim. Implicit login requires a signed OIDC ID token and access-token hash; arbitrary unsigned bearer-token browser login is rejected.
+These screens were captured in disposable WordPress fixtures with fictional providers, users and sample audit records.
 
-## Media protection
+### Set up providers
 
-Protecting an attachment moves its original, registered thumbnails and backup sizes out of public uploads into a private vault. URLs are rewritten to authenticated PHP delivery. The default vault is a sibling of the WordPress directory; if this is inside the document root or is not writable, set an absolute private path in wp-config.php:
+Choose a service to open its setup guide, or enter your own OAuth/OIDC connection details.
 
-```php
-define('PORTALWEAVE_SSO_PRIVATE_MEDIA_DIR', '/srv/private/wordpress-media');
-```
+![Provider chooser with supported identity services and custom OAuth or OIDC](docs/screenshots/provider-chooser.png)
 
-The PHP worker needs read/write access. A path inside the detected document root is refused. Removing protection restores the files; restoration fails if a differing public file would be overwritten. Protecting an attachment cannot retract already-downloaded files or independently cached CDN copies. Purge existing public caches when enabling protection. Custom image optimizers, offloaded storage and regenerated sizes need deployment-specific checks; do not regenerate public derivatives of protected files. Protected delivery sends private/no-store headers. Include the vault in encrypted server backups.
+<details>
+<summary>Registration, tenant details and saved providers</summary>
 
-Disabling or deleting the plugin leaves private media in the vault. Restore files to public delivery intentionally before removal, or retain/recover the vault and attachment metadata through a server backup. WordPress plugin deactivation does not silently make private files public.
+Follow the provider-console instructions and register the displayed callback URL.
 
-## Network settings and recovery
+![Guided provider registration with callback URL and console instructions](docs/screenshots/onboarding.png)
 
-On multisite, **Network Admin → PortalWeave SSO** controls the current network. Enable network enforcement to override site settings. Each network has its own configuration; user identities, back-channel sessions and SCIM ownership are scoped to the current site. Use individual content/media editors for site-local post, category and attachment rules; network settings cannot contain site-local IDs. WordPress users/cookies remain network-global. An account privileged on another site requires explicit verified administrator SSO, and SCIM cannot mutate a global account shared by multiple sites.
+Self-hosted providers ask for the relevant instance details.
 
-To restore local login from the server:
+![authentik setup asking for its instance address](docs/screenshots/authentik-host.png)
 
-```sh
-wp portalweave-sso recover
-wp portalweave-sso recover --network
-```
+Each guide explains where to find the provider's credentials.
 
-Alternatively define `PORTALWEAVE_SSO_ALLOW_LOCAL_LOGIN` as true in wp-config.php temporarily. There is no public query-string bypass. Login restrictions do not replace WordPress REST application-password authentication. External plugins that serve content through their own endpoints need their own integration with `PortalWeaveSSO\Access::can_post()`.
+![Discord credential step with client ID and secret fields and console instructions](docs/screenshots/discord-credentials.png)
 
-Configuration backups exclude client IDs and secrets. Same-site restores retain local credentials; a clean restore leaves incomplete providers and authentication enforcement disabled until credentials are entered. Backups do not include user accounts, audit records, vault files or WordPress itself. Use a database/files backup for full recovery. Support forms send only on explicit administrator submission and require a configured recipient and working WordPress mail. Booking, forum and demo links point to administrator-configured services; no external support service is bundled.
+Return to the provider list to configure an existing connection.
 
-## Privacy and removal
+![Identity provider list with sample saved connections](docs/screenshots/providers.png)
 
-Authentication auditing starts enabled with a 90-day retention setting; IP recording and diagnostic logging are off by default. Administrators can disable new audit collection, choose retention, and use WordPress personal-data export/erasure tools. Review the suggested policy text under **Settings → Privacy** and adapt it to the actual deployment. Provider requests, optional remote images, provisioning, support mail and authenticated MCP clients have different recipients; see [external-service disclosures](docs/external-services.md).
+</details>
 
-Deactivation retains data. Uninstall retains it unless **Delete plugin data when uninstalling** was explicitly enabled. Cleanup preserves WordPress accounts/content, public profile/custom values, private vault files and vault recovery metadata. Personal-data erasure has its own field-removal behavior and retains security blocks. Read the [privacy and retention guide](docs/privacy.md) before removal.
+### Add login buttons
+
+Use a shortcode or widget to place provider buttons on a member page.
+
+![Sample member portal displaying provider sign-in buttons](docs/screenshots/member-portal.png)
+
+<details>
+<summary>WordPress login and appearance settings</summary>
+
+Provider buttons also appear on the WordPress login form.
+
+<img src="docs/screenshots/wordpress-login.png" alt="WordPress login form with provider sign-in buttons" width="400">
+
+Adjust button themes, shapes, labels and spacing in Appearance.
+
+![Login button themes, shapes, labels and spacing settings](docs/screenshots/appearance.png)
+
+Choose a default provider, popup behavior and post-login destinations.
+
+![Sign-in and logout behavior settings](docs/screenshots/login-settings.png)
+
+</details>
+
+### Control accounts and access
+
+Configure site-wide sign-in requirements, content rules and protected attachments.
+
+![Access policy settings for site restrictions and private media](docs/screenshots/access-policies.png)
+
+<details>
+<summary>Attribute mapping and account policies</summary>
+
+Map profile fields and provider groups to WordPress roles.
+
+![Provider attribute and group mapping settings](docs/screenshots/attribute-mapping.png)
+
+Choose registration, email-linking and account-verification policies for each provider.
+
+![Per-provider account registration, linking and verification policies](docs/screenshots/account-policy.png)
+
+</details>
+
+### Choose optional integrations
+
+Enable provisioning, shared sign-in, guest accounts, moderation and other modules as needed.
+
+![Optional integration and module settings](docs/screenshots/integrations.png)
+
+<details>
+<summary>Activity, backups and network administration</summary>
+
+Review login activity and choose audit collection and retention settings.
+
+![Activity report containing fictional sample login events](docs/screenshots/activity.png)
+
+Choose what to record and how long to retain it.
+
+![Audit collection, optional IP recording and retention controls](docs/screenshots/audit-privacy.png)
+
+Download and restore credential-free configuration backups.
+
+![Configuration backup, restore and troubleshooting controls](docs/screenshots/backup-support.png)
+
+On multisite, manage the current network's configuration and enforcement.
+
+![WordPress multisite network SSO policy settings](docs/screenshots/network-policy.png)
+
+</details>
 
 ## Documentation
 
-- [Provider setup and mapping](docs/provider-setup.md)
-- [SCIM, JWT, subdomain handoff, AI/MCP and CLI](docs/integrations.md)
-- [External services, transmitted data and provider policies](docs/external-services.md)
-- [Local privacy, cookies, retention and removal](docs/privacy.md)
-- [Architecture and developer hooks](docs/architecture.md)
-- [Administrator screen design and safe saving](docs/admin-design.md)
-- [Verification and deployment checklist](docs/verification.md)
-- [GitHub CI and test reports](docs/ci.md)
-- [WordPress.org release automation](docs/releasing.md)
-- [WordPress.org review findings and evidence](docs/directory-review.md)
+| Find out more | Guide |
+| --- | --- |
+| Provider setup, mapping and access policies | [Administrator guide](docs/provider-setup.md) |
+| Provisioning, optional modules and automation | [Integrations guide](docs/integrations.md) |
+| Data handling, retention and removal | [Privacy](docs/privacy.md), [external services](docs/external-services.md) |
+| Development and contributions | [Repository guide](AGENTS.md), [architecture and hooks](docs/architecture.md) |
+| Testing, packaging and publication | [Verification](docs/verification.md), [CI](docs/ci.md), [releasing](docs/releasing.md) |
 
-The installable ZIP contains the provider, integrations, external-services and privacy guides, plus translation files. Architecture, verification, CI, release and directory-review documents remain in this repository for maintainers.
-
-MCP clients require WordPress 6.9+ and the official [WordPress MCP Adapter](https://github.com/WordPress/mcp-adapter). The plugin registers eight abilities; the adapter supplies authenticated MCP transport. Abilities and all optional modules are off by default.
-
-## Development
-
-The disposable local environment binds only to loopback. Verification uses Bash, Docker Compose, curl and Node.js 20+. Building the ZIP also requires `zip` and `unzip`. Repository helpers use `.sh` entrypoints, with shared Node.js validation/reporting engines and a PHP lint engine; there are no npm dependencies. CI uses the Bash builder. `scripts/build.ps1` remains an optional Windows entrypoint.
-
-```sh
-docker compose -f compose.test.yml up -d wordpress
-docker compose -f compose.test.yml run --rm cli wp core install --url=http://localhost:8098 --title='PortalWeave SSO Integration' --admin_user=portalweave_sso_test_admin --admin_password=local-test-password-only --admin_email=admin@example.org --skip-email
-docker compose -f compose.test.yml run --rm cli wp plugin activate portalweave-sso
-docker compose -f compose.test.yml exec -T wordpress php /var/www/html/wp-content/plugins/portalweave-sso/tests/run.php
-docker compose -f compose.test.yml exec -T wordpress bash /var/www/html/wp-content/plugins/portalweave-sso/tests/setup-tls.sh
-docker compose -f compose.test.yml exec -T wordpress php /var/www/html/wp-content/plugins/portalweave-sso/tests/setup-e2e.php
-node tests/e2e.mjs
-```
-
-The TLS fixture creates a short-lived self-signed certificate and installs a guarded test identity provider only in the disposable environment. Test fixtures and credentials are excluded from the distribution ZIP. Do not install test fixtures on a real site.
-
-License: GPL-2.0-or-later.
+License: [GPL-2.0-or-later](LICENSE).
