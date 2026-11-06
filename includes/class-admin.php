@@ -106,6 +106,12 @@ final class Admin {
                 }
             }
         }
+        if ($screen === 'reports') {
+            // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Only allowlisted presentation context is retained; callers verify the action nonce.
+            $args['activity_view'] = self::activity_view($_POST, 'portalweave_sso_activity_view', 'audit');
+            // phpcs:ignore WordPress.Security.NonceVerification.Missing -- The period is a bounded navigation value, never a settings mutation.
+            $args['activity_days'] = self::activity_days($_POST, 'portalweave_sso_activity_days');
+        }
         $url = self::screen_url($screen ?: 'overview', $network, $args);
         return $notice === '' ? $url : add_query_arg('portalweave_sso_notice', $notice, $url);
     }
@@ -144,6 +150,16 @@ final class Admin {
         return isset(self::provider_sections()[$section]) ? $section : 'connection';
     }
 
+    private static function activity_view(array $values, string $key, string $default = 'overview'): string {
+        $view = self::request_key($values, $key);
+        return in_array($view, ['overview', 'audit'], true) ? $view : $default;
+    }
+
+    private static function activity_days(array $values, string $key): int {
+        $days = self::request_key($values, $key);
+        return in_array($days, ['7', '30', '90'], true) ? (int) $days : 30;
+    }
+
     private static function screen_url(string $screen, bool $network, array $args = []): string {
         $screen = isset(self::screens()[$screen]) ? $screen : 'overview';
         $base = $network ? network_admin_url('admin.php') : admin_url('options-general.php');
@@ -172,7 +188,7 @@ final class Admin {
         if (!$input) {
             self::fail(__('No settings were submitted. Check the server POST size limit.', 'portalweave-sso'), $network);
         }
-        foreach (['portalweave_sso_screen', 'portalweave_sso_provider', 'portalweave_sso_creating', 'portalweave_sso_provider_section'] as $key) {
+        foreach (['portalweave_sso_screen', 'portalweave_sso_provider', 'portalweave_sso_creating', 'portalweave_sso_provider_section', 'portalweave_sso_activity_view', 'portalweave_sso_activity_days'] as $key) {
             if (isset($_POST[$key]) && !is_string($_POST[$key])) {
                 self::fail(__('The settings screen is invalid. Reload the page and try again.', 'portalweave-sso'), $network);
             }
@@ -476,7 +492,7 @@ final class Admin {
             'access' => [__('Access policies', 'portalweave-sso'), __('Decide who can visit your site and protect specific content or media.', 'portalweave-sso')],
             'appearance' => [__('Login appearance', 'portalweave-sso'), __('Style your login buttons and the messages people see before and after sign-in.', 'portalweave-sso')],
             'modules' => [__('Integrations', 'portalweave-sso'), __('Enable the optional features your site needs. Keep unused integrations off.', 'portalweave-sso')],
-            'reports' => [__('Sign-in activity', 'portalweave-sso'), __('Review recent sign-ins and choose which audit information to keep.', 'portalweave-sso')],
+            'reports' => [__('SSO activity', 'portalweave-sso'), __('View activity trends or inspect recorded audit events.', 'portalweave-sso')],
             'tools' => [__('Tools & support', 'portalweave-sso'), __('Back up configuration, troubleshoot sign-in, and contact your support team.', 'portalweave-sso')],
         ];
         [$title, $description] = $titles[$screen];
@@ -499,10 +515,25 @@ final class Admin {
             $setup_provider = self::request_key($_GET, 'setup_provider');
             ProviderWizard::render($setup_provider, $network, $enforced, self::screen_url('providers', $network, ['new_provider' => '1']));
         } else {
+            $activity_view = '';
+            $activity_days = 30;
             if ($screen === 'reports') {
-                self::reports($settings, $network);
+                // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation is restricted to the two Activity views.
+                $activity_view = self::activity_view($_GET, 'activity_view');
+                // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- A read-only chart period is restricted to 7, 30 or 90 UTC days.
+                $activity_days = self::activity_days($_GET, 'activity_days');
+                self::activity_navigation($activity_view, $activity_days, $network);
+                if ($activity_view === 'overview') {
+                    self::activity_overview($activity_days, $network);
+                } else {
+                    self::reports($settings, $network);
+                }
             }
+            if ($screen !== 'reports' || $activity_view === 'audit') {
             echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" class="portalweave-sso-settings-form" data-pending-label="' . esc_attr__('Saving…', 'portalweave-sso') . '" data-pending-message="' . esc_attr__('Saving your changes…', 'portalweave-sso') . '"><input type="hidden" name="action" value="portalweave_sso_save"><input type="hidden" name="portalweave_sso_screen" value="' . esc_attr($screen) . '">';
+            if ($screen === 'reports') {
+                echo '<input type="hidden" name="portalweave_sso_activity_view" value="audit"><input type="hidden" name="portalweave_sso_activity_days" value="' . esc_attr((string) $activity_days) . '">';
+            }
             wp_nonce_field('portalweave_sso_save');
             self::hidden_scope($network);
             if ($editing) {
@@ -522,6 +553,7 @@ final class Admin {
             echo '</fieldset><input type="hidden" name="portalweave_sso_complete" value="1"></form>';
             if ($screen === 'tools') {
                 self::tools($settings, $network, $enforced);
+            }
             }
         }
         echo '</div></div></div>';
@@ -800,6 +832,24 @@ final class Admin {
 
     private static function json(string $name, array $value, string $label, string $help): void {
         self::field($name, wp_json_encode($value ?: new \stdClass(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), $label, 'textarea', $help);
+    }
+
+    private static function activity_navigation(string $view, int $days, bool $network): void {
+        echo '<nav class="portalweave-sso-activity-tabs" aria-label="' . esc_attr__('Activity views', 'portalweave-sso') . '">';
+        foreach (['overview' => __('Overview', 'portalweave-sso'), 'audit' => __('Audit logs', 'portalweave-sso')] as $key => $label) {
+            echo '<a href="' . esc_url(self::screen_url('reports', $network, ['activity_view' => $key, 'activity_days' => $days])) . '" data-activity-view="' . esc_attr($key) . '"' . ($key === $view ? ' class="is-active" aria-current="true"' : '') . '>' . esc_html($label) . '</a>';
+        }
+        echo '</nav>';
+    }
+
+    private static function activity_overview(int $days, bool $network): void {
+        $period_urls = [];
+        foreach ([7, 30, 90] as $period) {
+            $period_urls[$period] = self::screen_url('reports', $network, ['activity_view' => 'overview', 'activity_days' => $period]);
+        }
+        // Audit history always belongs to the current site, including in Network Admin.
+        $provider_names = array_map(static fn($app) => (string) ($app['name'] ?? ''), Config::apps());
+        ActivityView::render(Audit::summary($days), $provider_names, $period_urls, $days, (bool) Config::get('audit_enabled', true));
     }
 
     private static function reports(array $settings, bool $network): void {

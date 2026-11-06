@@ -28,6 +28,20 @@ function portalweave_sso_admin_form_submit(array $settings, array $context): str
     return $destination;
 }
 
+function portalweave_sso_admin_activity_page(array $args = []): string {
+    $old_get = $_GET;
+    $buffer_level = ob_get_level();
+    try {
+        $_GET = array_merge(['page' => 'portalweave-sso', 'tab' => 'reports'], $args);
+        ob_start();
+        \PortalWeaveSSO\Admin::page();
+        return ob_get_clean();
+    } finally {
+        while (ob_get_level() > $buffer_level) { ob_end_clean(); }
+        $_GET = $old_get;
+    }
+}
+
 portalweave_sso_test('Admin form saves one screen without changing hidden providers or login policy', function () {
     wp_set_current_user(get_user_by('login', 'portalweave_sso_test_admin')->ID);
     $app = portalweave_sso_app();
@@ -53,6 +67,124 @@ portalweave_sso_test('Admin form rejects cross-screen fields and structured navi
         portalweave_sso_assert(($query['portalweave_sso_notice'] ?? '') === 'error', 'A rejected scope did not report an error');
     }
     delete_transient('portalweave_sso_admin_error_' . get_current_user_id());
+});
+
+portalweave_sso_test('Activity routes expose aggregate-only overview and a separate complete audit screen', function () {
+    global $wpdb;
+    $admin = get_user_by('login', 'portalweave_sso_test_admin');
+    wp_set_current_user($admin->ID);
+    portalweave_sso_assert(\PortalWeaveSSO\Config::save(['audit_enabled' => true, 'audit_ip' => true]) === true, 'Unable to enable Activity privacy fixture');
+    $marker = 'activity-ui-' . bin2hex(random_bytes(6));
+    $navigation = 'https://example.org/private-' . $marker;
+    $previous_ip = $_SERVER['REMOTE_ADDR'] ?? null;
+    try {
+        $_SERVER['REMOTE_ADDR'] = '192.0.2.83';
+        \PortalWeaveSSO\Audit::record('success', $marker, $admin, 'activity_private_fixture', $navigation);
+        foreach ([
+            [[], 'overview', '30'],
+            [['activity_view' => 'overview', 'activity_days' => '7'], 'overview', '7'],
+            [['activity_view' => 'audit', 'activity_days' => '90'], 'audit', '90'],
+            [['activity_view' => 'audit', 'activity_days' => '7'], 'audit', '7'],
+            [['activity_view' => 'unknown-view', 'activity_days' => '3650'], 'overview', '30'],
+            [['activity_view' => ['audit'], 'activity_days' => ['90']], 'overview', '30'],
+            [['activity_view' => 'audit', 'activity_days' => '7trailing'], 'audit', '30'],
+        ] as [$args, $view, $days]) {
+            $html = portalweave_sso_admin_activity_page($args);
+            portalweave_sso_assert(str_contains($html, 'portalweave-sso-activity-tabs') && substr_count($html, 'aria-current="page"') === 1, 'Activity lost its view links or duplicated the active main navigation');
+            foreach (['overview', 'audit'] as $destination) {
+                portalweave_sso_assert(preg_match('/<a\b[^>]*\bdata-activity-view="' . $destination . '"[^>]*>/', $html, $link) === 1, 'Activity view has no ordinary link: ' . $destination);
+                portalweave_sso_assert(str_contains($link[0], 'aria-current="true"') === ($destination === $view), 'Activity link has the wrong active state');
+                portalweave_sso_assert(preg_match('/\bhref="([^"]+)"/', $link[0], $href) === 1, 'Activity link has no destination');
+                parse_str((string) wp_parse_url(html_entity_decode($href[1], ENT_QUOTES, 'UTF-8'), PHP_URL_QUERY), $query);
+                portalweave_sso_assert(($query['tab'] ?? '') === 'reports' && ($query['activity_view'] ?? 'overview') === $destination
+                    && (string) ($query['activity_days'] ?? '30') === $days, 'Activity link lost the selected view or bounded date range');
+            }
+            if ($view === 'overview') {
+                portalweave_sso_assert(str_contains($html, 'data-activity-overview') && !str_contains($html, 'id="portalweave-sso-reports"')
+                    && !str_contains($html, 'Export audit CSV') && !str_contains($html, 'portalweave-sso-settings-form'), 'Overview rendered raw audit controls instead of aggregate-only graphs');
+                foreach ([$admin->user_login, $admin->user_email, '192.0.2.83', $navigation] as $personal) {
+                    portalweave_sso_assert(!str_contains($html, $personal), 'Activity overview rendered a personal audit value');
+                }
+            } else {
+                portalweave_sso_assert(!str_contains($html, 'data-activity-overview') && str_contains($html, 'id="portalweave-sso-reports"')
+                    && str_contains($html, 'Export audit CSV') && str_contains($html, 'name="settings[audit_enabled]"')
+                    && str_contains($html, 'name="portalweave_sso_complete" value="1"'), 'Audit view lost its existing table, export or guarded preferences form');
+                portalweave_sso_assert(str_contains($html, 'name="portalweave_sso_activity_view" value="audit"')
+                    && str_contains($html, 'name="portalweave_sso_activity_days" value="' . $days . '"'), 'Audit settings form has no bounded return context');
+                foreach ([$admin->user_login, $admin->user_email, '192.0.2.83', $navigation] as $personal) {
+                    portalweave_sso_assert(str_contains($html, esc_html($personal)), 'Audit view lost a current-site transaction field');
+                }
+            }
+        }
+    } finally {
+        $wpdb->delete($wpdb->prefix . 'portalweave_sso_audit', ['app' => $marker], ['%s']);
+        if ($previous_ip === null) { unset($_SERVER['REMOTE_ADDR']); }
+        else { $_SERVER['REMOTE_ADDR'] = $previous_ip; }
+    }
+});
+
+portalweave_sso_test('Activity preferences retain view and date range without changing hidden providers or policies', function () {
+    wp_set_current_user(get_user_by('login', 'portalweave_sso_test_admin')->ID);
+    portalweave_sso_assert(\PortalWeaveSSO\Config::save(['apps' => ['fixture' => portalweave_sso_app()], 'default_app' => 'fixture', 'popup' => true,
+        'audit_enabled' => true, 'audit_ip' => true, 'debug' => true]) === true, 'Unable to save Activity preferences fixture');
+    $before = get_option('portalweave_sso_settings');
+    foreach (['7', '30', '90'] as $days) {
+        $destination = portalweave_sso_admin_form_submit(['audit_enabled' => '0', 'audit_ip' => '0', 'debug' => '0', 'audit_retention_days' => '37'],
+            ['portalweave_sso_screen' => 'reports', 'portalweave_sso_activity_view' => 'audit', 'portalweave_sso_activity_days' => $days]);
+        parse_str((string) wp_parse_url($destination, PHP_URL_QUERY), $query);
+        portalweave_sso_assert(($query['tab'] ?? '') === 'reports' && ($query['activity_view'] ?? '') === 'audit'
+            && (string) ($query['activity_days'] ?? '30') === $days && ($query['portalweave_sso_notice'] ?? '') === 'saved', 'Activity save lost its view or date range');
+        $after = get_option('portalweave_sso_settings');
+        portalweave_sso_assert(!$after['audit_enabled'] && !$after['audit_ip'] && !$after['debug'] && $after['audit_retention_days'] === 37, 'Audit preferences did not preserve explicit false controls');
+        portalweave_sso_assert($after['apps'] === $before['apps'] && $after['default_app'] === 'fixture' && $after['popup'] === true, 'Activity save changed a hidden provider, ciphertext or login policy');
+        portalweave_sso_assert(!isset($after['activity_view']) && !isset($after['activity_days']), 'Activity navigation entered stored configuration');
+    }
+    $before_error = get_option('portalweave_sso_settings');
+    try {
+        $destination = portalweave_sso_admin_form_submit(['popup' => '0'],
+            ['portalweave_sso_screen' => 'reports', 'portalweave_sso_activity_view' => 'audit', 'portalweave_sso_activity_days' => '90']);
+        parse_str((string) wp_parse_url($destination, PHP_URL_QUERY), $query);
+        portalweave_sso_assert(($query['activity_view'] ?? '') === 'audit' && (string) ($query['activity_days'] ?? '') === '90'
+            && ($query['portalweave_sso_notice'] ?? '') === 'error', 'Rejected Activity save lost its selected audit view');
+        portalweave_sso_assert(get_option('portalweave_sso_settings') === $before_error, 'Rejected Activity scope changed settings');
+    } finally { delete_transient('portalweave_sso_admin_error_' . get_current_user_id()); }
+});
+
+portalweave_sso_test('Activity POST navigation rejects structured values and bounds unknown scalar destinations', function () {
+    wp_set_current_user(get_user_by('login', 'portalweave_sso_test_admin')->ID);
+    $context = ['portalweave_sso_screen' => 'reports', 'portalweave_sso_activity_view' => 'audit', 'portalweave_sso_activity_days' => '90'];
+    $before = get_option('portalweave_sso_settings');
+    try {
+        foreach (['portalweave_sso_activity_view' => ['audit'], 'portalweave_sso_activity_days' => ['90']] as $key => $value) {
+            $destination = portalweave_sso_admin_form_submit(['audit_retention_days' => '44'], array_replace($context, [$key => $value]));
+            parse_str((string) wp_parse_url($destination, PHP_URL_QUERY), $query);
+            portalweave_sso_assert(($query['portalweave_sso_notice'] ?? '') === 'error' && get_option('portalweave_sso_settings') === $before, 'Structured Activity navigation was accepted before mutation');
+            portalweave_sso_assert(is_string($query['activity_view'] ?? '') && is_string($query['activity_days'] ?? ''), 'Structured Activity context entered the redirect');
+        }
+        foreach ([['audit_retention_days' => '44'], ['audit_enabled' => ['nested']]] as $index => $settings) {
+            $destination = portalweave_sso_admin_form_submit($settings, array_replace($context,
+                ['portalweave_sso_activity_view' => 'unknown-view', 'portalweave_sso_activity_days' => '7trailing']));
+            parse_str((string) wp_parse_url($destination, PHP_URL_QUERY), $query);
+            portalweave_sso_assert(($query['activity_view'] ?? '') === 'audit' && (string) ($query['activity_days'] ?? '30') === '30'
+                && ($query['portalweave_sso_notice'] ?? '') === ($index === 0 ? 'saved' : 'error'), 'Unknown Activity form navigation did not fall back to the audit editor and 30 days');
+            portalweave_sso_assert(!str_contains($destination, 'unknown-view') && !str_contains($destination, '7trailing'), 'Unknown Activity navigation was reflected into a redirect');
+        }
+        portalweave_sso_assert(\PortalWeaveSSO\Config::get('audit_retention_days') === 44, 'Invalid Activity submission replaced the preceding valid preference');
+    } finally { delete_transient('portalweave_sso_admin_error_' . get_current_user_id()); }
+});
+
+portalweave_sso_test('Activity overview and audit records require administrator access', function () {
+    $viewer = wp_insert_user(['user_login' => 'portalweave_sso_activity_' . bin2hex(random_bytes(5)), 'user_pass' => wp_generate_password(40),
+        'user_email' => 'activity-' . bin2hex(random_bytes(5)) . '@example.org', 'role' => 'subscriber']);
+    portalweave_sso_assert(!is_wp_error($viewer), 'Unable to create the unprivileged Activity viewer');
+    try {
+        foreach ([0, $viewer] as $user_id) {
+            wp_set_current_user($user_id);
+            foreach (['overview', 'audit'] as $view) {
+                portalweave_sso_assert(portalweave_sso_admin_activity_page(['activity_view' => $view]) === '', 'Activity exposed information to an unauthorized visitor');
+            }
+        }
+    } finally { wp_delete_user($viewer); }
 });
 
 portalweave_sso_test('Provider sections round trip through real saves without narrowing the submitted provider', function () {

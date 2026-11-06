@@ -28,7 +28,7 @@ if (!function_exists('openssl_encrypt') || !function_exists('openssl_verify')) {
     return;
 }
 
-foreach (['config', 'audit', 'http', 'jwt', 'accounts', 'auth', 'access', 'privacy', 'cleanup', 'display', 'provider-setup', 'provider-wizard', 'admin-settings', 'admin', 'extensions', 'abilities', 'cli'] as $portalweave_sso_class) {
+foreach (['config', 'audit', 'http', 'jwt', 'accounts', 'auth', 'access', 'privacy', 'cleanup', 'display', 'provider-setup', 'provider-wizard', 'admin-settings', 'activity-view', 'admin', 'extensions', 'abilities', 'cli'] as $portalweave_sso_class) {
     require_once PORTALWEAVE_SSO_DIR . 'includes/class-' . $portalweave_sso_class . '.php';
 }
 unset($portalweave_sso_class);
