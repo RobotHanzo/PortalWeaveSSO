@@ -50,7 +50,8 @@ final class Config
             'force_auth' => false, 'restrict_site' => false, 'disable_wp_login' => false,
             'single_flow' => false, 'popup' => false, 'login_redirect' => '', 'logout_redirect' => '',
             'redirect_allowlist' => [], 'logout_confirmation' => true, 'allowed_domains' => [], 'blocked_domains' => [],
-            'debug' => false, 'audit_retention_days' => 90, 'abilities_enabled' => false,
+            'debug' => false, 'audit_enabled' => true, 'audit_ip' => false,
+            'audit_retention_days' => 90, 'abilities_enabled' => false, 'delete_data_on_uninstall' => false,
             'button' => ['theme' => 'default', 'shape' => 'round-edge', 'text' => 'Sign in with {app}',
                 'above_text' => '', 'logout_message' => 'Signed in as ##user##. ##Sign Out##', 'logout_link' => true,
                 'size' => 16, 'radius' => 8, 'spacing' => 12, 'shadow' => true, 'transform' => true,
@@ -157,7 +158,7 @@ final class Config
                 return new \WP_Error('wpsso_setting_type', 'URL, identifier and credential settings must be strings.');
             }
         }
-        $settings = self::bools($settings, ['network_enforced', 'force_auth', 'restrict_site', 'disable_wp_login', 'single_flow', 'popup', 'logout_confirmation', 'debug', 'abilities_enabled']);
+        $settings = self::bools($settings, ['network_enforced', 'force_auth', 'restrict_site', 'disable_wp_login', 'single_flow', 'popup', 'logout_confirmation', 'debug', 'audit_enabled', 'audit_ip', 'abilities_enabled', 'delete_data_on_uninstall']);
         foreach (['redirect_allowlist', 'shared_sites'] as $key) {
             $settings[$key] = self::list($settings[$key]);
             foreach ($settings[$key] as $url) {
@@ -423,7 +424,7 @@ final class Config
     {
         $parts = wp_parse_url($url);
         return is_array($parts) && ($parts['scheme'] ?? '') === 'https' && !empty($parts['host'])
-            && empty($parts['user']) && empty($parts['pass']) && !preg_match('/[\x00-\x20\\\\]/', $url);
+            && empty($parts['user']) && empty($parts['pass']) && !preg_match('/[\x00-\x20\\\\|]/', $url);
     }
 
     public static function domain(string $domain): bool
@@ -507,7 +508,8 @@ final class Redirect
 
     public static function current(): string
     {
-        $uri = isset($_SERVER['REQUEST_URI']) ? wp_unslash($_SERVER['REQUEST_URI']) : '/';
+        // The URI is never used directly: validate() enforces origin, control-character and URL rules below.
+        $uri = isset($_SERVER['REQUEST_URI']) && is_string($_SERVER['REQUEST_URI']) ? wp_unslash($_SERVER['REQUEST_URI']) : '/'; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Strict URL validation follows; text sanitizers alter valid URL encoding.
         $url = self::validate($uri);
         return remove_query_arg(['code', 'state', 'id_token', 'access_token', 'refresh_token', 'wpsso_action', '_wpnonce'], $url);
     }

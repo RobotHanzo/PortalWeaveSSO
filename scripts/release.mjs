@@ -4,7 +4,9 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const checkout = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const production = ['wordpress-sso.php', 'uninstall.php', 'README.md', 'readme.txt', 'LICENSE', 'includes', 'assets', 'docs'];
+const production = ['portalweave-sso.php', 'uninstall.php', 'readme.txt', 'LICENSE', 'includes', 'assets', 'languages',
+  'docs/provider-setup.md', 'docs/integrations.md', 'docs/external-services.md', 'docs/privacy.md'];
+const sourceRoots = new Set(production.map(relative => relative.split('/')[0].toLowerCase()));
 const stableVersion = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/;
 const runtimeVersion = /^\d+\.\d+(?:\.\d+)?$/;
 const packageSlug = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
@@ -16,38 +18,59 @@ function field(text, label, source) {
   return values[0][1].trim();
 }
 
-function regularFile(file) {
-  const info = lstatSync(file);
-  if (info.isSymbolicLink()) throw new Error(`Symbolic links cannot be included in a release: ${file}`);
-  if (!info.isFile()) throw new Error(`Release file is not a regular file: ${file}`);
-  return readFileSync(file, 'utf8');
+function sourceInfo(root, relative) {
+  let source = root;
+  let info;
+  for (const part of relative.split('/')) {
+    source = path.join(source, part);
+    info = lstatSync(source);
+    if (info.isSymbolicLink()) throw new Error(`Symbolic links cannot be included in a release: ${relative}`);
+  }
+  return { source, info };
 }
 
-export function validateRelease({ root = checkout, tag } = {}) {
-  const source = regularFile(path.join(root, 'wordpress-sso.php'));
+function regularFile(root, relative) {
+  const { source, info } = sourceInfo(root, relative);
+  if (!info.isFile()) throw new Error(`Release file is not a regular file: ${relative}`);
+  return readFileSync(source, 'utf8');
+}
+
+export function validateRelease({ root = checkout, tag, slug: expectedSlug } = {}) {
+  const source = regularFile(root, 'portalweave-sso.php');
   const header = source.match(/^\s*<\?php\s*\/\*\*([\s\S]*?)\*\//)?.[1];
-  if (!header) throw new Error('Plugin header is missing from wordpress-sso.php.');
-  const readme = regularFile(path.join(root, 'readme.txt'));
-  const version = field(header, 'Version', 'wordpress-sso.php');
+  if (!header) throw new Error('Plugin header is missing from portalweave-sso.php.');
+  const readme = regularFile(root, 'readme.txt').replaceAll('\r\n', '\n');
+  const title = field(header, 'Plugin Name', 'portalweave-sso.php');
+  const headings = [...readme.matchAll(/^[ \t]*===[ \t]+([^\r\n]+?)[ \t]+===[ \t]*$/gm)];
+  if (headings.length !== 1 || headings[0][1].trim() !== title) throw new Error('The readme.txt title must match the Plugin Name header exactly.');
+  const slug = field(header, 'Text Domain', 'portalweave-sso.php');
+  if (slug.length > 100 || !packageSlug.test(slug)) throw new Error('The Text Domain must be a lowercase plugin slug with words/digits separated by single dashes.');
+  if (production[0] !== `${slug}.php`) throw new Error('The main plugin filename must match the declared text domain and directory slug.');
+  if (expectedSlug !== undefined && expectedSlug !== slug) throw new Error(`The package slug must match the plugin Text Domain: ${slug}.`);
+  if (field(header, 'Domain Path', 'portalweave-sso.php') !== '/languages') throw new Error('The plugin Domain Path must be /languages.');
+  const template = regularFile(root, `languages/${slug}.pot`);
+  const domains = [...template.matchAll(/^"X-Domain: ([^"\r\n]+)\\n"\r?$/gm)];
+  if (domains.length !== 1 || domains[0][1] !== slug) throw new Error('The translation POT template must declare the plugin text domain exactly once.');
+  const version = field(header, 'Version', 'portalweave-sso.php');
   if (!stableVersion.test(version)) throw new Error('Plugin version must be a stable X.Y.Z number without leading zeroes.');
-  const constants = [...source.matchAll(/\bdefine\s*\(\s*(['"])WPSSO_VERSION\1\s*,\s*(['"])([^'"]+)\2\s*\)\s*;/g)];
-  if (constants.length !== 1 || constants[0][3] !== version) throw new Error('WPSSO_VERSION must match the plugin header version exactly.');
+  const constants = [...source.matchAll(/\bdefine\s*\(\s*(['"])PORTALWEAVE_SSO_VERSION\1\s*,\s*(['"])([^'"]+)\2\s*\)\s*;/g)];
+  if (constants.length !== 1 || constants[0][3] !== version) throw new Error('PORTALWEAVE_SSO_VERSION must match the plugin header version exactly.');
   if (field(readme, 'Stable tag', 'readme.txt') !== version) throw new Error('readme.txt Stable tag must match the plugin version, not trunk.');
   if (tag !== undefined && tag !== `v${version}`) throw new Error(`Git tag must be v${version} for this release.`);
-  const php = field(header, 'Requires PHP', 'wordpress-sso.php');
-  const wordpress = field(header, 'Requires at least', 'wordpress-sso.php');
+  const php = field(header, 'Requires PHP', 'portalweave-sso.php');
+  const wordpress = field(header, 'Requires at least', 'portalweave-sso.php');
   for (const [label, value] of [['Requires PHP', php], ['Requires at least', wordpress]]) {
     if (!runtimeVersion.test(value) || field(readme, label, 'readme.txt') !== value) throw new Error(`Minimum runtime ${label} must match between plugin and readme headers.`);
   }
-  if (!/^GPL(?:-?v?2(?:\.0)?)(?:-or-later|\s+or\s+later)?$/i.test(field(header, 'License', 'wordpress-sso.php'))
+  if (!/^GPL(?:-?v?2(?:\.0)?)(?:-or-later|\s+or\s+later)?$/i.test(field(header, 'License', 'portalweave-sso.php'))
     || !/^GPL(?:-?v?2(?:\.0)?)(?:-or-later|\s+or\s+later)?$/i.test(field(readme, 'License', 'readme.txt'))
-    || !/GNU GENERAL PUBLIC LICENSE/.test(regularFile(path.join(root, 'LICENSE')))) {
+    || !/GNU GENERAL PUBLIC LICENSE/.test(regularFile(root, 'LICENSE'))) {
     throw new Error('The GPL license declarations and distributed LICENSE must be present.');
   }
   if (!new RegExp(`^=[ \\t]+${version.replaceAll('.', '\\.')}[ \\t]+=[ \\t]*$`, 'm').test(readme.replaceAll('\r\n', '\n'))) {
     throw new Error(`readme.txt must document version ${version} in its changelog.`);
   }
-  return { version, php, wordpress, slug: 'wordpress-sso' };
+  return { version, php, wordpress, slug };
 }
 
 function forbidden(relative) {
@@ -71,9 +94,7 @@ function collect(directory, prefix = '') {
 function productionFiles(root) {
   const files = [];
   for (const relative of production) {
-    const source = path.join(root, relative);
-    const info = lstatSync(source);
-    if (info.isSymbolicLink()) throw new Error(`Symbolic links cannot be included in a release: ${relative}`);
+    const { source, info } = sourceInfo(root, relative);
     if (info.isFile()) files.push(relative);
     else if (info.isDirectory()) files.push(...collect(source, relative));
     else throw new Error(`Unsupported production source: ${relative}`);
@@ -88,7 +109,7 @@ function destination(root, output) {
   const relative = path.relative(base, target);
   const first = relative.split(path.sep)[0];
   if (!relative || relative.startsWith(`..${path.sep}`) || relative === '..' || path.isAbsolute(relative)) throw new Error('Staging output must be a descendant of the checkout, never outside it.');
-  if (production.includes(first) || ['.git', '.github', 'tests', 'scripts', 'node_modules', 'vendor'].includes(first)) throw new Error('Staging destination cannot be inside production source or repository metadata.');
+  if (sourceRoots.has(first.toLowerCase()) || ['.git', '.github', 'tests', 'scripts', 'node_modules', 'vendor'].includes(first.toLowerCase())) throw new Error('Staging destination cannot be inside production source or repository metadata.');
   let current = base;
   for (const part of relative.split(path.sep)) {
     current = path.join(current, part);
@@ -105,9 +126,8 @@ function digest(file) {
   return createHash('sha256').update(readFileSync(file)).digest('hex');
 }
 
-export function stageRelease({ root = checkout, output, slug = 'wordpress-sso', tag } = {}) {
-  if (typeof slug !== 'string' || slug.length > 100 || !packageSlug.test(slug)) throw new Error('Plugin slug must contain lowercase words/digits separated by single dashes.');
-  const metadata = validateRelease({ root, tag });
+export function stageRelease({ root = checkout, output, slug, tag } = {}) {
+  const metadata = validateRelease({ root, tag, slug });
   const target = destination(root, output);
   if (existsSync(target) && readdirSync(target).length) throw new Error('Staging output already exists and must be empty; existing contents will never be removed.');
   // Preflight the complete source before creating a package that could look valid.
@@ -118,11 +138,11 @@ export function stageRelease({ root = checkout, output, slug = 'wordpress-sso', 
     mkdirSync(path.dirname(copy), { recursive: true });
     copyFileSync(path.join(root, relative), copy);
   }
-  return { ...metadata, slug, output: target, files: files.map(file => ({ path: file, sha256: digest(path.join(target, file)) })) };
+  return { ...metadata, output: target, files: files.map(file => ({ path: file, sha256: digest(path.join(target, file)) })) };
 }
 
-export function verifyStage({ root = checkout, output, tag } = {}) {
-  const metadata = validateRelease({ root, tag });
+export function verifyStage({ root = checkout, output, tag, slug } = {}) {
+  const metadata = validateRelease({ root, tag, slug });
   const target = destination(root, output);
   const expected = productionFiles(root);
   const actual = collect(target).sort();
@@ -146,7 +166,7 @@ function options(args) {
 function main(args) {
   const [command, ...rest] = args;
   const flags = options(rest);
-  const shared = { tag: flags['--tag'] };
+  const shared = { tag: flags['--tag'], slug: flags['--slug'] };
   let metadata;
   if (command === 'validate') metadata = validateRelease(shared);
   else if (command === 'stage') metadata = stageRelease({ ...shared, output: flags['--output'], ...(flags['--slug'] === undefined ? {} : { slug: flags['--slug'] }) });

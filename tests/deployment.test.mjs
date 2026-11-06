@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { checkWordPressRelease } from '../scripts/check-wordpress-release.mjs';
 import { execFileSync, spawnSync } from 'node:child_process';
-import { mkdtempSync, rmSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -65,4 +65,77 @@ test('Remote tag guard accepts lightweight and annotated tags and rejects moved 
     assert.ok(path.basename(root).startsWith('wpsso-release-ref-'));
     rmSync(root, { recursive: true, force: true });
   }
+});
+
+function workflow(name) {
+  return readFileSync(new URL(`../.github/workflows/${name}.yml`, import.meta.url), 'utf8');
+}
+
+// These small readers inspect our job/dependency contract. Actionlint separately
+// validates the complete YAML and GitHub expression schema on every CI run.
+function jobs(source) {
+  const entries = [...source.matchAll(/^  ([a-z][a-z0-9-]*):\r?\n/gm)];
+  return new Map(entries.map((entry, index) => [entry[1], source.slice(entry.index, entries[index + 1]?.index ?? source.length)]));
+}
+
+function dependencies(job) {
+  const value = job.match(/^    needs: (.+)$/m)?.[1].trim() ?? '';
+  return value.startsWith('[') ? value.slice(1, -1).split(',').map(name => name.trim()) : value ? [value] : [];
+}
+
+test('Required CI and packaged releases cannot bypass WordPress directory compliance', () => {
+  const ci = jobs(workflow('verify'));
+  const prerequisite = [...dependencies(ci.get('required'))];
+  const ancestors = new Set();
+  while (prerequisite.length) {
+    const name = prerequisite.pop();
+    if (ancestors.has(name)) continue;
+    assert.ok(ci.has(name), `Unknown CI prerequisite ${name}`);
+    ancestors.add(name);
+    prerequisite.push(...dependencies(ci.get(name)));
+  }
+  for (const name of ['quality', 'integration', 'multisite', 'directory', 'package']) {
+    assert.ok(ancestors.has(name), `Required CI lost ${name}`);
+  }
+  assert.ok(dependencies(ci.get('package')).includes('directory'), 'A distribution can be uploaded before directory review');
+  assert.match(ci.get('directory'), /uses: \.\/\.github\/workflows\/wordpress-review\.yml/);
+  assert.match(ci.get('directory'), /checkout_ref: \$\{\{ inputs\.checkout_ref \|\| github\.sha \}\}/);
+  const release = jobs(workflow('release'));
+  assert.match(release.get('verify'), /uses: \.\/\.github\/workflows\/verify\.yml/);
+  assert.match(release.get('verify'), /checkout_ref: \$\{\{ needs\.resolve\.outputs\.sha \}\}/);
+  assert.ok(dependencies(release.get('deploy')).includes('verify'), 'Publication lost its full CI prerequisite');
+  assert.ok(dependencies(release.get('deploy')).includes('candidate'), 'Publication lost artifact verification');
+  assert.equal((workflow('release').match(/uses: \.\/\.github\/workflows\/wordpress-review\.yml/g) ?? []).length, 0,
+    'A second official check in the same release run would collide with its native artifact');
+});
+
+test('Directory review retains native failures and always publishes complete parsed reports', () => {
+  const review = workflow('wordpress-review');
+  const steps = review.split(/^      - /m).slice(1);
+  const native = steps.find(step => step.includes('uses: WordPress/plugin-check-action@'));
+  assert.ok(native, 'The official WordPress check is missing');
+  assert.doesNotMatch(review, /continue-on-error:\s*true|ignore-errors:\s*['"]?true|ignore-warnings:\s*['"]?true/);
+  for (const marker of ['node scripts/plugin-check.mjs', 'node scripts/report-results.mjs', 'name: tests-plugin-check']) {
+    const step = steps.find(candidate => candidate.includes(marker));
+    assert.ok(step, `Missing reporting step ${marker}`);
+    assert.match(step, /if: always\(\)/, `Reports would be skipped on native failure: ${marker}`);
+  }
+  assert.match(review, /\$RUNNER_TEMP\/plugin-check-results\.txt/);
+  assert.match(review, /--expect plugin-check/);
+  assert.match(review, /if-no-files-found: error/);
+  assert.doesNotMatch(review, /--strict|strict:\s*true/,
+    'Changing warnings into failures requires an explicit policy decision');
+});
+
+test('Release and directory defaults use the public PortalWeave package slug', () => {
+  const ci = workflow('verify');
+  const review = workflow('wordpress-review');
+  const release = workflow('release');
+  assert.match(ci, /default: portalweave-sso/);
+  assert.match(review, /default: portalweave-sso/);
+  assert.match(release, /package_slug="\$\{PLUGIN_SLUG:-portalweave-sso\}"/);
+  for (const source of [ci, review, release]) {
+    assert.doesNotMatch(source, /default: wordpress-sso|\|\| 'wordpress-sso'|PLUGIN_SLUG:-wordpress-sso/);
+  }
+  assert.match(ci, /node --check assets\/auth\.js/);
 });

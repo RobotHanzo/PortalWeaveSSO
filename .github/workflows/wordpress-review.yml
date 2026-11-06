@@ -8,9 +8,9 @@ on:
         type: string
         default: main
       slug:
-        description: Assigned directory slug, or wordpress-sso for a preliminary review.
+        description: Assigned directory slug, or portalweave-sso for a preliminary review.
         type: string
-        default: wordpress-sso
+        default: portalweave-sso
   workflow_call:
     inputs:
       checkout_ref:
@@ -41,8 +41,33 @@ jobs:
           PLUGIN_SLUG: ${{ inputs.slug }}
         run: node scripts/release.mjs stage --output ".test-runtime/directory/$PLUGIN_SLUG" --slug "$PLUGIN_SLUG"
       - name: Run official directory review without suppressing errors
+        id: native-check
         uses: WordPress/plugin-check-action@10857da14b6c2246d15402b3e69f777edcf8c12e # v1.1.9
         with:
+          # Summaries and artifacts report results without PR-comment write access.
+          repo-token: ''
           build-dir: .test-runtime/directory/${{ inputs.slug }}
           slug: ${{ inputs.slug }}
           wp-version: latest
+      - name: Preserve the complete native review output
+        if: always()
+        shell: bash
+        run: |
+          mkdir -p reports/plugin-check
+          if [[ -f "$RUNNER_TEMP/plugin-check-results.txt" ]]; then
+            cp -- "$RUNNER_TEMP/plugin-check-results.txt" reports/plugin-check/plugin-check.txt
+          fi
+      - name: Parse complete native findings and fail closed on missing output
+        if: always()
+        run: node scripts/plugin-check.mjs "$RUNNER_TEMP/plugin-check-results.txt" --output reports/plugin-check
+      - name: Report directory results, including failures
+        if: always()
+        run: node scripts/report-results.mjs reports/plugin-check --expect plugin-check
+      - name: Upload native output, JSON and JUnit review reports
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: tests-plugin-check
+          path: reports/plugin-check/
+          if-no-files-found: error
+          retention-days: 30

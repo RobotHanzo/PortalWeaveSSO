@@ -1,25 +1,35 @@
 <?php
 /**
- * Plugin Name: WPSSO OAuth & OpenID Connect
+ * Plugin Name: PortalWeave SSO
+ * Plugin URI: https://github.com/RobotHanzo/PortalWeaveSSO
  * Description: Multi-provider OAuth/OIDC sign-in, provisioning, access control and audit tools.
  * Version: 1.0.0
  * Requires at least: 6.5
  * Requires PHP: 8.1
- * Author: STSA
+ * Author: RobotHanzo
+ * Author URI: https://github.com/RobotHanzo
  * License: GPL-2.0-or-later
- * Text Domain: wpsso
+ * Text Domain: portalweave-sso
+ * Domain Path: /languages
  * Network: true
  */
 
 defined('ABSPATH') || exit;
 
-define('WPSSO_VERSION', '1.0.0');
-define('WPSSO_FILE', __FILE__);
-define('WPSSO_DIR', plugin_dir_path(__FILE__));
-define('WPSSO_URL', plugin_dir_url(__FILE__));
+define('PORTALWEAVE_SSO_VERSION', '1.0.0');
+define('PORTALWEAVE_SSO_FILE', __FILE__);
+define('PORTALWEAVE_SSO_DIR', plugin_dir_path(__FILE__));
+define('PORTALWEAVE_SSO_URL', plugin_dir_url(__FILE__));
 
-foreach (['config', 'audit', 'http', 'jwt', 'accounts', 'auth', 'access', 'display', 'admin', 'extensions', 'abilities', 'cli'] as $wpsso_class) {
-    require_once WPSSO_DIR . 'includes/class-' . $wpsso_class . '.php';
+if (!function_exists('openssl_encrypt') || !function_exists('openssl_verify')) {
+    add_action('admin_notices', static function () {
+        echo '<div class="notice notice-error"><p>' . esc_html__('PortalWeave SSO requires the PHP OpenSSL extension. Enable it on the server to activate authentication features.', 'portalweave-sso') . '</p></div>';
+    });
+    return;
+}
+
+foreach (['config', 'audit', 'http', 'jwt', 'accounts', 'auth', 'access', 'privacy', 'cleanup', 'display', 'admin', 'extensions', 'abilities', 'cli'] as $wpsso_class) {
+    require_once PORTALWEAVE_SSO_DIR . 'includes/class-' . $wpsso_class . '.php';
 }
 unset($wpsso_class);
 
@@ -50,7 +60,7 @@ register_deactivation_hook(__FILE__, function ($network_wide) {
     }
 });
 add_action('wp_initialize_site', function ($site) {
-    if (!array_key_exists(plugin_basename(WPSSO_FILE), (array) get_network_option((int) $site->site_id, 'active_sitewide_plugins', []))) {
+    if (!array_key_exists(plugin_basename(PORTALWEAVE_SSO_FILE), (array) get_network_option((int) $site->site_id, 'active_sitewide_plugins', []))) {
         return;
     }
     switch_to_blog($site->blog_id);
@@ -58,11 +68,10 @@ add_action('wp_initialize_site', function ($site) {
     restore_current_blog();
 }, 200);
 add_action('plugins_loaded', function () {
-    load_plugin_textdomain('wpsso', false, dirname(plugin_basename(WPSSO_FILE)) . '/languages');
-    if (get_option('wpsso_db_version') !== WPSSO_VERSION) {
+    if (get_option('wpsso_db_version') !== PORTALWEAVE_SSO_VERSION) {
         \WPSSO\Audit::install();
     }
-    foreach (['Auth', 'Access', 'Display', 'Admin', 'Extensions', 'Abilities', 'Cli'] as $class) {
+    foreach (['Auth', 'Access', 'Privacy', 'Display', 'Admin', 'Extensions', 'Abilities', 'Cli'] as $class) {
         call_user_func(['WPSSO\\' . $class, 'register']);
     }
     add_action('wpsso_cleanup', ['WPSSO\\Audit', 'cleanup']);

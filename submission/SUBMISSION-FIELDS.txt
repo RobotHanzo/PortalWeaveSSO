@@ -1,0 +1,57 @@
+WORDPRESS.ORG INITIAL SUBMISSION — PORTALWEAVE SSO
+Prepared 6 November 2026. This is an unsubmitted release candidate.
+
+Plugin name: PortalWeave SSO
+Proposed directory slug: portalweave-sso
+Version / stable tag: 1.0.0
+Main plugin file: portalweave-sso/portalweave-sso.php
+Upload: dist/portalweave-sso-1.0.0.zip
+License: GPL-2.0-or-later; complete license included in the plugin.
+Requires WordPress: 6.5 or newer
+Requires PHP: 8.1 or newer, with OpenSSL
+SSO requires HTTPS and an administrator-configured identity provider.
+Source and issue tracker: https://github.com/RobotHanzo/PortalWeaveSSO
+Author in plugin header: RobotHanzo (the repository's verified GitHub identity).
+
+Short description:
+OAuth and OpenID Connect sign-in with account mapping, access controls,
+SCIM provisioning and local audit reports.
+
+Suggested additional information for the review team:
+PortalWeave SSO is a complete, source-readable OAuth/OIDC client. All modules
+are included without paid unlocks, developer accounts, trial limits or remote
+code downloads. The administrator configures the actual identity service;
+external service requests, personal-data handling and provider policy links
+are documented in readme.txt and four bundled user guides. Please see the
+accompanying REVIEWER-NOTES.txt for security boundaries, setup and the
+reviewed Plugin Check warnings. No real credentials are included.
+
+HOW TO SUBMIT
+1. Sign into your actual WordPress.org account at:
+   https://wordpress.org/plugins/developers/add/
+2. Verify the plugin name, source ownership and contact email. Submit the
+   plugin ZIP above, not the separate reviewer-materials ZIP.
+3. Supply the suggested description and reviewer notes wherever the form
+   permits additional information, or in the review correspondence.
+4. Monitor the account's email and reply directly to reviewer requests.
+
+The proposed slug is not reserved. WordPress.org assigns the actual slug and
+reviews the submission manually. If the assigned slug differs, update the
+main filename, text domain, translated call sites, POT filename/domain, release/workflow
+defaults and documentation together, then rebuild and repeat verification.
+
+The readme intentionally has no Contributors field because a WordPress.org
+username has not been supplied. Add only verified consenting contributor
+usernames if desired; a GitHub username is not evidence of that identity.
+
+AFTER APPROVAL — OPTIONAL AUTOMATED RELEASES
+Keep WORDPRESS_DEPLOY_ENABLED=false until the repository owner configures:
+  - WORDPRESS_PLUGIN_SLUG with the actual assigned slug;
+  - WPORG_USERNAME and WPORG_PASSWORD as GitHub environment
+    secrets in the protected wordpress-org environment;
+  - any desired environment reviewer protection.
+Then enable the deployment repository variable and use a new immutable vX.Y.Z
+tag after updating the matching version, stable tag and changelog. The
+workflow runs the complete CI and Plugin Check gates before SVN deployment.
+Initial submission and approval are not automated. Never put SVN passwords
+or real identity-provider credentials into this document or the repository.

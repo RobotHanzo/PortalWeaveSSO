@@ -16,23 +16,23 @@ final class Abilities {
 
     public static function category(): void {
         if (Config::get('abilities_enabled', false) && function_exists('wp_register_ability_category')) {
-            wp_register_ability_category('wpsso', ['label' => 'WordPress SSO', 'description' => 'Configure and diagnose SSO with administrator permissions.']);
+            wp_register_ability_category('wpsso', ['label' => __('PortalWeave SSO', 'portalweave-sso'), 'description' => __('Configure and diagnose SSO with administrator permissions.', 'portalweave-sso')]);
         }
     }
 
     public static function definitions(): array {
         $id = ['type' => 'string', 'pattern' => '^[a-z0-9_-]+$', 'maxLength' => 100];
         return [
-            'list-providers' => ['List SSO providers', 'Return provider names and configuration status without credentials.', [], [], true],
-            'get-provider' => ['Get SSO provider', 'Return the redacted settings of one provider.', ['id' => $id], ['id'], true],
-            'configure-provider' => ['Configure SSO provider', 'Create or update one provider. Input credentials are encrypted and never returned.', ['id' => $id, 'settings' => ['type' => 'object']], ['id', 'settings'], false],
-            'diagnose' => ['Diagnose SSO configuration', 'Report local configuration errors, callback URL and safe corrective actions.', ['id' => $id], [], true],
-            'fix-common-error' => ['Fix a common SSO error', 'Apply an explicit safe fix: enable PKCE, use code grant, restore openid scope or clear callback override.',
+            'list-providers' => [__('List SSO providers', 'portalweave-sso'), __('Return provider names and configuration status without credentials.', 'portalweave-sso'), [], [], true],
+            'get-provider' => [__('Get SSO provider', 'portalweave-sso'), __('Return the redacted settings of one provider.', 'portalweave-sso'), ['id' => $id], ['id'], true],
+            'configure-provider' => [__('Configure SSO provider', 'portalweave-sso'), __('Create or update one provider. Input credentials are encrypted and never returned.', 'portalweave-sso'), ['id' => $id, 'settings' => ['type' => 'object']], ['id', 'settings'], false],
+            'diagnose' => [__('Diagnose SSO configuration', 'portalweave-sso'), __('Report local configuration errors, callback URL and safe corrective actions.', 'portalweave-sso'), ['id' => $id], [], true],
+            'fix-common-error' => [__('Fix a common SSO error', 'portalweave-sso'), __('Apply an explicit safe fix: enable PKCE, use code grant, restore openid scope or clear callback override.', 'portalweave-sso'),
                 ['id' => $id, 'fix' => ['type' => 'string', 'enum' => ['enable-pkce', 'use-code-grant', 'openid-scope', 'clear-callback']]], ['id', 'fix'], false],
-            'export-config' => ['Export redacted SSO configuration', 'Export settings with client identifiers, credentials, provisioning and shared secrets removed.', [], [], true],
-            'login-audit' => ['Read SSO login audit', 'Read recent SSO transaction records. This includes user personal data and requires administrator access.',
+            'export-config' => [__('Export redacted SSO configuration', 'portalweave-sso'), __('Export settings with client identifiers, credentials, provisioning and shared secrets removed.', 'portalweave-sso'), [], [], true],
+            'login-audit' => [__('Read SSO login audit', 'portalweave-sso'), __('Read recent SSO transaction records. This includes user personal data and requires administrator access.', 'portalweave-sso'),
                 ['limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 200], 'app' => $id], [], true],
-            'support-query' => ['Prepare or send an SSO support query', 'Prepare a local support draft with redacted configuration. Send only when send=true and a support email is configured.',
+            'support-query' => [__('Prepare or send an SSO support query', 'portalweave-sso'), __('Prepare a local support draft with redacted configuration. Send only when send=true and a support email is configured.', 'portalweave-sso'),
                 ['subject' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 160], 'message' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 10000], 'send' => ['type' => 'boolean']], ['subject', 'message'], false],
         ];
     }
@@ -57,6 +57,34 @@ final class Abilities {
     public static function execute(string $ability, array $input = []) {
         if (!self::permission($input)) {
             return new \WP_Error('wpsso_ability_forbidden', 'Enable SSO abilities and authenticate with manage_options.', ['status' => 403]);
+        }
+        $definition = self::definitions()[$ability] ?? null;
+        if (!$definition) {
+            return new \WP_Error('wpsso_ability', 'Unknown SSO ability.');
+        }
+        // Core's REST validator accepts coercible values such as "true" for a boolean.
+        // Require the declared JSON types before validation so direct PHP and MCP calls cannot silently change meaning.
+        foreach ($definition[2] as $property => $schema) {
+            if (!array_key_exists($property, $input)) {
+                continue;
+            }
+            $value = $input[$property];
+            $matches = match ($schema['type']) {
+                'string' => is_string($value),
+                'integer' => is_int($value),
+                'boolean' => is_bool($value),
+                'object' => is_array($value) && ($value === [] || !array_is_list($value)),
+                default => false,
+            };
+            if (!$matches) {
+                return new \WP_Error('wpsso_input_type', 'Input ' . $property . ' must have JSON type ' . $schema['type'] . '.', ['status' => 400]);
+            }
+        }
+        // Keep direct PHP execution subject to the remaining REST/MCP schema constraints.
+        $valid = rest_validate_value_from_schema($input, ['type' => 'object', 'properties' => $definition[2],
+            'required' => $definition[3], 'additionalProperties' => false], 'input');
+        if (is_wp_error($valid)) {
+            return $valid;
         }
         $id = is_string($input['id'] ?? null) ? sanitize_key($input['id']) : '';
         $redacted = Config::redacted();
@@ -177,7 +205,7 @@ final class Abilities {
             return new \WP_Error('wpsso_support_destination', 'Configure a support email before sending. The local draft was retained.');
         }
         $body = $draft['message'] . "\n\nRedacted configuration:\n" . wp_json_encode($draft['configuration'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-        if (!wp_mail($email, '[WPSSO] ' . $draft['subject'], $body)) {
+        if (!wp_mail($email, '[PortalWeave SSO] ' . $draft['subject'], $body)) {
             return new \WP_Error('wpsso_support_mail', 'WordPress could not submit this email. The local draft was retained.');
         }
         Audit::record('support', '', wp_get_current_user(), 'wpsso_support_sent');

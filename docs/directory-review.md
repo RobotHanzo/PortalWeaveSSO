@@ -1,44 +1,67 @@
-# WordPress.org directory review
+# PortalWeave SSO WordPress.org directory review
 
-Functional CI and WordPress.org eligibility are separate checks. The release workflow must require a clean Plugin Check result before publishing. Passing automated checks does not replace the WordPress.org review team's initial approval or guarantee acceptance.
+PortalWeave SSO proposes the directory slug and text domain `portalweave-sso`. It has not yet received initial WordPress.org approval. Functional tests, Plugin Check and the directory review team's approval answer different questions; passing automated checks does not guarantee acceptance.
 
-## Recorded local scan
+## Current candidate evidence
 
-Plugin Check 2.1.0 was run against the initial source tree on WordPress 7.1.4. That scan reported **91 errors and 144 warnings across 17 files**. This was a source-tree scan with development directories excluded, before the verified `Tested up to` header was added, rather than a scan of the final staged package. The native output and structured findings were saved locally in ignored `reports/wordpress-plugin-check.txt` and `reports/wordpress-plugin-check.json`.
+Run the checks against the exact candidate commit and its staged production files. The current report artifacts and associated commit identify the applicable findings. Historical counts below are a baseline, not the final candidate's result. Do not claim zero findings without a fresh complete staged-package report.
 
-| Error category | Count | Required review |
+The rebuilt Windows ZIP was installed and activated in disposable WordPress, then passed **68 integration checks and seven real HTTPS flow checks**. Plugin Check 2.1.0 on that installed package reported **zero errors and 17 warnings**, matching the [first successful hosted compliance run](https://github.com/RobotHanzo/PortalWeaveSSO/actions/runs/42172566475). The warnings concern nonce-flow analysis (3), exact usermeta identity/session lookups (6), prepared operations on the plugin audit table (7), and deliberate uninstall schema removal (1). See `submission/REVIEWER-NOTES.txt` and the complete raw/JSON/JUnit reports in the reviewer-materials archive for the contextual assessment. No error category was ignored. The Windows builder also verifies canonical ZIP entry paths and every file hash; this caught and corrected a Windows backslash-path incompatibility before the upload was prepared.
+
+The candidate ZIP is `dist/portalweave-sso-1.0.0.zip` for version 1.0.0. It contains the `portalweave-sso/` top-level directory and matching `portalweave-sso.php` entry filename, runtime code/assets, `readme.txt`, `LICENSE`, translations, and the four bundled user guides. Repository-only tests, build tools, README and development/review documents are excluded.
+
+The remediation addresses literal text domains and public naming; late output escaping for buttons, widgets and protocol pages; conditional/deferred frontend assets; nonce and input-type boundaries; privacy collection controls, export/erasure and uninstall choices; translated strings; and documented security-sensitive filesystem operations. Each relevant change still needs its functional regression evidence and fresh scanner result. Narrow comments explain specific operations where a generic static rule cannot express the required protocol, database or atomic-file behavior. They are not blanket exemptions from review.
+
+## Historical baseline
+
+Plugin Check 2.1.0 was initially run on WordPress 7.1.4 against the source tree with development directories excluded. It reported **91 errors and 144 warnings across 17 files**, before the verified `Tested up to` header and final distribution staging were applied. Ignored local reports recorded that baseline.
+
+| Initial error category | Count | Review performed or required |
 | --- | ---: | --- |
-| Text domain mismatch | 71 | The checked folder was `wordpress-sso`, while the plugin uses `wpsso`. Choose the approved WordPress.org slug first, then make the text domain and package consistent with it. |
-| Output escaping | 9 | Review the HTML renderer, fragment-relay markup and widget wrappers. The scanner does not infer every renderer's escaping contract; verify each result before fixing or documenting a narrowly justified suppression. |
-| Direct filesystem operations | 8 | Review private-media streaming/deletion and CLI export operations against WordPress filesystem guidance. Preserve error detection, private-file integrity and streaming behavior when adapting code. |
-| Missing translator comment | 1 | Add a translator explanation for the placeholder-bearing translated string. |
-| Hidden source file | 1 | `.gitattributes` appeared in the source scan. The production staging allowlist excludes it; verify the staged package rather than suppress the check globally. |
-| Missing readme compatibility header | 1 | Resolved by adding `Tested up to: 7.1` after verifying WordPress 7.1.4. |
+| Text domain mismatch | 71 | Baseline used folder `wordpress-sso` and domain `wpsso`. The candidate now uses literal `portalweave-sso` domains and the matching staged directory. Legacy namespace, options, shortcode and CLI names remain compatible. |
+| Output escaping | 9 | Review renderers, fragment/popup relay output and widget wrappers at their output boundaries; retain regression tests for hostile markup and protocol behavior. |
+| Direct filesystem operations | 8 | Review private-media delivery/deletion and CLI export. Preserve private-file integrity, failure detection, streaming and exclusive-create behavior instead of replacing them with an unsafe abstraction. |
+| Missing translator comment | 1 | Explain translated placeholders and retain the translation template in the package. |
+| Hidden source file | 1 | `.gitattributes` was included in the source scan. The explicit production allowlist excludes it. |
+| Missing compatibility header | 1 | The readme gained `Tested up to: 7.1` after verification on WordPress 7.1.4. |
 
-Warnings include direct-query/caching advice, nonce and input-sanitization analysis, externally allowed redirects, WordPress core hook names, and frontend asset loading. They require review in context. OAuth callbacks and SCIM requests use their own protocol authentication, so adding a WordPress browser nonce indiscriminately would break those protocols. Existing functional/security tests remain necessary when addressing findings.
+The first [hosted staged-package review](https://github.com/RobotHanzo/PortalWeaveSSO/actions/runs/42169165192) correctly failed with **89 errors and 142 warnings**. Its errors were the same 71 text-domain, nine escaping, eight filesystem and one translator-comment findings; the source-only hidden-file and missing-header findings were absent. Those historical numbers must not be presented as fresh measurements of the renamed candidate.
 
-This snapshot may differ from later staged-package scans or a newer Plugin Check release. Treat the current workflow artifact as authoritative for a release candidate.
+Warnings covered direct-query/caching advice, nonce/input analysis, externally allowed redirects, WordPress hook names and asset scope. Review each in context. OAuth/OIDC callbacks and authenticated SCIM requests use their protocol-specific authentication; indiscriminately adding a WordPress browser nonce would break those endpoints. Tests must demonstrate their actual state/signature/bearer and authorization boundaries.
 
-The first [hosted staged-package review](https://github.com/RobotHanzo/WordPressSSO/actions/runs/42169165192) ran successfully as a checker and correctly failed its review gate with **89 errors and 142 warnings**. Its artifact is available from the run. The source-only hidden-file finding and missing compatibility header are absent. Remaining errors comprise 71 text-domain mismatches, nine output-escaping findings, eight filesystem-operation findings and one translator-comment finding. These require a follow-up plugin review before enabling publication; they are not suppressed by the workflow.
+## Reproduce and retain the check
 
-## Run the check locally
-
-In the disposable WordPress environment:
+Dispatch the [directory review workflow](https://github.com/RobotHanzo/PortalWeaveSSO/actions/workflows/wordpress-review.yml) for the candidate commit:
 
 ```sh
-docker compose -f compose.test.yml run --rm cli wp plugin install plugin-check
-docker compose -f compose.test.yml run --rm cli wp plugin check wordpress-sso --format=json --exclude-directories=tests,scripts,docs,.git,.github,.test-runtime,dist,reports --require=./wp-content/plugins/plugin-check/cli.php
+gh workflow run wordpress-review.yml --ref main -f checkout_ref=CANDIDATE_COMMIT -f slug=portalweave-sso
 ```
 
-**The CLI command returned exit code zero even with error findings.** Do not use its exit status alone as the release gate. Its JSON format consists of repeated `FILE: path` lines followed by a JSON array of findings, rather than one JSON document. Each finding includes `line`, `column`, `type`, `code`, `message` and `docs`.
+The workflow stages only production files and passes that directory to the official Plugin Check action. Functional CI also calls it before building its package artifact. Scan the correctly named stage: a raw-source scan in the legacy Docker `wordpress-sso` bind can give a different expected text domain and can include development files.
 
-The official Plugin Check action processes those findings, emits file annotations and returns failure for `ERROR` findings. Its default `strict: false` keeps warnings as warnings; `strict: true` treats all findings as errors. Do not enable `ignore-errors` to make deployment green.
+**The Plugin Check CLI has returned exit code zero despite error findings.** Do not treat its exit status alone as a release gate. Its `--format=json --no-color` output can contain repeated `FILE: path` headers followed by finding arrays rather than one JSON document. Each finding contains line, column, severity, code, message and documentation fields. A genuine clean run emits an explicit completion message.
 
-The action uploads the raw report as `plugin-check-results` (or `plugin-check-results-<slug>` when a slug override is supplied). The raw file is `${{ runner.temp }}/plugin-check-results.txt`. Stage the production package first and pass its directory to `build-dir`; use a directory whose basename is the intended plugin slug.
+The official action annotates findings and retains its native report. The repository additionally validates that complete native output, fails on errors or invalid/missing output, and creates structured JSON/JUnit results:
+
+```sh
+node scripts/plugin-check.mjs reports/plugin-check/plugin-check.txt --output reports/plugin-check
+node scripts/report-results.mjs reports/plugin-check --expect plugin-check
+```
+
+Use `--strict` on the parser to make warnings fail as well. The default policy reports warnings and fails errors; warnings still require manual assessment. The `tests-plugin-check` artifact contains the native report plus `plugin-check.json` and `plugin-check.xml`, including reporting failures. The official action can also upload its own `plugin-check-results` artifact. Never enable `ignore-errors` to make a release pass.
+
+## Submission review
+
+Before submission, read the current [detailed plugin guidelines](https://developer.wordpress.org/plugins/wordpress-org/detailed-plugin-guidelines/) and [common issues](https://developer.wordpress.org/plugins/wordpress-org/common-issues/), then inspect the actual ZIP. Confirm the license/readme/slug, supported runtime versions, translations, complete local executable assets, absence of credentials/development fixtures, provider/service disclosures and the account/contact information supplied to reviewers. Directory assets such as listing icons, banners and screenshots are separate from runtime `assets/`.
+
+The bundled [external-services guide](external-services.md) identifies when configured services receive data and links official provider privacy/terms resources. The [privacy guide](privacy.md) documents local storage, cookies, collection choices, retention, WordPress personal-data handling, deliberate uninstall cleanup and retained vault recovery data. Keep both consistent with code and the user-facing settings. Default retention is not a guarantee about offline cron, backups or third-party logs.
+
+Initial review is external: upload the candidate through [WordPress.org's submission page](https://wordpress.org/plugins/developers/add/) and provide the separately prepared reviewer information. Keep automated SVN deployment disabled until approval and assignment of the exact slug/repository. Follow [release automation](releasing.md) for the credential and tag gates after approval.
 
 ## References
 
 - [Official Plugin Check action and inputs](https://github.com/WordPress/plugin-check-action)
-- [Official result processor](https://github.com/WordPress/plugin-check-action/blob/10857da14b6c2246d15402b3e69f777edcf8c12e/src/main.ts)
-- [WordPress.org SVN release workflow](https://developer.wordpress.org/plugins/wordpress-org/how-to-use-subversion/)
+- [WordPress readme requirements](https://developer.wordpress.org/plugins/wordpress-org/how-your-readme-txt-works/)
 - [WordPress internationalization and text domains](https://developer.wordpress.org/plugins/internationalization/how-to-internationalize-your-plugin/)
+- [WordPress plugin privacy tools](https://developer.wordpress.org/plugins/privacy/)
+- [WordPress.org SVN publishing](https://developer.wordpress.org/plugins/wordpress-org/how-to-use-subversion/)
