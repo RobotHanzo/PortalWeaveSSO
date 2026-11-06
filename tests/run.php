@@ -18,8 +18,10 @@ if (get_option('blogname') !== 'WPSSO Integration') {
     exit(2);
 }
 $wpsso_original_settings = get_option('wpsso_settings', []);
-set_error_handler(static function ($severity, $message, $file, $line) {
-    if ((error_reporting() & $severity) && str_contains(str_replace('\\', '/', $file), '/plugins/wordpress-sso/')) {
+$wpsso_runtime_path = wp_normalize_path(dirname(PORTALWEAVE_SSO_FILE)) . '/';
+set_error_handler(static function ($severity, $message, $file, $line) use ($wpsso_runtime_path) {
+    $file = wp_normalize_path($file);
+    if ((error_reporting() & $severity) && (str_starts_with($file, $wpsso_runtime_path) || str_starts_with($file, wp_normalize_path(__DIR__) . '/'))) {
         throw new ErrorException($message, 0, $severity, $file, $line);
     }
     return false;

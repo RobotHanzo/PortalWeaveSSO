@@ -1,0 +1,128 @@
+PORTALWEAVE SSO 1.0.0 — REVIEWER NOTES
+Proposed slug: portalweave-sso. Prepared 6 November 2026.
+
+Thank you for reviewing PortalWeave SSO. This is the first proposed directory
+release. The main plugin file is wordpress-sso.php inside the portalweave-sso
+folder. PHP 8.1+, OpenSSL, WordPress 6.5+ and HTTPS are required for SSO.
+
+PURPOSE AND BUSINESS MODEL
+This plugin connects WordPress to administrator-selected OAuth/OIDC providers.
+All bundled functionality is available immediately: optional module switches
+are configuration, not paid unlocks. There is no license server, developer
+account requirement, time-limited plugin functionality or telemetry service.
+An identity provider is necessary to perform authentication; its account,
+permissions and service terms are separate. No vendor affiliation is claimed.
+Temporary guest-account expiry is an administrator-selected access policy.
+
+SERVICE AND DATA DISCLOSURES
+readme.txt and docs/external-services.md describe every outbound destination
+category, triggering action and data sent, with official provider policy/terms
+links. Providers are editable configurations rather than connections to one
+fixed service. The plugin's HTTP client verifies HTTPS, rejects redirects and
+bounds response sizes. No executable code or update package is fetched.
+
+No provider is enabled on installation. Optional remote profile pictures and
+custom icons are fetched by the browser only after configuration. Optional
+support email goes through WordPress mail to the administrator's configured
+recipient only on explicit submission. The structured configuration excludes
+client IDs, secrets, tokens and endpoint query strings. Free-text messages
+remain the sender's responsibility. AI/MCP abilities are off by default;
+this plugin does not call an AI service. A separately installed WordPress MCP
+Adapter exposes eight authenticated manage_options abilities to the chosen
+client. Audit results returned to that client can contain personal data.
+
+SECURITY BOUNDARIES
+Authorization Code with S256 PKCE is the default. State is random, bound to
+the initiating browser and site, expiring and consumed atomically. Callback
+URLs use the canonical site origin; the allowed post-login navigation target
+is retained separately. Test SSO Config additionally requires a fresh
+provider-specific administrator nonce and the initiating admin session.
+
+JWT validation pins signing algorithms, issuer, client audience and configured
+keys; token-provided key URLs are rejected. Nonce, signature, time, subject
+and replay policies are enforced. HS256/384/512 and RS256/384/512 are supported.
+Legacy Password and signed OIDC Implicit grants require explicit opt-in.
+An arbitrary browser-supplied access token is not sufficient for sign-in.
+
+Administrator SSO is disabled by default and requires an explicit per-provider
+policy and verified claim. Email linking is opt-in and requires a verified
+unique mailbox. Role mapping cannot silently grant privileged roles. Public
+custom usermeta mappings reject protected and privilege-bearing keys. SCIM
+uses its configured HTTPS bearer authorization; it cannot set roles/passwords
+or take over local/privileged accounts. Multisite metadata and ownership are
+scoped to the current blog; sensitive shared account changes are refused.
+
+Normal settings, moderation and content forms require permission plus nonces.
+OAuth callbacks use one-use state rather than a WordPress admin-form nonce;
+OIDC back-channel logout uses a signed, replay-protected logout JWT; SCIM uses
+its bearer credential. Adding browser nonces to these provider/server requests
+would break their protocols without adding authentication.
+
+PRIVACY AND REMOVAL
+docs/privacy.md inventories records, cookies, retention and limitations.
+Audit collection can be disabled; client IP collection defaults off. Audits
+expire after the configured period (90 days by default); debug status/error
+records expire after seven days. WordPress cron must run for deletion.
+Tokens are encrypted with the installation's salts and excluded from exports.
+Personal-data exporters/erasers include linked profile data and local audit
+records. Erasure revokes local sessions and retains moderation/provisioning
+blocks so a privacy request cannot reactivate a blocked user.
+
+Deactivation preserves data. Uninstall removes applicable plugin data only
+when its explicit cleanup setting was selected. It preserves WordPress users,
+content, roles and public profile fields. Protected media and recovery metadata
+are always retained: uninstall must not publish or destroy private files.
+The administrator restores files intentionally or recovers them from a server
+backup. These behaviors are disclosed before enabling the relevant options.
+
+AUTOMATED REVIEW AND WARNINGS
+The final packaged candidate is checked with the official WordPress Plugin
+Check tool. Complete raw output plus machine-readable JSON/JUnit results
+accompany these notes in the reviewer-materials archive. Findings are retained;
+there are no command-line ignored errors or categories.
+
+The locally reviewed warnings fall into these categories:
+  - Prefix scanner: PORTALWEAVE_SSO_* bootstrap constants have a unique public
+    prefix. The scanner primarily infers the retained wpsso namespace used by
+    existing hooks, shortcode, CLI and settings. No unprefixed globals are
+    introduced; legacy configuration names remain for compatibility.
+  - Nonce heuristics: public initiation reads a test flag, then checks the
+    administrator nonce whenever testing is requested. The logout path reads
+    POST or GET into one request array, then verifies the wpsso_logout nonce
+    before processing a logged-in logout. These are verified at runtime.
+  - Usermeta lookups: exact hashed immutable identity/sid lookups are necessary
+    for safe account resolution and OIDC logout. Bounded result counts prevent
+    unbounded materialization; large sites should benchmark their directory.
+  - Database operations: a plugin-owned audit table has no core API. Prepared
+    identifiers/values and static query structure are used. Privacy erasure,
+    scheduled retention and reports read the authoritative table without a
+    secondary PII cache. Uninstall intentionally drops only that site's table
+    after explicit cleanup consent. This is deliberate schema removal.
+
+Source contains narrowly scoped explanatory PHPCS exceptions for protocol
+authorization, atomic replay/lock operations, binary streaming after access
+checks and CLI backup file operations. There is no file-wide security bypass.
+The CLI backup writer uses exclusive local-file creation rather than a
+filesystem abstraction that truncates existing files, creates private POSIX
+permissions, loops on short writes and refuses symlinks/existing destinations.
+The media endpoint streams already-authorized private files without loading
+the complete binary into memory. Admin-supplied data is escaped at output.
+
+SOURCE, LICENSING AND PACKAGING
+Source and build/test tools: https://github.com/RobotHanzo/WordPressSSO
+All shipped code/assets are source-readable and covered by the bundled GPL
+license. The plugin has no bundled runtime package dependencies, copied
+provider logos, minified-only assets, advertising or public developer credits.
+WordPress core APIs supply HTTP, settings, mail, roles, sessions and scheduling.
+The ZIP excludes test IdPs, test credentials, reports, CI tools and developer
+documentation. Its translation template uses the proposed directory domain.
+
+SETUP AND TESTING
+See TESTING.md for a normal provider setup and reproducible test commands.
+No private demo service or credentials are required to inspect all source or
+enable modules. A real login needs an administrator's provider registration.
+The repository's isolated HTTPS IdP fixture supports reproducible tests without
+transmitting real provider credentials. It is never shipped in the plugin ZIP.
+
+These notes describe the reviewed implementation and its test evidence.
+They do not claim prior approval, certification or guaranteed legal compliance.
