@@ -4,7 +4,7 @@ Functional CI and WordPress.org eligibility are separate checks. The release wor
 
 ## Recorded local scan
 
-Plugin Check 2.1.0 was run against the current plugin on WordPress 7.1.4. The scan reported **91 errors and 144 warnings across 17 files**. This was a source-tree scan with development directories excluded, rather than a scan of the final staged package. The native output and structured findings were saved locally in ignored `reports/wordpress-plugin-check.txt` and `reports/wordpress-plugin-check.json`.
+Plugin Check 2.1.0 was run against the initial source tree on WordPress 7.1.4. That scan reported **91 errors and 144 warnings across 17 files**. This was a source-tree scan with development directories excluded, before the verified `Tested up to` header was added, rather than a scan of the final staged package. The native output and structured findings were saved locally in ignored `reports/wordpress-plugin-check.txt` and `reports/wordpress-plugin-check.json`.
 
 | Error category | Count | Required review |
 | --- | ---: | --- |
@@ -13,7 +13,7 @@ Plugin Check 2.1.0 was run against the current plugin on WordPress 7.1.4. The sc
 | Direct filesystem operations | 8 | Review private-media streaming/deletion and CLI export operations against WordPress filesystem guidance. Preserve error detection, private-file integrity and streaming behavior when adapting code. |
 | Missing translator comment | 1 | Add a translator explanation for the placeholder-bearing translated string. |
 | Hidden source file | 1 | `.gitattributes` appeared in the source scan. The production staging allowlist excludes it; verify the staged package rather than suppress the check globally. |
-| Missing readme compatibility header | 1 | Add an accurate `Tested up to` value after verifying the chosen WordPress release. |
+| Missing readme compatibility header | 1 | Resolved by adding `Tested up to: 7.1` after verifying WordPress 7.1.4. |
 
 Warnings include direct-query/caching advice, nonce and input-sanitization analysis, externally allowed redirects, WordPress core hook names, and frontend asset loading. They require review in context. OAuth callbacks and SCIM requests use their own protocol authentication, so adding a WordPress browser nonce indiscriminately would break those protocols. Existing functional/security tests remain necessary when addressing findings.
 

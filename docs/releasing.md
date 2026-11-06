@@ -23,9 +23,15 @@ Environment protection is configurable in GitHub. Restrict publishing to version
 2. Run CI and inspect the test summaries, downloadable JUnit/JSON reports and package artifacts. Resolve failed or missing suites. Run live IdP and deployment-specific checks described in [verification.md](verification.md).
 3. Run the release workflow manually with its default dry-run setting. This prepares and validates the release artifact without publishing or requiring a WordPress.org account. Before approval this remains the usable release path.
 4. Once the approved slug is configured, inspect the ZIP's top-level directory and contents. Review the exact commit that will be tagged; the release workflow must validate the tag against the release metadata and require that commit to belong to the default release branch.
-5. Create a matching version tag such as `v1.2.3` on the reviewed commit and push it. Publishing is available only when the repository's deployment switch, tag checks, CI checks, configured WordPress.org slug, environment rules and secrets permit it. A manual non-dry-run release must name an existing matching version tag and pass the same checks.
+5. Create a matching version tag such as `v1.2.3` on the reviewed commit and push it. Publishing is available only when the repository's deployment switch, tag checks, CI checks, clean official Plugin Check, configured WordPress.org slug, environment rules and secrets permit it. A manual non-dry-run release must be dispatched on the matching tag ref, name that existing tag, and pass the same checks. For example, `gh workflow run release.yml --ref v1.2.3 -f tag=v1.2.3 -f dry_run=false`.
 
 Use a new version for each directory update. Never move a published Git tag or overwrite an existing SVN version tag. If a release job fails, inspect whether SVN actually committed before retrying; a duplicate SVN tag must fail rather than replace an already published version. WordPress.org reads release files from its SVN `trunk` and `tags/<version>` directories. Directory indexing and update propagation can take time. [WordPress release structure](https://developer.wordpress.org/plugins/wordpress-org/how-to-use-subversion/).
+
+If SVN publication succeeds and only the GitHub release job fails, rerun that failed job rather than the full workflow: the duplicate-version guard intentionally prevents publishing the same SVN tag again. Release publishing is serialized to prevent two jobs committing to the same plugin concurrently. The deployed files come from the artifact verified by CI, not from a fresh unverified build.
+
+The remote release tag is checked again against the tested commit immediately before SVN and GitHub publication. Protect `v*` tags from updates and deletion to keep release history immutable as well.
+
+The repository is configured with `WORDPRESS_DEPLOY_ENABLED=false` and a `wordpress-org` environment permitting `v*` tags. No SVN secrets or approved slug are configured before WordPress.org approval. To prepare a candidate now, use `gh workflow run release.yml --ref main -f dry_run=true`; the optional tag input may remain empty. To inspect marketplace-specific findings, run `gh workflow run wordpress-review.yml --ref main -f checkout_ref=main -f slug=wordpress-sso` with the approved slug substituted once assigned.
 
 ## Local validation and packaging
 

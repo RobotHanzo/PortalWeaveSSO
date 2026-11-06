@@ -73,7 +73,7 @@ jobs:
           node --check assets/login.js
           node --check tests/e2e.mjs
           node --test tests/*.test.mjs
-          bash -n scripts/ci.sh tests/setup-tls.sh
+          bash -n scripts/*.sh tests/setup-tls.sh
       - name: Validate GitHub workflow syntax
         run: |
           curl --fail --silent --show-error --location --retry 3 \
@@ -206,4 +206,4 @@ jobs:
         env:
           RESULTS: ${{ toJSON(needs) }}
         run: |
-          node -e 'const jobs = JSON.parse(process.env.RESULTS); const failed = Object.entries(jobs).filter(([, job]) => job.result !== "success"); for (const [name, job] of Object.entries(jobs)) console.log(`${name}: ${job.result}`); if (failed.length) process.exit(1);'
+          node -e 'const jobs = JSON.parse(process.env.RESULTS); const failed = Object.entries(jobs).filter(([, job]) => job.result !== "success"); for (const [name, job] of Object.entries(jobs)) console.log(name + ": " + job.result); if (failed.length) process.exit(1);'

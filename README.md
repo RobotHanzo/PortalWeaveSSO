@@ -1,5 +1,7 @@
 # WordPress SSO
 
+[![CI](https://github.com/RobotHanzo/WordPressSSO/actions/workflows/verify.yml/badge.svg)](https://github.com/RobotHanzo/WordPressSSO/actions/workflows/verify.yml)
+
 An installable WordPress plugin for multiple OAuth 2.0 and OpenID Connect providers. PHP 8.1+ with OpenSSL and WordPress 6.5+ are required. There are no Composer or production JavaScript dependencies. All modules are bundled.
 
 ## Installation
@@ -62,6 +64,8 @@ Configuration backups exclude client IDs and secrets. Same-site restores retain 
 - [SCIM, JWT, subdomain handoff, AI/MCP and CLI](docs/integrations.md)
 - [Architecture and developer hooks](docs/architecture.md)
 - [Verification and deployment checklist](docs/verification.md)
+- [GitHub CI and test reports](docs/ci.md)
+- [WordPress.org release automation](docs/releasing.md)
 
 MCP clients require WordPress 6.9+ and the official [WordPress MCP Adapter](https://github.com/WordPress/mcp-adapter). The plugin registers eight abilities; the adapter supplies authenticated MCP transport. Abilities and all optional modules are off by default.
 
