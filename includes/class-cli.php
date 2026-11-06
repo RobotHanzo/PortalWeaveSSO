@@ -47,7 +47,7 @@ final class Cli {
         \WP_CLI::line(wp_json_encode($out, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
     }
 
-    /** Export a redacted configuration backup. Credentials must be re-entered after restore.
+    /** Export a redacted backup. A new installation requires credentials after restore.
      *
      * ## OPTIONS
      * [<file>]
@@ -93,11 +93,11 @@ final class Cli {
         if (!is_array($data)) {
             \WP_CLI::error('The file must contain a JSON settings object.');
         }
-        $result = Config::save($data, isset($assoc['network']));
+        $result = Config::import($data, isset($assoc['network']));
         if (is_wp_error($result)) {
             \WP_CLI::error($result->get_error_message());
         }
-        \WP_CLI::success('Settings imported. Check provider credentials and run a browser SSO test before enforcing login.');
+        \WP_CLI::success('Settings imported. Existing credentials were retained by app ID. Incomplete providers and login enforcement are disabled until credentials are configured. Run a browser SSO test before enforcing login.');
     }
 
     /** Set one noncredential global option using a JSON value.

@@ -223,7 +223,7 @@ final class Admin {
         if (is_wp_error($settings)) {
             self::fail($settings, $network);
         }
-        $result = Config::save($settings, $network);
+        $result = Config::import($settings, $network);
         if (is_wp_error($result)) {
             self::fail($result, $network);
         }
@@ -264,7 +264,7 @@ final class Admin {
         }
         $settings = self::settings($network);
         $enforced = !$network && is_multisite() && !empty(get_site_option('wpsso_settings', [])['network_enforced']);
-        $notices = ['saved' => 'SSO settings saved.', 'imported' => 'Configuration imported. Re-enter omitted credentials before testing.', 'sent' => 'Support message submitted to the WordPress mail service.'];
+        $notices = ['saved' => 'SSO settings saved.', 'imported' => 'Configuration imported. Existing credentials were retained by app ID. Incomplete restored providers and login enforcement are disabled until you configure credentials and test SSO.', 'sent' => 'Support message submitted to the WordPress mail service.'];
         $notice = sanitize_key($_GET['wpsso_notice'] ?? '');
         echo '<div class="wrap wpsso-admin"><header class="wpsso-header"><div><span class="wpsso-eyebrow">IDENTITY &amp; ACCESS</span><h1>' . esc_html($network ? 'Network single sign-on' : 'WordPress single sign-on') . '</h1><p>Connect providers, map accounts, and control access from one place.</p></div><span class="wpsso-version">WPSSO ' . esc_html(defined('WPSSO_VERSION') ? WPSSO_VERSION : '1.0.0') . '</span></header>';
         if ($notice === 'error') {
@@ -361,7 +361,7 @@ final class Admin {
             self::check($prefix . '[' . $key . ']', $app[$key], $label, $help);
         }
         self::field($prefix . '[verified_attribute]', $app['verified_attribute'], 'Verified provider claim path');
-        self::field($prefix . '[verified_value]', wp_json_encode($app['verified_value']), 'Required verified claim value', 'text', 'JSON scalar, for example true, "verified", or 1. Value types must match.');
+        self::field($prefix . '[verified_value]', wp_json_encode($app['verified_value']), 'Required verified claim value', 'text', 'JSON scalar. A true/1 expectation accepts true, "true", 1, or "1". Other scalar values use an exact string comparison.');
         self::check($prefix . '[guest]', $app['guest'] ?? false, 'Allow ephemeral guest login for this app', 'Also enable the Guest User Login module.');
         self::check($prefix . '[moderation]', $app['moderation'] ?? false, 'Hold new users for administrator approval', 'Also enable the User Moderation module.');
         self::check($prefix . '[shared_sso]', $app['shared_sso'] ?? false, 'Issue a shared subdomain SSO ticket', 'Also enable and configure the Shared SSO module.');
@@ -405,12 +405,12 @@ final class Admin {
         self::field('settings[allowed_domains]', implode("\n", $settings['allowed_domains']), 'Allowed email domains', 'textarea', 'One exact domain per line. Leave empty to allow all domains except blocked ones.');
         self::field('settings[blocked_domains]', implode("\n", $settings['blocked_domains']), 'Blocked email domains', 'textarea', 'One exact domain per line. A blocked domain always takes precedence.');
         self::json('settings[content_rules]', $settings['content_rules'], 'Advanced content rules', 'Optional bulk rules; individual post and category editors also expose role/group restrictions. See the documentation for the schema.');
-        self::field('settings[protected_media]', implode(', ', $settings['protected_media']), 'Protected attachment IDs', 'text', 'Comma separated. Restrict direct files at the web server too; PHP cannot intercept static media requests.');
+        self::field('settings[protected_media]', implode(', ', $settings['protected_media']), 'Protected attachment IDs', 'text', 'Comma separated. Original files and derivatives are relocated outside the document root and served through authenticated delivery. Purge old copies from web-server and CDN caches.');
         echo '</section><section id="wpsso-appearance" class="wpsso-section"><h2>Login button and widget</h2><p>Use <code>[wpsso_oauth_login]</code>, the WordPress SSO widget, or the WooCommerce login form.</p>';
         $button = $settings['button'];
         self::select('settings[button][theme]', $button['theme'], 'Button theme', ['default' => 'Default', 'white' => 'White', 'hover' => 'Hover', 'custom' => 'Custom', 'smart' => 'Smart']);
         self::select('settings[button][shape]', $button['shape'], 'Button shape', ['round' => 'Round', 'round-edge' => 'Round edge', 'square' => 'Square', 'long' => 'Long']);
-        self::field('settings[button][text]', $button['text'], 'Default button text', 'text', 'The provider name is appended by the default renderer. Each app can override it.');
+        self::field('settings[button][text]', $button['text'], 'Default button text', 'text', 'Use {app} for the provider name. Each app can override this text.');
         self::field('settings[button][above_text]', $button['above_text'], 'Text above the widget');
         foreach (['size' => 'Font size (px)', 'radius' => 'Corner curve (px)', 'spacing' => 'Button spacing (px)'] as $key => $label) {
             self::field('settings[button][' . $key . ']', $button[$key], $label, 'number');
@@ -431,7 +431,7 @@ final class Admin {
         self::field('settings[shared_cookie_domain]', $settings['shared_cookie_domain'], 'Shared cookie domain', 'text', 'Example: .example.com. Every subdomain that can set cookies must be trusted.');
         self::secret('settings', 'shared_secret', !empty($settings['shared_secret']), 'Shared SSO signing secret');
         self::field('settings[shared_sites]', implode("\n", $settings['shared_sites']), 'Trusted shared SSO sites', 'textarea', 'One exact HTTPS origin per line. Configure matching signing secrets and provider identities in each app.');
-        echo '<div class="wpsso-callout"><strong>Protected media delivery</strong><p>Attachment restrictions protect WordPress routes. Configure an Apache deny rule or an Nginx internal location and route files through the authenticated delivery endpoint before treating static files as private. Existing public URLs remain public until your server rules take effect.</p></div>';
+        echo '<div class="wpsso-callout"><strong>Protected media delivery</strong><p>Protecting an attachment relocates its original and derivatives outside the web document root. WordPress URLs then use the authenticated delivery endpoint. Configure a writable <code>WPSSO_PRIVATE_MEDIA_DIR</code> in wp-config.php; the default is a private sibling directory of ABSPATH. Purge previously cached files from web-server and CDN caches. Restoring public access moves files back to their original upload paths.</p></div>';
         echo '</section><section class="wpsso-section"><h2>Automation and reporting settings</h2>';
         self::check('settings[abilities_enabled]', $settings['abilities_enabled'], 'Enable the eight AI / MCP abilities', 'Off by default. Execution requires manage_options; MCP transport requires the WordPress MCP Adapter.');
         self::check('settings[debug]', $settings['debug'], 'Enable diagnostic debug events', 'No bearer tokens, client secrets, or raw provider attributes are logged. Debug events are removed weekly.');
@@ -524,10 +524,10 @@ final class Admin {
         ] as $title => $answer) {
             echo '<dt>' . esc_html($title) . '</dt><dd>' . esc_html($answer) . '</dd>';
         }
-        echo '</dl><h3>FAQs</h3><details class="wpsso-subsection"><summary>Which provider endpoint URLs should I use?</summary><p>Use your provider’s tenant-specific OpenID discovery document to copy issuer, authorization_endpoint, token_endpoint, userinfo_endpoint, jwks_uri, and end_session_endpoint. The templates are starting points; the provider registration is authoritative.</p></details><details class="wpsso-subsection"><summary>Can WordPress protect a direct media URL?</summary><p>Only when your web server prevents direct static access and files are delivered through the authenticated media route. Attachment-page rules alone cannot protect a public upload URL.</p></details><details class="wpsso-subsection"><summary>Will this create user accounts automatically?</summary><p>Only when the provider’s automatic registration setting is enabled. Existing-account linking is a separate opt-in and requires a verified, unique email.</p></details>';
+        echo '</dl><h3>FAQs</h3><details class="wpsso-subsection"><summary>Which provider endpoint URLs should I use?</summary><p>Use your provider’s tenant-specific OpenID discovery document to copy issuer, authorization_endpoint, token_endpoint, userinfo_endpoint, jwks_uri, and end_session_endpoint. The templates are starting points; the provider registration is authoritative.</p></details><details class="wpsso-subsection"><summary>How are direct media URLs protected?</summary><p>Protected originals and derivatives are moved into a writable private directory outside the web document root, and WordPress generates authenticated delivery URLs. Purge old web-server and CDN cached copies when protecting a file. Attachment-page rules alone do not relocate files; use the protected attachment control or the protected-ID list.</p></details><details class="wpsso-subsection"><summary>Will this create user accounts automatically?</summary><p>Only when the provider’s automatic registration setting is enabled. Existing-account linking is a separate opt-in and requires a verified, unique email.</p></details>';
         echo '<h3>AI / MCP setup</h3><ol><li>Use WordPress 6.9 or later and install the official WordPress MCP Adapter for MCP transport.</li><li>Enable AI / MCP abilities above. Authenticate your MCP client with an administrator who has <code>manage_options</code>.</li><li>Connect Claude Desktop, Cursor, ChatGPT, or another MCP client to your adapter’s authenticated endpoint. Follow the adapter’s current transport and authentication setup.</li><li>Discover the eight <code>wpsso/*</code> abilities for status, provider configuration, validation, diagnosis, repair, audit, support preparation, and support submission. Review configuration changes before asking a client to execute them.</li></ol><p>Disabling the abilities setting removes execution access. Abilities never return client IDs, secrets, access tokens, or refresh tokens.</p>';
         $export = wp_nonce_url(add_query_arg(['action' => 'wpsso_export', 'kind' => 'configuration', 'network' => $network ? 1 : 0], admin_url('admin-post.php')), 'wpsso_export');
-        echo '<h3>Configuration backup</h3><p><a class="button" href="' . esc_url($export) . '">Download configuration backup</a></p><p class="description">Credential-free JSON includes mappings and policy. Client IDs, all secrets, and tokens are excluded; enter credentials again after restoring on another installation. Retain an independent WordPress database backup for a complete recovery.</p>';
+        echo '<h3>Configuration backup</h3><p><a class="button" href="' . esc_url($export) . '">Download configuration backup</a></p><p class="description">Credential-free JSON includes mappings and policy. Client IDs, all secrets, and tokens are excluded. Restore retains existing credentials by app ID; on a clean installation, incomplete providers and login enforcement remain disabled until credentials are entered. Retain an independent WordPress database backup for complete recovery.</p>';
         if (!$enforced) {
             echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" enctype="multipart/form-data"><input type="hidden" name="action" value="wpsso_import">';
             wp_nonce_field('wpsso_import');
@@ -617,7 +617,7 @@ final class Admin {
 
     public static function attachment_fields(array $fields, \WP_Post $post): array {
         if (current_user_can('manage_options') && current_user_can('edit_post', $post->ID)) {
-            $fields['wpsso_protected'] = ['label' => 'SSO protected', 'input' => 'html', 'html' => '<label><input type="checkbox" name="attachments[' . absint($post->ID) . '][wpsso_protected]" value="1"' . checked((bool) get_post_meta($post->ID, '_wpsso_protected', true), true, false) . '> Require SSO</label><p>Also deny direct static requests at the web server.</p>'];
+            $fields['wpsso_protected'] = ['label' => 'SSO protected', 'input' => 'html', 'html' => '<label><input type="checkbox" name="attachments[' . absint($post->ID) . '][wpsso_protected]" value="1"' . checked((bool) get_post_meta($post->ID, '_wpsso_protected', true), true, false) . '> Require SSO</label><p>Moves originals and derivatives outside the document root. Purge cached copies from your web server and CDN.</p>'];
         }
         return $fields;
     }

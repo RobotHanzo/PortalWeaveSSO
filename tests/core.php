@@ -100,6 +100,29 @@ wpsso_test('core: support configuration strips client IDs, credentials, endpoint
     });
 });
 
+wpsso_test('core: redacted backups retain local credentials and restore incomplete apps safely on clean installs', function (): void {
+    wpsso_core_fixture(function (&$users, &$posts, &$terms, $prefix): void {
+        $secret = $prefix . '-restore-secret';
+        $app = wpsso_core_app(['client_id' => $prefix . '-restore-client', 'client_secret' => $secret]);
+        wpsso_assert(\WPSSO\Config::save(['apps' => [$app['id'] => $app], 'default_app' => $app['id'], 'force_auth' => true, 'disable_wp_login' => true]) === true, 'Backup source fixture failed.');
+        $backup = \WPSSO\Config::redacted();
+        wpsso_assert(\WPSSO\Config::import($backup) === true, 'Same-site redacted restore failed.');
+        $restored = \WPSSO\Config::app($app['id']);
+        wpsso_assert($restored['client_id'] === $app['client_id'] && $restored['client_secret'] === $secret && $restored['enabled'], 'Same-site restore lost existing credentials or disabled a complete provider.');
+        wpsso_assert(\WPSSO\Config::get('force_auth') === true, 'Same-site restore lost a complete access policy.');
+        // The admin backup omits credential fields; the CLI backup includes redacted blank fields.
+        unset($backup['apps'][$app['id']]['client_id'], $backup['apps'][$app['id']]['client_secret'], $backup['apps'][$app['id']]['jwt_secret']);
+        wpsso_assert(\WPSSO\Config::import($backup) === true && \WPSSO\Config::app($app['id'])['client_secret'] === $secret, 'Omitted-field backup failed to retain the existing credential.');
+        update_option('wpsso_settings', \WPSSO\Config::defaults(), false);
+        wpsso_assert(\WPSSO\Config::import($backup) === true, 'Credential-free backup could not restore on a clean site.');
+        $clean = \WPSSO\Config::app($app['id']);
+        wpsso_assert(is_array($clean) && !$clean['enabled'] && $clean['client_id'] === '' && $clean['client_secret'] === '', 'Clean restore enabled an incomplete provider or invented credentials.');
+        foreach (['force_auth', 'restrict_site', 'disable_wp_login', 'single_flow'] as $key) {
+            wpsso_assert(\WPSSO\Config::get($key) === false, 'Clean restore enabled login enforcement without a complete provider: ' . $key);
+        }
+    });
+});
+
 wpsso_test('core: endpoint, callback, algorithm, PKCE and privileged-meta policies fail closed', function (): void {
     wpsso_core_fixture(function (): void {
         $cases = [

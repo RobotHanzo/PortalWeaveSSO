@@ -10,7 +10,7 @@ Install the ZIP through **Plugins → Add New → Upload Plugin**, activate it, 
 4. Use Authorization Code, PKCE S256, `openid profile email`, and RSA signature validation for OIDC. Public clients can use no client authentication and omit the secret. Confidential clients should use the provider-supported Basic header or request-body method.
 5. Pin only the expected JWT algorithms. RSA uses keys from the configured HTTPS JWKS URL. HMAC uses an explicit signing secret; never mix an RSA public key into an HMAC secret.
 6. Run **Test SSO Config** while signed in as an administrator. The protected result shows raw provider attributes, without changing your WordPress user session. Configure mappings from that result.
-7. Keep auto-registration, existing-account linking, and administrator SSO set to your intended policy. Administrator SSO is disabled by default. When enabled, the provider’s configured verified claim must match the configured typed JSON value.
+7. Keep auto-registration, existing-account linking, and administrator SSO set to your intended policy. Administrator SSO is disabled by default. When enabled, the provider’s configured verified claim must match the configured JSON scalar. An expectation of `true`, `"true"`, `1`, or `"1"` accepts those four representations; other scalar expectations use an exact string comparison.
 8. Test a non-admin user and an approved administrator before forcing site authentication or disabling WordPress password login. Retain filesystem or WP-CLI recovery access.
 
 ## Provider notes
@@ -51,11 +51,13 @@ Insert `[wpsso_oauth_login]` or add the WordPress SSO widget. WooCommerce’s lo
 
 ## Content restrictions and media
 
-Post/page editors and category forms expose login, allowed-role, and allowed-group controls. A matching configured role or group grants access. Attachment editing includes a protected checkbox. Restrictions protect WordPress-rendered routes; a publicly served upload file remains public until the web server denies direct static access and the file is delivered through the authenticated delivery endpoint. See the deployment documentation before relying on media restrictions.
+Post/page editors and category forms expose login, allowed-role, and allowed-group controls. A matching configured role or group grants access. Attachment editing includes a protected checkbox; the global protected-ID list provides the same file protection.
+
+Protecting an attachment relocates its original, thumbnails, and other recorded derivatives outside the web document root. WordPress generates authenticated delivery URLs and applies the attachment and parent-content access policies before serving files. Unprotecting moves the files back to their original upload paths. Configure a writable `WPSSO_PRIVATE_MEDIA_DIR` in `wp-config.php` when the default private sibling directory of `ABSPATH` is not writable. The plugin rejects a vault inside the web document root. Purge previously cached copies from the web server and CDN when protecting media. An attachment-page role restriction alone does not relocate static files; select file protection as well.
 
 ## Backups, reports, and support
 
-Configuration download is credential-free JSON. Restore it through the import form, then re-enter client IDs and secrets on a new installation. An independent database backup is required for complete recovery. Importing into an existing installation preserves omitted stored credentials according to the app ID.
+Configuration download is credential-free JSON. Restore it through the import form or `wp wpsso import backup.json`. Importing into the same installation preserves omitted or redacted client IDs and stored secrets according to the app ID. On a clean installation, incomplete restored apps and login enforcement are disabled; enter credentials, test SSO, and enable your intended access policy. An independent database backup, including the WordPress salts used for encryption and the private media directory, is required for complete recovery.
 
 The transaction table and CSV include username, status, app, UTC time, email, client IP, navigation URL, and stable error code. CSV fields are protected from spreadsheet formula interpretation. Configure retention and access to these personal-data reports. Debug events expire weekly.
 
