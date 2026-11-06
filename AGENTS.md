@@ -70,11 +70,11 @@ For manual HTTPS testing, run `tests/setup-tls.sh` and `tests/setup-e2e.php` in 
 CI verifies minimum/current WordPress/PHP combinations, multisite, syntax, tooling, directory compliance and the package. Preserve failure exits, complete JSON/JUnit reports and summaries. Native Plugin Check can return exit zero despite error findings; process its complete output with:
 
 ```sh
-node scripts/plugin-check.mjs RAW_OUTPUT_FILE --output reports/plugin-check
+node scripts/plugin-check.mjs RAW_OUTPUT_FILE --output reports/plugin-check --strict
 node scripts/report-results.mjs reports/plugin-check --expect plugin-check
 ```
 
-Do not ignore errors or skip categories to make CI green. Review warnings in context and retain their original findings. See [CI guidance](docs/ci.md) and [directory review](docs/directory-review.md).
+CI runs all official Plugin Check categories and runtime checks, includes experimental checks, and treats warnings/advisories as failures through the strict parser. Do not ignore findings or skip categories to make CI green. Review warnings in context and retain complete raw findings and JSON/JUnit reports, including failing scans. Explain any necessary operation-specific static-analysis exception at the source; never use a file-wide security exemption. See [CI guidance](docs/ci.md) and [directory review](docs/directory-review.md).
 
 ## Packaging and publishing
 

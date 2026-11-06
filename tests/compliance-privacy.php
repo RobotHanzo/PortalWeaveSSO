@@ -58,6 +58,73 @@ portalweave_sso_test('Privacy email matching treats wildcard characters literall
     } finally { foreach ($ids as $id) { wp_delete_user($id); } }
 });
 
+portalweave_sso_test('Audit retention removes expired records and lock caches without deleting current data', function () {
+    global $wpdb;
+    $status = 'retention_' . bin2hex(random_bytes(5));
+    $table = $wpdb->prefix . 'portalweave_sso_audit';
+    $logs = get_option('portalweave_sso_debug_log', []);
+    $expired = [];
+    $active = '_portalweave_sso_lock_' . hash('sha256', $status . '-active');
+    $unrelated = 'portalweave_sso_cleanup_unrelated_' . $status;
+    $active_owner = (time() + 600) . ':active-owner';
+    try {
+        portalweave_sso_assert(\PortalWeaveSSO\Config::save(['audit_retention_days' => 1]) === true, 'Retention configuration failed');
+        \PortalWeaveSSO\Audit::record($status, 'expired');
+        $expired_row = $wpdb->insert_id;
+        \PortalWeaveSSO\Audit::record($status, 'current');
+        portalweave_sso_assert($wpdb->update($table, ['created_at' => gmdate('Y-m-d H:i:s', time() - 3 * DAY_IN_SECONDS)], ['id' => $expired_row], ['%s'], ['%d']) === 1, 'Expired audit fixture failed');
+        $recent_log = ['at' => time(), 'status' => 'current'];
+        update_option('portalweave_sso_debug_log', [['at' => time() - 2 * WEEK_IN_SECONDS, 'status' => 'expired'], $recent_log], false);
+        // More than one discovery batch must be removed, including entries already in the option cache.
+        for ($index = 0; $index < 201; $index++) {
+            $key = '_portalweave_sso_lock_' . hash('sha256', $status . '-' . $index);
+            $owner = (time() - 600) . ':expired-owner-' . $index;
+            portalweave_sso_assert(add_option($key, $owner, '', false), 'Expired lock fixture failed');
+            $expired[] = $key;
+            portalweave_sso_assert(get_option($key) === $owner, 'Expired lock cache was not primed');
+        }
+        portalweave_sso_assert(add_option($active, $active_owner, '', false) && add_option($unrelated, time() - 600, '', false), 'Current data fixtures failed');
+        \PortalWeaveSSO\Audit::cleanup();
+        $rows = \PortalWeaveSSO\Audit::recent(['status' => $status]);
+        portalweave_sso_assert(count($rows) === 1 && $rows[0]['app'] === 'current', 'Audit retention removed current data or retained an expired row');
+        portalweave_sso_assert(get_option('portalweave_sso_debug_log') === [$recent_log], 'Diagnostic retention removed current data or retained an expired event');
+        foreach ($expired as $key) {
+            portalweave_sso_assert(get_option($key) === false, 'Expired lock remained visible through the WordPress option cache');
+        }
+        portalweave_sso_assert(get_option($active) === $active_owner && get_option($unrelated) !== false, 'Cleanup removed an active lock or unrelated option');
+    } finally {
+        foreach (array_merge($expired, [$active, $unrelated]) as $key) { delete_option($key); wp_cache_delete($key, 'options'); }
+        update_option('portalweave_sso_debug_log', $logs, false);
+        $wpdb->delete($table, ['status' => $status], ['%s']);
+    }
+});
+
+portalweave_sso_test('Audit lock cleanup preserves an owner renewed after expiry discovery', function () {
+    global $wpdb;
+    $key = '_portalweave_sso_lock_' . hash('sha256', 'retention-race-' . bin2hex(random_bytes(5)));
+    $fresh_owner = (time() + 600) . ':replacement-owner';
+    $renewed = false;
+    $replace_owner = static function ($query) use ($wpdb, $key, $fresh_owner, &$renewed) {
+        if (!$renewed && str_starts_with(ltrim($query), 'DELETE') && str_contains($query, $key)) {
+            $renewed = true;
+            $wpdb->update($wpdb->options, ['option_value' => $fresh_owner], ['option_name' => $key], ['%s'], ['%s']);
+            wp_cache_delete($key, 'options');
+        }
+        return $query;
+    };
+    try {
+        portalweave_sso_assert(add_option($key, (time() - 600) . ':expired-owner', '', false), 'Expired owner fixture failed');
+        add_filter('query', $replace_owner);
+        \PortalWeaveSSO\Audit::cleanup();
+        portalweave_sso_assert($renewed, 'The owner replacement race was not exercised');
+        portalweave_sso_assert(get_option($key) === $fresh_owner, 'Cleanup deleted a replacement lock owner');
+    } finally {
+        remove_filter('query', $replace_owner);
+        delete_option($key);
+        wp_cache_delete($key, 'options');
+    }
+});
+
 portalweave_sso_test('Uninstall cleanup requires consent and preserves accounts and private-media recovery', function () {
     $id = wp_insert_user(['user_login' => 'cleanup_' . bin2hex(random_bytes(5)), 'user_pass' => wp_generate_password(32), 'role' => 'subscriber']);
     $attachment = wp_insert_post(['post_type' => 'attachment', 'post_title' => 'Private cleanup fixture', 'post_status' => 'inherit']);

@@ -65,7 +65,7 @@ final class Cleanup
                 }
             } while (count($options) === 200 && $progress);
         }
-        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- The table identifier is prepared; DDL has no object-cache representation.
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Explicit uninstall consent authorizes dropping only this blog's plugin-owned audit table; core has no table-removal API and audit rows are not cached.
         $wpdb->query($wpdb->prepare('DROP TABLE IF EXISTS %i', $wpdb->prefix . 'portalweave_sso_audit'));
         // _portalweave_sso_private_files/_portalweave_sso_public_files/_portalweave_sso_protected remain available for safe vault recovery.
     }

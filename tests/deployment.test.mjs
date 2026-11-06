@@ -123,8 +123,20 @@ test('Directory review retains native failures and always publishes complete par
   assert.match(review, /\$RUNNER_TEMP\/plugin-check-results\.txt/);
   assert.match(review, /--expect plugin-check/);
   assert.match(review, /if-no-files-found: error/);
-  assert.doesNotMatch(review, /--strict|strict:\s*true/,
-    'Changing warnings into failures requires an explicit policy decision');
+  const parser = steps.find(step => step.includes('node scripts/plugin-check.mjs'));
+  assert.match(parser, /--strict\b/, 'Unresolved advisories must fail the directory gate');
+});
+
+test('Directory review runs the official checker with runtime and experimental coverage intact', () => {
+  const native = workflow('wordpress-review').split(/^      - /m)
+    .find(step => step.includes('uses: WordPress/plugin-check-action@'));
+  // This reviewed action revision activates the target plugin and loads
+  // plugin-check/cli.php early via --require, which enables runtime checks.
+  assert.match(native, /uses: WordPress\/plugin-check-action@10857da14b6c2246d15402b3e69f777edcf8c12e\b/);
+  assert.match(native, /include-experimental:\s*true\b/);
+  assert.doesNotMatch(native, /^\s+(?:checks|exclude-checks|categories|exclude-files|exclude-directories|ignore-codes|ignore-errors|ignore-warnings|severity|error-severity|warning-severity):/m,
+    'Native check selection and severities must retain every finding from every category');
+  assert.match(native, /build-dir:\s*\.test-runtime\/directory\/\$\{\{ inputs\.slug \}\}/);
 });
 
 test('Release and directory defaults use the public PortalWeave package slug', () => {
