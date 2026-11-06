@@ -46,7 +46,7 @@ register_deactivation_hook(__FILE__, function ($network_wide) {
     }
 });
 add_action('wp_initialize_site', function ($site) {
-    if (!array_key_exists(plugin_basename(WPSSO_FILE), (array) get_site_option('active_sitewide_plugins', []))) {
+    if (!array_key_exists(plugin_basename(WPSSO_FILE), (array) get_network_option((int) $site->site_id, 'active_sitewide_plugins', []))) {
         return;
     }
     switch_to_blog($site->blog_id);

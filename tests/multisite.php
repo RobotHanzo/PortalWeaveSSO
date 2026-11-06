@@ -76,11 +76,36 @@ wpsso_test('Multisite activation initializes audit tables for new sites', functi
 });
 wpsso_test('Network-enforced settings apply to every site and reject site overrides', function () {
     global $wpsso_blog_b;
+    wpsso_error(\WPSSO\Config::save(['protected_media' => [123]], true), 'wpsso_network_content');
     wpsso_assert(\WPSSO\Config::save(['network_enforced' => true, 'apps' => ['multi' => wpsso_app()], 'default_app' => 'multi'], true) === true, 'Network settings save failed');
     switch_to_blog($wpsso_blog_b);
     wpsso_assert(\WPSSO\Config::app('multi')['client_id'] === 'multisite-client', 'Enforced provider missing on another site');
     wpsso_error(\WPSSO\Config::save(['debug' => true]), 'wpsso_network_enforced');
     restore_current_blog();
+});
+wpsso_test('Independent networks retain separate enforced provider configuration', function () {
+    global $wpdb, $current_site;
+    $original_network = $current_site;
+    $other_network = 0;
+    try {
+        wpsso_assert(\WPSSO\Config::save(['network_enforced' => true, 'apps' => ['multi' => wpsso_app(['name' => 'First network'])], 'default_app' => 'multi'], true) === true, 'First network configuration failed');
+        $wpdb->insert($wpdb->site, ['domain' => 'other-' . bin2hex(random_bytes(4)) . '.example.test', 'path' => '/']);
+        $other_network = (int) $wpdb->insert_id;
+        wpsso_assert($other_network > 0, 'Other network fixture failed');
+        $current_site = get_network($other_network);
+        wpsso_assert(\WPSSO\Config::app('multi') === null, 'An unrelated network inherited the first network provider');
+        wpsso_assert(\WPSSO\Config::save(['network_enforced' => true, 'apps' => ['multi' => wpsso_app(['name' => 'Other network'])], 'default_app' => 'multi'], true) === true, 'Other network configuration failed');
+        wpsso_assert(\WPSSO\Config::app('multi')['name'] === 'Other network', 'Other network configuration did not resolve');
+        $current_site = $original_network;
+        wpsso_assert(\WPSSO\Config::app('multi')['name'] === 'First network', 'Saving another network replaced the first network provider');
+    } finally {
+        $current_site = $original_network;
+        if ($other_network) {
+            delete_network_option($other_network, 'wpsso_settings');
+            $wpdb->delete($wpdb->site, ['id' => $other_network]);
+            wp_cache_delete($other_network, 'networks');
+        }
+    }
 });
 wpsso_test('Provider groups remain local while privileged network identities require verified admin policy', function () {
     global $wpsso_blog_a, $wpsso_blog_b;

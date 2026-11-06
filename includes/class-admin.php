@@ -616,7 +616,7 @@ final class Admin {
 
     public static function attachment_fields(array $fields, \WP_Post $post): array {
         if (current_user_can('manage_options') && current_user_can('edit_post', $post->ID)) {
-            $fields['wpsso_protected'] = ['label' => 'SSO protected', 'input' => 'html', 'html' => '<label><input type="checkbox" name="attachments[' . absint($post->ID) . '][wpsso_protected]" value="1"' . checked((bool) get_post_meta($post->ID, '_wpsso_protected', true), true, false) . '> Require SSO</label><p>Moves originals and derivatives outside the document root. Purge cached copies from your web server and CDN.</p>'];
+            $fields['wpsso_protected'] = ['label' => 'SSO protected', 'input' => 'html', 'html' => '<label><input type="checkbox" name="attachments[' . absint($post->ID) . '][wpsso_protected]" value="1"' . checked(Access::is_protected($post->ID), true, false) . '> Require SSO</label><p>Moves originals and derivatives outside the document root. Purge cached copies from your web server and CDN.</p>'];
         }
         return $fields;
     }

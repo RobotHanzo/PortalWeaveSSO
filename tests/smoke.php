@@ -75,3 +75,19 @@ wpsso_test('Custom plugin-management roles receive administrator SSO protection'
         wpsso_error(\WPSSO\Accounts::resolve(wpsso_app(['link_existing' => true]), $attrs), 'wpsso_admin_disabled');
     } finally { wp_delete_user($id); remove_role('wpsso_installer_fixture'); }
 });
+
+wpsso_test('Global media protection cannot be removed through an individual checkbox', function () {
+    $upload = wp_upload_bits('wpsso-global-' . bin2hex(random_bytes(4)) . '.txt', null, 'Private global media');
+    wpsso_assert(empty($upload['error']), 'Upload failed');
+    $id = wp_insert_attachment(['post_title' => 'Global protection fixture', 'post_status' => 'inherit', 'post_mime_type' => 'text/plain'], $upload['file']);
+    try {
+        wpsso_assert(\WPSSO\Config::save(['protected_media' => [$id]]) === true, 'Global media protection failed');
+        update_post_meta($id, '_wpsso_protected', 1);
+        update_post_meta($id, '_wpsso_protected', 0);
+        wpsso_assert(!file_exists($upload['file']) && get_post_meta($id, '_wpsso_protected', true), 'Checkbox exposed a globally protected file');
+        delete_transient('wpsso_media_error_' . get_current_user_id());
+        \WPSSO\Config::save(['protected_media' => []]);
+        update_post_meta($id, '_wpsso_protected', 0);
+        wpsso_assert(file_exists($upload['file']), 'Explicitly removed protection failed to restore media');
+    } finally { wp_delete_attachment($id, true); }
+});

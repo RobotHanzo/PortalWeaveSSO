@@ -333,6 +333,9 @@ final class Config
         if (!is_array($settings['content_rules']) || !is_array($settings['protected_media'])) {
             return new \WP_Error('wpsso_rules', 'Content and media rules must be arrays.');
         }
+        if ($network && ($settings['content_rules'] || $settings['protected_media'])) {
+            return new \WP_Error('wpsso_network_content', 'Network settings cannot contain site-local post, category or attachment IDs. Use the content and media editors on each site.');
+        }
         $settings['shared_cookie_domain'] = strtolower(ltrim(trim((string) $settings['shared_cookie_domain']), '.'));
         if ($settings['shared_cookie_domain'] && (!self::domain($settings['shared_cookie_domain']) || substr_count($settings['shared_cookie_domain'], '.') < 1)) {
             return new \WP_Error('wpsso_shared_domain', 'Use a registrable parent domain for shared sessions.');
@@ -344,18 +347,39 @@ final class Config
                 return new \WP_Error('wpsso_media_id', 'Protected media IDs must identify existing attachments.');
             }
         }
+        $moved = [];
         foreach ($settings['protected_media'] as $attachment_id) {
+            $had_private = (bool) get_post_meta($attachment_id, '_wpsso_private_files', true);
             $protected = Access::protect_media($attachment_id);
             if (is_wp_error($protected)) {
+                // Keep already-relocated attachments discoverable and protected
+                // even when a later filesystem operation prevents settings save.
+                foreach (array_merge($moved, [$attachment_id]) as $moved_id) {
+                    if (get_post_meta($moved_id, '_wpsso_private_files', true)) {
+                        update_post_meta($moved_id, '_wpsso_protected', 1);
+                    }
+                }
                 return $protected;
             }
+            if (!$had_private) {
+                $moved[] = $attachment_id;
+            }
         }
+        $restored_ids = [];
         foreach (array_diff((array) $old['protected_media'], $settings['protected_media']) as $attachment_id) {
             if (!get_post_meta($attachment_id, '_wpsso_protected', true)) {
                 $restored = Access::unprotect_media((int) $attachment_id);
                 if (is_wp_error($restored)) {
+                    // Reflect completed intentional restores rather than leave
+                    // a saved policy claiming that public files are private.
+                    $old['protected_media'] = array_values(array_diff($old['protected_media'], $restored_ids));
+                    $network ? update_site_option('wpsso_settings', $old) : update_option('wpsso_settings', $old, false);
+                    foreach ($moved as $moved_id) {
+                        update_post_meta($moved_id, '_wpsso_protected', 1);
+                    }
                     return $restored;
                 }
+                $restored_ids[] = (int) $attachment_id;
             }
         }
         if ($network) {

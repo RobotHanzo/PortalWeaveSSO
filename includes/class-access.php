@@ -212,7 +212,9 @@ final class Access
 
     public static function is_protected(int $id): bool
     {
-        return (bool) get_post_meta($id, '_wpsso_protected', true) || in_array($id, array_map('intval', Config::get('protected_media', [])), true);
+        return (bool) get_post_meta($id, '_wpsso_protected', true)
+            || (bool) get_post_meta($id, '_wpsso_private_files', true)
+            || in_array($id, array_map('intval', Config::get('protected_media', [])), true);
     }
 
     private static function vault()
@@ -322,7 +324,10 @@ final class Access
             return;
         }
         self::$moving = true;
-        $result = $value ? self::protect_media($id) : self::unprotect_media($id);
+        $configured = in_array((int) $id, array_map('intval', Config::get('protected_media', [])), true);
+        $result = (!$value && $configured)
+            ? new \WP_Error('wpsso_media_policy', 'Remove this attachment from the protected media ID list before removing its individual protection.')
+            : ($value ? self::protect_media($id) : self::unprotect_media($id));
         if (is_wp_error($result)) {
             set_transient('wpsso_media_error_' . get_current_user_id(), $result->get_error_message(), 300);
             // Keep the restrictive flag when any private copy exists; never report a failed restore as public.
