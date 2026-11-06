@@ -1,0 +1,6 @@
+/dist/
+/vendor/
+/.phpunit.cache/
+*.log
+/.tools/
+/.test-runtime/
