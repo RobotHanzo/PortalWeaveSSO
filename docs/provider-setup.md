@@ -1,6 +1,6 @@
 # PortalWeave SSO provider setup and administrator guide
 
-Install `portalweave-sso-1.2.1.zip` through **Plugins → Add New → Upload Plugin**, activate **PortalWeave SSO**, and open **PortalWeave SSO** in the WordPress admin sidebar. On multisite, **Network Admin → PortalWeave SSO** can enforce a network-wide policy. Each WordPress network has its own network option.
+Install `portalweave-sso-1.3.0.zip` through **Plugins → Add New → Upload Plugin**, activate **PortalWeave SSO**, and open **PortalWeave SSO** in the WordPress admin sidebar. On multisite, **Network Admin → PortalWeave SSO** can enforce a network-wide policy. Each WordPress network has its own network option.
 
 The proposed directory slug and text domain are `portalweave-sso`. Use the `[sso_oauth_login]` shortcode, `PORTALWEAVE_SSO_*` server configuration constants, `PortalWeaveSSO` PHP namespace and `wp portalweave-sso` commands.
 
@@ -142,6 +142,14 @@ Multiple apps can be enabled at once. Each button selects its own app. The defau
 Email verification is required by default. An OAuth-only provider without a trustworthy verification claim can authenticate an already-linked immutable identity or use a deliberately configured less restrictive user policy. Email linking and administrator SSO still require the configured verification claim.
 
 Review [external services and provider policy links](external-services.md) before enabling each provider. Setup derives local configuration and links official instructions; it does not fetch discovery documents or contact an identity service. Actual authentication exchanges occur when login/test/refresh/logout flows run; optional remote icons and mapped pictures also make browser requests. Choose necessary scopes and mappings, and disclose the actual recipients to your users.
+
+### Sign-out choices
+
+With sign-out confirmation enabled, the sign-out page offers **Sign out of this site and [provider name]**, **Sign out of this site**, and **Go back**. The combined action appears only when the provider linked to the current user has a configured, valid HTTPS end-session URL. Site-only sign-out ends the current WordPress session and clears that provider's locally stored tokens; the provider session stays active. Go back returns to a safe page on this site and keeps the session active.
+
+Configure the provider's documented end-session endpoint under **Identity providers → [provider] → Endpoints**, and register the separate logout return URI if required. A configured endpoint does not establish that the provider registration is complete; test sign-out against the actual provider before rollout. Providers without browser sign-out support, and users signed in through WordPress alone, receive site-only sign-out and Go back. Signed back-channel logout alone does not enable the combined action.
+
+When confirmation is disabled, existing nonce-bearing sign-out links continue directly to provider sign-out when an endpoint is available, or site-only sign-out otherwise. The choices are shown when confirmation is enabled.
 
 For provider-initiated OIDC session revocation, enable **signed OIDC back-channel logout** on the app and register the displayed back-channel URL with your provider. The provider must send a signed logout token; the endpoint validates the provider signature and logout-token claims and rejects replays. The ordinary end-session URL is used for browser-initiated logout.
 

@@ -4,7 +4,7 @@
 
 [![CI](https://github.com/RobotHanzo/PortalWeaveSSO/actions/workflows/verify.yml/badge.svg)](https://github.com/RobotHanzo/PortalWeaveSSO/actions/workflows/verify.yml)
 
-Download the [v1.2.1 plugin ZIP](https://github.com/RobotHanzo/PortalWeaveSSO/releases/download/v1.2.1/portalweave-sso-1.2.1.zip), with [release notes](https://github.com/RobotHanzo/PortalWeaveSSO/releases/tag/v1.2.1) and a [SHA-256 checksum](https://github.com/RobotHanzo/PortalWeaveSSO/releases/download/v1.2.1/portalweave-sso-1.2.1.zip.sha256).
+Download the [v1.3.0 plugin ZIP](https://github.com/RobotHanzo/PortalWeaveSSO/releases/download/v1.3.0/portalweave-sso-1.3.0.zip), with [release notes](https://github.com/RobotHanzo/PortalWeaveSSO/releases/tag/v1.3.0) and a [SHA-256 checksum](https://github.com/RobotHanzo/PortalWeaveSSO/releases/download/v1.3.0/portalweave-sso-1.3.0.zip.sha256).
 
 Add OAuth 2.0 and OpenID Connect sign-in to WordPress with multiple identity providers, guided setup, account mapping and access policies for content and private media. Manage login appearance, optional integrations and activity from the WordPress administrator screens.
 
@@ -14,7 +14,7 @@ Requires **WordPress 6.5+**, **PHP 8.1+ with OpenSSL**, and **HTTPS**.
 
 ## Quick start
 
-1. [Download the plugin ZIP](https://github.com/RobotHanzo/PortalWeaveSSO/releases/download/v1.2.1/portalweave-sso-1.2.1.zip), upload it through **Plugins → Add New → Upload Plugin**, and activate **PortalWeave SSO**.
+1. [Download the plugin ZIP](https://github.com/RobotHanzo/PortalWeaveSSO/releases/download/v1.3.0/portalweave-sso-1.3.0.zip), upload it through **Plugins → Add New → Upload Plugin**, and activate **PortalWeave SSO**.
 2. Open **PortalWeave SSO → Identity providers → Add provider** from the WordPress admin sidebar. Follow the service's guide, register its callback URL and save your credentials. Run **Test SSO Config**, configure account mappings and test a regular user before enforcing login.
 3. Add `[sso_oauth_login]` to a page, use the **PortalWeave SSO login** widget, or sign in through the WordPress and WooCommerce login buttons.
 
@@ -95,6 +95,14 @@ Each provider can use an uploaded logo from the WordPress media library or an HT
 Choose a default provider, popup behavior and post-login destinations.
 
 ![Sign-in and logout behavior settings](docs/screenshots/login-settings.png)
+
+With confirmation enabled, choose site-only sign-out or sign out of both this site and the named identity provider. Go back keeps the current session active. This sample provider has a configured logout endpoint; the image does not demonstrate a live provider connection.
+
+![Sign-out page offering sign-out from this site and Sample work account, site-only sign-out, and Go back](docs/screenshots/signout-provider.png)
+
+Providers without a configured logout endpoint show site-only sign-out and Go back.
+
+![Sign-out page for Sample community account with only site-only sign-out and Go back](docs/screenshots/signout-site-only.png)
 
 </details>
 

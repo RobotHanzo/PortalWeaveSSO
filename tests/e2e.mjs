@@ -392,6 +392,156 @@ await test('Unsaved test starts reject malformed nonce, incomplete forms and sch
     }
 });
 
+async function logoutSession(supported = true) {
+    const jar = new Cookies();
+    const app = supported ? 'e2e-logout' : 'e2e';
+    const authorize = await start(jar, { url: `/?${new URLSearchParams({ portalweave_sso_action: 'login', app })}` });
+    const signedIn = await request(callback(authorize), jar);
+    assert.equal(signedIn.status, 302, 'Unable to create a sign-out test session');
+    const identity = await inspect(jar);
+    assert.ok(identity.id > 0 && identity.logout_url, 'Fixture did not expose a signed-in logout link');
+    return { jar, identity };
+}
+
+function logoutForm(html) {
+    const nonce = html.match(/<input\b(?=[^>]*\bname="_wpnonce")(?=[^>]*\bvalue="([a-f0-9]+)")[^>]*>/i)?.[1];
+    assert.ok(nonce, 'Sign-out form did not provide its WordPress nonce');
+    return new URLSearchParams({ confirm: '1', _wpnonce: nonce, redirect_to: `${origin}/after-signout/` });
+}
+
+function logoutBack(html) {
+    const href = html.match(/<a\b(?=[^>]*\bid="portalweave-sso-logout-back")(?=[^>]*\bhref="([^"]+)")[^>]*>/i)?.[1];
+    assert.ok(href, 'Go back link is missing');
+    return href.replaceAll('&#038;', '&').replaceAll('&amp;', '&');
+}
+
+async function submitLogout(jar, params) {
+    return request('/?portalweave_sso_action=logout', jar, { method: 'POST', body: params.toString(), headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+}
+
+await test('Sign-out confirmation and Go back retain the session, including GET confirm bypass attempts', async () => {
+    const { jar, identity } = await logoutSession();
+    const cookies = authenticationCookies(jar);
+    const link = new URL(identity.logout_url);
+    link.searchParams.set('confirm', '1');
+    link.searchParams.set('logout_scope', 'all');
+    const screen = await request(link.href, jar, { headers: { Referer: `${origin}/members/` } });
+    assert.equal(screen.status, 200, 'GET confirmation bypass signed out instead of displaying choices');
+    assert.match(screen.body, /Northstar Identity/);
+    assert.match(screen.body, /<button\b(?=[^>]*\bname="logout_scope")(?=[^>]*\bvalue="all")[^>]*>/i);
+    assert.match(screen.body, /<button\b(?=[^>]*\bname="logout_scope")(?=[^>]*\bvalue="site")[^>]*>/i);
+    assert.doesNotMatch(screen.body, /id_token_hint|client_secret|local-integration-signing-key/);
+    assert.match(screen.headers['cache-control'], /no-store/);
+    assert.equal(screen.headers['referrer-policy'], 'no-referrer');
+    assert.match(screen.headers['content-security-policy'], /form-action 'self'/);
+    assert.deepEqual(authenticationCookies(jar), cookies, 'Displaying confirmation changed authentication cookies');
+    assert.equal((await inspect(jar)).id, identity.id);
+    const back = logoutBack(screen.body);
+    assert.equal(back, `${origin}/members/`);
+    await request(back, jar);
+    assert.equal((await inspect(jar)).id, identity.id, 'Go back ended the session');
+    for (const referer of ['https://example.org/allowed-looking-external/', `${origin}/?portalweave_sso_action=logout`, `${origin}/wp-login.php?action=logout`, `${origin}/?portalweave_sso_action=callback&state=private-state&code=private-code`]) {
+        const response = await request(identity.logout_url, jar, { headers: { Referer: referer } });
+        assert.equal(response.status, 200);
+        assert.equal(logoutBack(response.body), `${origin}/`, 'Go back accepted an external or authentication route');
+    }
+    const stripped = await request(identity.logout_url, jar, { headers: { Referer: `${origin}/members/?view=list&_wpnonce=private-nonce&access_token=private-token` } });
+    const strippedBack = new URL(logoutBack(stripped.body));
+    assert.equal(strippedBack.pathname, '/members/');
+    assert.equal(strippedBack.searchParams.get('view'), 'list');
+    assert.equal(strippedBack.searchParams.has('_wpnonce'), false);
+    assert.equal(strippedBack.searchParams.has('access_token'), false);
+    assert.equal((await inspect(jar)).id, identity.id);
+});
+
+await test('Site-only sign out skips a supported provider and invalidates the current session', async () => {
+    const { jar, identity } = await logoutSession();
+    const before = new Cookies(jar);
+    const screen = await request(identity.logout_url, jar);
+    const params = logoutForm(screen.body);
+    params.set('logout_scope', 'site');
+    const response = await submitLogout(jar, params);
+    assert.equal(response.status, 302);
+    assert.equal(response.headers.location, `${origin}/after-signout/`);
+    assert.ok(!(response.headers['set-cookie'] ?? []).some(cookie => cookie.startsWith('__Host-portalweave_sso_')), 'Site-only sign out created provider state');
+    assert.equal((await inspect(jar)).id, 0);
+    assert.equal((await inspect(before)).id, 0, 'The original authentication cookie still authorizes a session');
+});
+
+await test('Unsupported provider hides combined sign out and rejects forged selections without ending the session', async () => {
+    const { jar, identity } = await logoutSession(false);
+    const screen = await request(identity.logout_url, jar);
+    assert.equal(screen.status, 200);
+    assert.doesNotMatch(screen.body, /<button\b(?=[^>]*\bname="logout_scope")(?=[^>]*\bvalue="all")[^>]*>/i);
+    assert.match(screen.body, /<button\b(?=[^>]*\bname="logout_scope")(?=[^>]*\bvalue="site")[^>]*>/i);
+    const params = logoutForm(screen.body);
+    params.set('logout_scope', 'all');
+    const rejected = await submitLogout(jar, params);
+    assert.equal(rejected.status, 403);
+    assert.match(rejected.body, /portalweave_sso_logout_scope/);
+    assert.equal((await inspect(jar)).id, identity.id, 'Unsupported combined sign out ended the session');
+    params.set('logout_scope', 'site');
+    const local = await submitLogout(jar, params);
+    assert.equal(local.status, 302);
+    assert.equal(local.headers.location, `${origin}/after-signout/`);
+    assert.equal((await inspect(jar)).id, 0);
+});
+
+await test('Combined sign out clears the site session and verifies browser-bound single-use provider return', async () => {
+    const { jar, identity } = await logoutSession();
+    const before = new Cookies(jar);
+    const screen = await request(identity.logout_url, jar);
+    const params = logoutForm(screen.body);
+    params.set('logout_scope', 'all');
+    const response = await submitLogout(jar, params);
+    assert.equal(response.status, 302);
+    const endpoint = new URL(response.headers.location);
+    assert.equal(endpoint.origin, 'https://example.org');
+    assert.equal(endpoint.pathname, '/portalweave-sso-test-logout');
+    assert.equal(endpoint.searchParams.get('client_id'), 'portalweave-sso-e2e-client');
+    assert.equal(endpoint.searchParams.get('post_logout_redirect_uri'), `${origin}/?portalweave_sso_action=logout_callback`);
+    assert.ok(endpoint.searchParams.get('id_token_hint')?.split('.').length === 3, 'Combined sign out lost the ID token hint');
+    const state = endpoint.searchParams.get('state');
+    assert.ok(state?.length >= 43);
+    const cookie = response.headers['set-cookie']?.find(value => value.startsWith('__Host-portalweave_sso_'));
+    assert.ok(cookie && /; secure/i.test(cookie) && /; HttpOnly/i.test(cookie) && /SameSite=Lax/i.test(cookie), 'Provider logout state cookie is not hardened');
+    assert.equal((await inspect(jar)).id, 0);
+    assert.equal((await inspect(before)).id, 0, 'Combined sign out left the old site session usable');
+    const returnUrl = `/?${new URLSearchParams({ portalweave_sso_action: 'logout_callback', state })}`;
+    const wrongBrowser = await request(returnUrl, new Cookies());
+    assert.equal(wrongBrowser.status, 403);
+    assert.match(wrongBrowser.body, /portalweave_sso_state/);
+    const replayJar = new Cookies(jar);
+    const returned = await request(returnUrl, jar);
+    assert.equal(returned.status, 302);
+    assert.equal(returned.headers.location, `${origin}/after-signout/`);
+    const replay = await request(returnUrl, replayJar);
+    assert.equal(replay.status, 403);
+    assert.match(replay.body, /portalweave_sso_state/);
+});
+
+await test('Sign-out rejects malformed scopes, nonces and methods before session mutation', async () => {
+    const { jar, identity } = await logoutSession();
+    const screen = await request(identity.logout_url, jar);
+    const cases = [
+        params => params.set('logout_scope', 'unknown'),
+        params => params.set('logout_scope[nested]', 'site'),
+        params => {},
+        params => { params.set('logout_scope', 'site'); params.set('_wpnonce', 'forged'); },
+    ];
+    for (const mutate of cases) {
+        const params = logoutForm(screen.body);
+        mutate(params);
+        const response = await submitLogout(jar, params);
+        assert.equal(response.status, 403, 'Malformed sign-out request was accepted');
+        assert.ok(!(response.headers['set-cookie'] ?? []).some(cookie => cookie.startsWith('__Host-portalweave_sso_')), 'Rejected sign out created provider state');
+        assert.equal((await inspect(jar)).id, identity.id, 'Rejected sign out ended the session');
+    }
+    const wrongMethod = await request(identity.logout_url, jar, { method: 'PUT' });
+    assert.equal(wrongMethod.status, 403);
+    assert.equal((await inspect(jar)).id, identity.id, 'Unsupported HTTP method ended the session');
+});
+
 console.log(`${tests} HTTPS protocol tests, ${failures} failures`);
 process.exitCode = failures ? 1 : 0;
 finishReports();

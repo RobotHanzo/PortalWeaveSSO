@@ -2,14 +2,14 @@
 # This file is distributed under the GPL-2.0-or-later.
 msgid ""
 msgstr ""
-"Project-Id-Version: PortalWeave SSO 1.2.1\n"
+"Project-Id-Version: PortalWeave SSO 1.3.0\n"
 "Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/portalweave-sso\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-06T19:55:36+00:00\n"
+"POT-Creation-Date: 2026-11-06T20:15:57+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: portalweave-sso\n"
@@ -20,6 +20,7 @@ msgstr ""
 #: includes/class-admin.php:27
 #: includes/class-admin.php:31
 #: includes/class-admin.php:553
+#: includes/class-logout-view.php:17
 msgid "PortalWeave SSO"
 msgstr ""
 
@@ -2729,7 +2730,7 @@ msgid "The password grant is disabled."
 msgstr ""
 
 #: includes/class-auth.php:499
-#: includes/class-auth.php:793
+#: includes/class-auth.php:838
 msgid "The provider configuration changed. Start sign in again."
 msgstr ""
 
@@ -2742,94 +2743,89 @@ msgid "Enter a valid provider username and password."
 msgstr ""
 
 #: includes/class-auth.php:524
+msgid "Use the sign-out page to end your session."
+msgstr ""
+
+#: includes/class-auth.php:528
 msgid "The logout link has expired. Please try again."
 msgstr ""
 
-#: includes/class-auth.php:529
-msgid "Sign out of this site and your identity provider?"
+#: includes/class-auth.php:560
+msgid "Choose an available sign-out option and try again."
 msgstr ""
 
-#: includes/class-auth.php:529
-#: includes/class-display.php:152
-msgid "Sign out"
-msgstr ""
-
-#: includes/class-auth.php:530
-msgid "Confirm sign out"
-msgstr ""
-
-#: includes/class-auth.php:607
+#: includes/class-auth.php:652
 msgid "Back-channel logout is disabled for this provider."
 msgstr ""
 
-#: includes/class-auth.php:617
+#: includes/class-auth.php:662
 msgid "The logout event has already been processed."
 msgstr ""
 
-#: includes/class-auth.php:656
+#: includes/class-auth.php:701
 msgid "The login state could not be stored."
 msgstr ""
 
-#: includes/class-auth.php:660
+#: includes/class-auth.php:705
 msgid "The browser login cookie could not be created."
 msgstr ""
 
-#: includes/class-auth.php:669
+#: includes/class-auth.php:714
 msgid "The login state is missing or invalid. Start sign in again."
 msgstr ""
 
-#: includes/class-auth.php:675
+#: includes/class-auth.php:720
 msgid "The login state expired or belongs to a different browser. Start sign in again."
 msgstr ""
 
-#: includes/class-auth.php:680
+#: includes/class-auth.php:725
 msgid "This login state has already been used."
 msgstr ""
 
-#: includes/class-auth.php:701
+#: includes/class-auth.php:746
 msgid "Completing sign in…"
 msgstr ""
 
-#: includes/class-auth.php:701
+#: includes/class-auth.php:746
 msgid "JavaScript is required to complete legacy implicit sign in."
 msgstr ""
 
-#: includes/class-auth.php:702
+#: includes/class-auth.php:747
 msgid "Completing sign in"
 msgstr ""
 
-#: includes/class-auth.php:702
+#: includes/class-auth.php:747
 msgid "No login response was received. Start sign in again."
 msgstr ""
 
-#: includes/class-auth.php:706
+#: includes/class-auth.php:751
 msgid "Sign in completed. You can close this window."
 msgstr ""
 
-#: includes/class-auth.php:706
+#: includes/class-auth.php:751
 #: includes/class-provider-wizard.php:83
 msgid "Continue"
 msgstr ""
 
-#: includes/class-auth.php:707
+#: includes/class-auth.php:752
 msgid "Signed in"
 msgstr ""
 
-#: includes/class-auth.php:769
-#: includes/class-auth.php:789
+#: includes/class-auth.php:814
+#: includes/class-auth.php:834
 msgid "The original administrator session is required to view test results."
 msgstr ""
 
-#: includes/class-auth.php:774
-#: includes/class-auth.php:779
+#: includes/class-auth.php:819
+#: includes/class-auth.php:824
 msgid "The provider configuration changed. Start the connection test again."
 msgstr ""
 
-#: includes/class-auth.php:786
+#: includes/class-auth.php:831
 msgid "The selected provider is unavailable."
 msgstr ""
 
-#: includes/class-auth.php:820
+#: includes/class-auth.php:865
 msgid "SSO sign in failed"
 msgstr ""
 
@@ -2871,6 +2867,11 @@ msgstr ""
 
 #: includes/class-display.php:18
 msgid "Settings"
+msgstr ""
+
+#: includes/class-display.php:152
+#: includes/class-logout-view.php:10
+msgid "Sign out"
 msgstr ""
 
 #: includes/class-display.php:208
@@ -3056,6 +3057,40 @@ msgstr ""
 
 #: includes/class-jwt.php:162
 msgid "The JWKS document does not contain a valid key set."
+msgstr ""
+
+#: includes/class-logout-view.php:18
+msgid "Choose where to end your session."
+msgstr ""
+
+#: includes/class-logout-view.php:18
+msgid "End your session on this site, or go back to stay signed in."
+msgstr ""
+
+#. translators: %s: the configured name of the identity provider.
+#: includes/class-logout-view.php:22
+#, php-format
+msgid "Sign out of this site and %s"
+msgstr ""
+
+#: includes/class-logout-view.php:25
+msgid "Sign out of this site"
+msgstr ""
+
+#. translators: %s: the configured name of the identity provider.
+#: includes/class-logout-view.php:28
+#, php-format
+msgid "Signing out of this site only keeps you signed in to %s."
+msgstr ""
+
+#. translators: %s: the configured name of the identity provider.
+#: includes/class-logout-view.php:32
+#, php-format
+msgid "Sign-out from %s is not available here. Your session there will stay active."
+msgstr ""
+
+#: includes/class-logout-view.php:35
+msgid "Go back"
 msgstr ""
 
 #: includes/class-privacy.php:21
