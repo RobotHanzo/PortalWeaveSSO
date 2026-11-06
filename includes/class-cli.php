@@ -59,21 +59,51 @@ final class Cli {
             \WP_CLI::line($json);
             return;
         }
-        $file = $args[0];
-        if (file_exists($file) || is_link($file)) {
-            \WP_CLI::error('The destination already exists; choose a new backup path.');
-        }
-        $stream = @fopen($file, 'x');
-        if (!$stream) {
-            \WP_CLI::error('Cannot create the backup file.');
-        }
-        $written = fwrite($stream, $json . "\n");
-        fclose($stream);
-        @chmod($file, 0600);
-        if ($written === false) {
-            \WP_CLI::error('Could not write the backup.');
+        $result = self::write_backup($args[0], $json . "\n");
+        if (is_wp_error($result)) {
+            \WP_CLI::error($result->get_error_message());
         }
         \WP_CLI::success('Redacted backup written. Client identifiers and secrets are excluded.');
+    }
+
+    /** @internal Write a local CLI backup without overwriting any existing destination, even in a race. */
+    public static function write_backup(string $file, string $contents) {
+        if ($file === '' || str_contains($file, "\0") || wp_is_stream($file)) {
+            return new \WP_Error('wpsso_backup_path', 'Choose a local filesystem path for the backup.');
+        }
+        if (file_exists($file) || is_link($file)) {
+            return new \WP_Error('wpsso_backup_exists', 'The destination already exists; choose a new backup path.');
+        }
+        // WP_Filesystem::put_contents() opens with "wb" and has no exclusive-create mode.
+        // The CLI must never truncate a destination created between the check above and opening it.
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- Local CLI exclusive-create semantics are unavailable in the WordPress Filesystem API.
+        $stream = @fopen($file, 'x');
+        if (!$stream) {
+            return new \WP_Error('wpsso_backup_create', 'Cannot create the backup file.');
+        }
+        $success = false;
+        try {
+            // Set permissions on the descriptor we exclusively created, rather than a replaceable path.
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fchmod -- WordPress has no API for permissions on an already-open exclusive file descriptor.
+            if (!@fchmod($stream, 0600)) {
+                return new \WP_Error('wpsso_backup_permissions', 'Cannot secure the backup permissions. An incomplete file may remain at the requested path.');
+            }
+            $offset = 0;
+            $length = strlen($contents);
+            while ($offset < $length) {
+                // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- Write through the exclusive descriptor; reopening with WP_Filesystem would lose the no-overwrite guarantee.
+                $written = fwrite($stream, substr($contents, $offset));
+                if ($written === false || $written === 0) {
+                    return new \WP_Error('wpsso_backup_write', 'Could not finish writing the backup. An incomplete file may remain at the requested path.');
+                }
+                $offset += $written;
+            }
+            $success = true;
+        } finally {
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Close the same exclusive descriptor in every success and failure path.
+            $closed = fclose($stream);
+        }
+        return $success && $closed ? true : new \WP_Error('wpsso_backup_write', 'Could not finish writing the backup. An incomplete file may remain at the requested path.');
     }
 
     /** Import a JSON configuration file.

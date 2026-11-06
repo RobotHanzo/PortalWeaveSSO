@@ -16,23 +16,23 @@ final class Abilities {
 
     public static function category(): void {
         if (Config::get('abilities_enabled', false) && function_exists('wp_register_ability_category')) {
-            wp_register_ability_category('wpsso', ['label' => 'WordPress SSO', 'description' => 'Configure and diagnose SSO with administrator permissions.']);
+            wp_register_ability_category('wpsso', ['label' => __('STSA Identity SSO', 'stsa-identity-sso'), 'description' => __('Configure and diagnose SSO with administrator permissions.', 'stsa-identity-sso')]);
         }
     }
 
     public static function definitions(): array {
         $id = ['type' => 'string', 'pattern' => '^[a-z0-9_-]+$', 'maxLength' => 100];
         return [
-            'list-providers' => ['List SSO providers', 'Return provider names and configuration status without credentials.', [], [], true],
-            'get-provider' => ['Get SSO provider', 'Return the redacted settings of one provider.', ['id' => $id], ['id'], true],
-            'configure-provider' => ['Configure SSO provider', 'Create or update one provider. Input credentials are encrypted and never returned.', ['id' => $id, 'settings' => ['type' => 'object']], ['id', 'settings'], false],
-            'diagnose' => ['Diagnose SSO configuration', 'Report local configuration errors, callback URL and safe corrective actions.', ['id' => $id], [], true],
-            'fix-common-error' => ['Fix a common SSO error', 'Apply an explicit safe fix: enable PKCE, use code grant, restore openid scope or clear callback override.',
+            'list-providers' => [__('List SSO providers', 'stsa-identity-sso'), __('Return provider names and configuration status without credentials.', 'stsa-identity-sso'), [], [], true],
+            'get-provider' => [__('Get SSO provider', 'stsa-identity-sso'), __('Return the redacted settings of one provider.', 'stsa-identity-sso'), ['id' => $id], ['id'], true],
+            'configure-provider' => [__('Configure SSO provider', 'stsa-identity-sso'), __('Create or update one provider. Input credentials are encrypted and never returned.', 'stsa-identity-sso'), ['id' => $id, 'settings' => ['type' => 'object']], ['id', 'settings'], false],
+            'diagnose' => [__('Diagnose SSO configuration', 'stsa-identity-sso'), __('Report local configuration errors, callback URL and safe corrective actions.', 'stsa-identity-sso'), ['id' => $id], [], true],
+            'fix-common-error' => [__('Fix a common SSO error', 'stsa-identity-sso'), __('Apply an explicit safe fix: enable PKCE, use code grant, restore openid scope or clear callback override.', 'stsa-identity-sso'),
                 ['id' => $id, 'fix' => ['type' => 'string', 'enum' => ['enable-pkce', 'use-code-grant', 'openid-scope', 'clear-callback']]], ['id', 'fix'], false],
-            'export-config' => ['Export redacted SSO configuration', 'Export settings with client identifiers, credentials, provisioning and shared secrets removed.', [], [], true],
-            'login-audit' => ['Read SSO login audit', 'Read recent SSO transaction records. This includes user personal data and requires administrator access.',
+            'export-config' => [__('Export redacted SSO configuration', 'stsa-identity-sso'), __('Export settings with client identifiers, credentials, provisioning and shared secrets removed.', 'stsa-identity-sso'), [], [], true],
+            'login-audit' => [__('Read SSO login audit', 'stsa-identity-sso'), __('Read recent SSO transaction records. This includes user personal data and requires administrator access.', 'stsa-identity-sso'),
                 ['limit' => ['type' => 'integer', 'minimum' => 1, 'maximum' => 200], 'app' => $id], [], true],
-            'support-query' => ['Prepare or send an SSO support query', 'Prepare a local support draft with redacted configuration. Send only when send=true and a support email is configured.',
+            'support-query' => [__('Prepare or send an SSO support query', 'stsa-identity-sso'), __('Prepare a local support draft with redacted configuration. Send only when send=true and a support email is configured.', 'stsa-identity-sso'),
                 ['subject' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 160], 'message' => ['type' => 'string', 'minLength' => 1, 'maxLength' => 10000], 'send' => ['type' => 'boolean']], ['subject', 'message'], false],
         ];
     }
@@ -57,6 +57,16 @@ final class Abilities {
     public static function execute(string $ability, array $input = []) {
         if (!self::permission($input)) {
             return new \WP_Error('wpsso_ability_forbidden', 'Enable SSO abilities and authenticate with manage_options.', ['status' => 403]);
+        }
+        $definition = self::definitions()[$ability] ?? null;
+        if (!$definition) {
+            return new \WP_Error('wpsso_ability', 'Unknown SSO ability.');
+        }
+        // Keep direct PHP execution subject to the same schema as the REST/MCP adapter.
+        $valid = rest_validate_value_from_schema($input, ['type' => 'object', 'properties' => $definition[2],
+            'required' => $definition[3], 'additionalProperties' => false], 'input');
+        if (is_wp_error($valid)) {
+            return $valid;
         }
         $id = is_string($input['id'] ?? null) ? sanitize_key($input['id']) : '';
         $redacted = Config::redacted();

@@ -77,7 +77,9 @@ final class Extensions {
         $permission = [self::class, 'scim_permission'];
         foreach (['Users', 'Groups'] as $resource) {
             register_rest_route('wpsso/v1', '/scim/v2/' . $resource, [
-                ['methods' => 'GET,POST', 'callback' => [self::class, 'scim_collection'], 'permission_callback' => $permission],
+                ['methods' => 'GET,POST', 'callback' => [self::class, 'scim_collection'], 'permission_callback' => $permission,
+                    'args' => ['filter' => ['type' => 'string', 'maxLength' => 1024],
+                        'startIndex' => ['type' => 'integer', 'minimum' => 1], 'count' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 200]]],
             ]);
             register_rest_route('wpsso/v1', '/scim/v2/' . $resource . '/(?P<id>[a-zA-Z0-9-]+)', [
                 ['methods' => 'GET,PUT,PATCH,DELETE', 'callback' => [self::class, 'scim_item'], 'permission_callback' => $permission],
@@ -91,6 +93,8 @@ final class Extensions {
     }
 
     public static function scim_permission($request) {
+        // SCIM is a server-to-server API, not cookie authentication. Each route
+        // independently requires this dedicated HTTPS bearer credential instead of a WordPress nonce.
         $secret = (string) Config::get('scim_token', '');
         $header = (string) $request->get_header('authorization');
         if (!self::enabled('scim') || !is_ssl() || strlen($secret) < 32 ||
@@ -206,7 +210,11 @@ final class Extensions {
             }
             return $group ? self::write_group('', $body) : self::write_user(0, $body);
         }
-        $filter = self::parse_filter((string) $request->get_param('filter'));
+        $raw_filter = $request->get_param('filter');
+        if ($raw_filter !== null && (!is_string($raw_filter) || strlen($raw_filter) > 1024)) {
+            return self::error('filter must be a string of at most 1024 characters.', 400, 'invalidFilter');
+        }
+        $filter = self::parse_filter($raw_filter ?? '');
         if (is_wp_error($filter)) {
             return self::error($filter->get_error_message(), 400, 'invalidFilter');
         }
@@ -224,6 +232,7 @@ final class Extensions {
             // Batch querying prevents loading user objects for an entire large directory at once.
             $offset = 0;
             do {
+                // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key,WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Only users explicitly owned by this site's SCIM integration may be disclosed; fetch in bounded batches.
                 $users = get_users(['meta_key' => self::scim_meta('managed'), 'meta_value' => '1', 'number' => 200, 'offset' => $offset, 'orderby' => 'ID', 'order' => 'ASC']);
                 foreach ($users as $user) {
                     $resource = self::user_resource($user);
@@ -298,7 +307,7 @@ final class Extensions {
         $map = ['username' => 'userName', 'externalid' => 'externalId', 'displayname' => 'displayName',
             'active' => 'active', 'emails' => 'emails', 'name' => 'name', 'members' => 'members'];
         foreach ($patch['Operations'] as $op) {
-            if (!is_array($op)) {
+            if (!is_array($op) || !is_string($op['op'] ?? null) || (isset($op['path']) && !is_string($op['path']))) {
                 return new \WP_Error('wpsso_scim_patch', 'Malformed PATCH operation.');
             }
             $action = strtolower((string) ($op['op'] ?? ''));
@@ -403,6 +412,7 @@ final class Extensions {
                 return self::error('WordPress usernames cannot be renamed.', 400, 'mutability');
             }
             if ($external !== '') {
+                // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key,WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Bounded identity-uniqueness lookup inside the provisioning write mutex.
                 $owners = get_users(['meta_key' => self::scim_meta('external'), 'meta_value' => $external, 'fields' => 'ID', 'number' => 2]);
                 if ($owners && (count($owners) > 1 || (int) $owners[0] !== $id)) {
                     return self::error('externalId is already assigned.', 409, 'uniqueness');
@@ -479,7 +489,7 @@ final class Extensions {
         }
         $members = [];
         foreach ($body['members'] ?? [] as $member) {
-            if (!is_array($member) || !ctype_digit((string) ($member['value'] ?? ''))) {
+            if (!is_array($member) || (!is_string($member['value'] ?? null) && !is_int($member['value'] ?? null)) || !ctype_digit((string) $member['value'])) {
                 return self::error('Each member requires a numeric SCIM user ID.');
             }
             $user_id = (int) $member['value'];
@@ -585,21 +595,24 @@ final class Extensions {
             return;
         }
         $status = get_user_meta($user->ID, self::moderation_meta(), true);
-        echo '<h2>SSO account moderation</h2><table class="form-table"><tr><th><label for="wpsso-moderation">Approval</label></th><td>';
+        echo '<h2>' . esc_html__('SSO account moderation', 'stsa-identity-sso') . '</h2><table class="form-table"><tr><th><label for="wpsso-moderation">' . esc_html__('Approval', 'stsa-identity-sso') . '</label></th><td>';
         wp_nonce_field('wpsso_moderate_' . $user->ID, 'wpsso_moderation_nonce');
         echo '<select id="wpsso-moderation" name="wpsso_moderation">';
-        foreach (['' => 'No moderation policy', 'pending' => 'Pending approval', 'approved' => 'Approved', 'blocked' => 'Blocked'] as $value => $label) {
+        foreach (['' => __('No moderation policy', 'stsa-identity-sso'), 'pending' => __('Pending approval', 'stsa-identity-sso'), 'approved' => __('Approved', 'stsa-identity-sso'), 'blocked' => __('Blocked', 'stsa-identity-sso')] as $value => $label) {
             echo '<option value="' . esc_attr($value) . '" ' . selected($status, $value, false) . '>' . esc_html($label) . '</option>';
         }
-        echo '</select><p class="description">Approval never changes WordPress roles.</p></td></tr></table>';
+        echo '</select><p class="description">' . esc_html__('Approval never changes WordPress roles.', 'stsa-identity-sso') . '</p></td></tr></table>';
     }
 
     public static function moderation_save(int $user_id): void {
         if (!self::enabled('moderation') || !current_user_can('manage_options') || !current_user_can('edit_user', $user_id) || self::privileged($user_id) ||
-            empty($_POST['wpsso_moderation_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['wpsso_moderation_nonce'])), 'wpsso_moderate_' . $user_id)) {
+            !isset($_POST['wpsso_moderation_nonce']) || !is_string($_POST['wpsso_moderation_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['wpsso_moderation_nonce'])), 'wpsso_moderate_' . $user_id)) {
             return;
         }
-        $status = sanitize_key($_POST['wpsso_moderation'] ?? '');
+        if (!isset($_POST['wpsso_moderation']) || !is_string($_POST['wpsso_moderation'])) {
+            return;
+        }
+        $status = sanitize_key(wp_unslash($_POST['wpsso_moderation']));
         if (!in_array($status, ['', 'pending', 'approved', 'blocked'], true)) {
             return;
         }
@@ -666,7 +679,8 @@ final class Extensions {
 
     /** JWT SSO uses a real OIDC form_post challenge, rather than a replayable URL token. */
     public static function jwt_route(): void {
-        $action = isset($_GET['wpsso_action']) && is_string($_GET['wpsso_action']) ? sanitize_key($_GET['wpsso_action']) : '';
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Public login routing; the callback below authenticates its one-use browser-bound OIDC state and signed token.
+        $action = isset($_GET['wpsso_action']) && is_string($_GET['wpsso_action']) ? sanitize_key(wp_unslash($_GET['wpsso_action'])) : '';
         if (!in_array($action, ['jwt_start', 'jwt_callback'], true)) {
             return;
         }
@@ -676,7 +690,8 @@ final class Extensions {
         nocache_headers();
         header('Referrer-Policy: no-referrer');
         if ($action === 'jwt_start') {
-            $id = isset($_GET['app']) && is_string($_GET['app']) ? sanitize_key($_GET['app']) : '';
+            // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Beginning an unauthenticated OIDC challenge does not accept identity or change an account.
+            $id = isset($_GET['app']) && is_string($_GET['app']) ? sanitize_key(wp_unslash($_GET['app'])) : '';
             $app = Config::app($id);
             if (!$app || empty($app['enabled']) || empty($app['jwt_sso']) || empty($app['authorize_url']) || ($app['protocol'] ?? '') !== 'oidc') {
                 self::fail(new \WP_Error('wpsso_jwt_app', 'Choose an enabled OpenID provider with JWT SSO enabled.'));
@@ -684,23 +699,30 @@ final class Extensions {
             $state = bin2hex(random_bytes(32));
             $binding = bin2hex(random_bytes(32));
             $nonce = bin2hex(random_bytes(32));
-            $redirect = isset($_GET['redirect_to']) && is_string($_GET['redirect_to']) ? wp_unslash($_GET['redirect_to']) : '';
+            // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- The optional login destination is validated against the administrator's explicit URL allowlist.
+            $redirect = isset($_GET['redirect_to']) && is_string($_GET['redirect_to']) ? esc_url_raw(wp_unslash($_GET['redirect_to'])) : '';
             set_transient('wpsso_jwt_state_' . hash('sha256', $state), ['app' => $id, 'binding' => hash('sha256', $binding), 'nonce' => $nonce,
                 'redirect' => Redirect::validate($redirect, home_url('/')), 'expires' => time() + 300], 300);
             setcookie('__Secure-wpsso-jwt', $binding, ['expires' => time() + 300, 'path' => '/', 'secure' => true, 'httponly' => true, 'samesite' => 'None']);
             $target = add_query_arg(['client_id' => $app['client_id'], 'response_type' => 'id_token', 'response_mode' => 'form_post',
                 'scope' => 'openid', 'redirect_uri' => home_url('/?wpsso_action=jwt_callback'), 'state' => $state, 'nonce' => $nonce], $app['authorize_url']);
+            // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- OIDC must leave this host for the HTTPS authorization endpoint validated when the administrator saved this provider.
             wp_redirect($target, 302, 'WPSSO');
             exit;
         }
-        if (($_SERVER['REQUEST_METHOD'] ?? '') !== 'POST' || !is_string($_POST['state'] ?? null) || !is_string($_POST['id_token'] ?? null)) {
+        $method = isset($_SERVER['REQUEST_METHOD']) && is_string($_SERVER['REQUEST_METHOD']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_METHOD'])) : '';
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- OIDC state is strictly validated below and verified against a one-use challenge plus browser cookie; text sanitization must not alter a protocol value.
+        $state = isset($_POST['state']) && is_string($_POST['state']) ? wp_unslash($_POST['state']) : '';
+        // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Compact JWS syntax is validated below; Jwt::validate() verifies signature, issuer, audience, nonce and expiry without altering signed bytes.
+        $token = isset($_POST['id_token']) && is_string($_POST['id_token']) ? wp_unslash($_POST['id_token']) : '';
+        if ($method !== 'POST' || !preg_match('/^[a-f0-9]{64}$/D', $state) || strlen($token) > 65536 || !preg_match('/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/D', $token)) {
             self::fail(new \WP_Error('wpsso_jwt_request', 'JWT callback requires a form POST containing state and id_token.'));
         }
-        $state = wp_unslash($_POST['state']);
         $key = 'wpsso_jwt_state_' . hash('sha256', $state);
         $flow = get_transient($key);
-        $binding = isset($_COOKIE['__Secure-wpsso-jwt']) && is_string($_COOKIE['__Secure-wpsso-jwt']) ? $_COOKIE['__Secure-wpsso-jwt'] : '';
-        if (!is_array($flow) || $flow['expires'] < time() || !hash_equals($flow['binding'], hash('sha256', $binding))) {
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- This generated 64-character hexadecimal browser secret is validated exactly, then compared only by its SHA-256 digest.
+        $binding = isset($_COOKIE['__Secure-wpsso-jwt']) && is_string($_COOKIE['__Secure-wpsso-jwt']) ? wp_unslash($_COOKIE['__Secure-wpsso-jwt']) : '';
+        if (!preg_match('/^[a-f0-9]{64}$/D', $binding) || !is_array($flow) || $flow['expires'] < time() || !hash_equals($flow['binding'], hash('sha256', $binding))) {
             self::fail(new \WP_Error('wpsso_state', 'The JWT challenge expired or belongs to another browser.'));
         }
         if (!self::consume('jwt-state', $state, 300)) {
@@ -712,7 +734,7 @@ final class Extensions {
         if (!$app || empty($app['enabled']) || empty($app['jwt_sso'])) {
             self::fail(new \WP_Error('wpsso_jwt_app', 'This JWT provider is disabled.'));
         }
-        $claims = Jwt::validate(wp_unslash($_POST['id_token']), $app, ['nonce' => $flow['nonce']]);
+        $claims = Jwt::validate($token, $app, ['nonce' => $flow['nonce']]);
         if (is_wp_error($claims)) {
             self::fail($claims, $app['id']);
         }
@@ -722,6 +744,7 @@ final class Extensions {
         $user = Accounts::resolve($app, $claims, []);
         self::session($user, $app, $claims);
         $redirect = apply_filters('wpsso_login_redirect', $flow['redirect'], $app, $claims, $user);
+        // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- Redirect::validate() checks the exact origin/path against the configured allowlist, including intentional external destinations.
         wp_redirect(Redirect::validate($redirect, home_url('/')), 302, 'WPSSO');
         exit;
     }
@@ -735,6 +758,7 @@ final class Extensions {
         wp_set_current_user($user->ID);
         wp_set_auth_cookie($user->ID, false, true);
         update_user_meta($user->ID, Auth::app_meta_key(), $app['id']);
+        // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- This is WordPress core's authentication lifecycle hook.
         do_action('wp_login', $user->user_login, $user);
         do_action('wpsso_authenticated', $user, $app, $attributes);
         Audit::record('success', $app['id'], $user);
@@ -742,7 +766,7 @@ final class Extensions {
 
     private static function fail(\WP_Error $error, string $app = ''): void {
         Audit::record('failure', $app, null, $error->get_error_code());
-        wp_die(esc_html($error->get_error_message()), 'SSO login failed', ['response' => 403]);
+        wp_die(esc_html($error->get_error_message()), esc_html__('SSO login failed', 'stsa-identity-sso'), ['response' => 403]);
     }
 
     public static function consume(string $purpose, string $id, int $ttl): bool {
@@ -818,15 +842,18 @@ final class Extensions {
     }
 
     public static function shared_consume(): void {
-        if (is_user_logged_in() || is_admin() || !empty($_GET['wpsso_action']) || !isset($_COOKIE[self::SHARED_COOKIE]) || !is_string($_COOKIE[self::SHARED_COOKIE])) {
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only route selection avoids consuming a handoff during another authentication flow; the assertion is independently authenticated below.
+        $action = isset($_GET['wpsso_action']) && is_string($_GET['wpsso_action']) ? sanitize_key(wp_unslash($_GET['wpsso_action'])) : '';
+        if (is_user_logged_in() || is_admin() || $action !== '' || !isset($_COOKIE[self::SHARED_COOKIE]) || !is_string($_COOKIE[self::SHARED_COOKIE])) {
             return;
         }
         $policy = self::shared_policy();
         if (!$policy) {
             return;
         }
-        $token = $_COOKIE[self::SHARED_COOKIE];
-        if (strlen($token) > 4000 || substr_count($token, '.') !== 1) {
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Validate the bounded signed assertion grammar exactly; modifying signed bytes before the HMAC check would be incorrect.
+        $token = wp_unslash($_COOKIE[self::SHARED_COOKIE]);
+        if (strlen($token) > 4000 || !preg_match('/^[A-Za-z0-9_-]+\.[a-f0-9]{64}$/D', $token)) {
             return;
         }
         [$encoded, $signature] = explode('.', $token, 2);
@@ -838,11 +865,12 @@ final class Extensions {
         if (!is_array($claims) || ($claims['v'] ?? null) !== 1 || !is_int($claims['exp'] ?? null) || !is_int($claims['iat'] ?? null) ||
             $claims['exp'] <= time() || $claims['iat'] > time() + 5 || $claims['exp'] - $claims['iat'] > 60 ||
             empty($claims['jti']) || !is_string($claims['jti']) || !in_array($claims['source'] ?? '', $policy['sites'], true) ||
-            $claims['source'] === $policy['origin'] || !in_array($policy['origin'], (array) ($claims['aud'] ?? []), true) || !is_array($claims['attributes'] ?? null)) {
+            $claims['source'] === $policy['origin'] || !is_array($claims['aud'] ?? null) || !in_array($policy['origin'], $claims['aud'], true) ||
+            !is_string($claims['app'] ?? null) || !is_string($claims['iss'] ?? null) || !is_array($claims['attributes'] ?? null)) {
             return;
         }
-        $app = Config::app((string) ($claims['app'] ?? ''));
-        if (!$app || empty($app['enabled']) || empty($app['shared_sso']) || !hash_equals((string) $app['issuer'], (string) ($claims['iss'] ?? '')) ||
+        $app = Config::app($claims['app']);
+        if (!$app || empty($app['enabled']) || empty($app['shared_sso']) || !hash_equals((string) $app['issuer'], $claims['iss']) ||
             !self::consume('shared-' . $policy['origin'], $claims['jti'], 120)) {
             return;
         }
@@ -857,6 +885,7 @@ final class Extensions {
         wp_set_current_user($user->ID);
         wp_set_auth_cookie($user->ID, false, true);
         update_user_meta($user->ID, Auth::app_meta_key(), $app['id']);
+        // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Dispatch the core login hook for this authenticated WordPress session.
         do_action('wp_login', $user->user_login, $user);
         Audit::record('success', $app['id'], $user, 'wpsso_shared_login');
         wp_safe_redirect(Redirect::current());
@@ -871,6 +900,7 @@ final class Extensions {
     }
 
     public static function cleanup(): void {
+        // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key,WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Bounded hourly expiry sweep must use the guest expiry timestamp; never scans arbitrary profile metadata.
         $users = get_users(['meta_key' => '_wpsso_guest_expires', 'meta_value' => time(), 'meta_compare' => '<=', 'meta_type' => 'NUMERIC', 'number' => 100]);
         foreach ($users as $user) {
             if (self::privileged($user->ID) || (int) get_user_meta($user->ID, '_wpsso_guest_expires', true) <= 0) {

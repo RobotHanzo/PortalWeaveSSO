@@ -90,11 +90,11 @@ final class Access
     {
         nocache_headers();
         if (is_user_logged_in()) {
-            wp_die(esc_html__('Your account does not have access to this content.', 'wpsso'), 'SSO access denied', ['response' => 403]);
+            wp_die(esc_html__('Your account does not have access to this content.', 'stsa-identity-sso'), 'SSO access denied', ['response' => 403]);
         }
         $app = Config::get('default_app');
         if ($app && !empty(Config::app($app)['enabled'])) {
-            wp_redirect(Auth::login_url($app, Redirect::current()), 302, 'WPSSO');
+            wp_safe_redirect(Auth::login_url($app, Redirect::current()), 302, 'WPSSO');
             exit;
         }
         auth_redirect();
@@ -125,7 +125,9 @@ final class Access
         if (is_user_logged_in()) {
             return;
         }
-        $action = sanitize_key($_REQUEST['action'] ?? 'login');
+        // This only selects the login route; WordPress verifies nonces for its own actions.
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- No data is changed by this routing decision.
+        $action = isset($_REQUEST['action']) && is_string($_REQUEST['action']) ? sanitize_key(wp_unslash($_REQUEST['action'])) : 'login';
         if (in_array($action, ['logout', 'postpass', 'confirm_admin_email'], true)) {
             return;
         }
@@ -141,10 +143,13 @@ final class Access
     public static function denied_ids(): array
     {
         global $wpdb;
-        $ids = array_map('intval', $wpdb->get_col("SELECT DISTINCT post_id FROM {$wpdb->postmeta} WHERE meta_key IN ('_wpsso_rule','_wpsso_protected')"));
+        // Candidate IDs must reflect metadata writes in the current request. Core has no distinct-meta-ID API.
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Prepared read of restriction candidates; access is evaluated below for the current user.
+        $ids = array_map('intval', $wpdb->get_col($wpdb->prepare('SELECT DISTINCT post_id FROM %i WHERE meta_key IN (%s, %s)', $wpdb->postmeta, '_wpsso_rule', '_wpsso_protected')));
         $configured = Config::get('content_rules', []);
         $ids = array_merge($ids, array_map('intval', array_keys($configured['posts'] ?? [])), array_map('intval', Config::get('protected_media', [])));
-        $term_ids = array_map('intval', $wpdb->get_col("SELECT DISTINCT term_id FROM {$wpdb->termmeta} WHERE meta_key = '_wpsso_rule'"));
+        // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Prepared candidate lookup must reflect current-request metadata writes.
+        $term_ids = array_map('intval', $wpdb->get_col($wpdb->prepare('SELECT DISTINCT term_id FROM %i WHERE meta_key = %s', $wpdb->termmeta, '_wpsso_rule')));
         $term_ids = array_merge($term_ids, array_map('intval', array_keys($configured['categories'] ?? [])));
         foreach (array_unique($term_ids) as $term_id) {
             $rule = (array) get_term_meta($term_id, '_wpsso_rule', true);
@@ -175,6 +180,7 @@ final class Access
     public static function rest_query(array $args): array
     {
         $denied = self::denied_ids();
+        // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_post__not_in -- Exclude the current user's denied content before REST pagination and totals are calculated.
         $args['post__not_in'] = array_unique(array_merge((array) ($args['post__not_in'] ?? []), $denied));
         if (!empty($args['post__in'])) {
             $args['post__in'] = array_values(array_diff(array_map('intval', $args['post__in']), $denied)) ?: [0];
@@ -188,8 +194,12 @@ final class Access
             return $error;
         }
         // SCIM authenticates its own high-entropy bearer token in its permission callback.
-        $route = $GLOBALS['wp']->query_vars['rest_route'] ?? ($_GET['rest_route'] ?? '');
-        if (str_starts_with((string) $route, '/wpsso/v1/scim/')) {
+        $route = $GLOBALS['wp']->query_vars['rest_route'] ?? '';
+        if (!is_string($route) || $route === '') {
+            // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only route selection; the SCIM permission callback requires an independent HTTPS bearer credential.
+            $route = isset($_GET['rest_route']) && is_string($_GET['rest_route']) ? sanitize_text_field(wp_unslash($_GET['rest_route'])) : '';
+        }
+        if (str_starts_with($route, '/wpsso/v1/scim/')) {
             return $error;
         }
         return new \WP_Error('wpsso_login_required', 'Authentication is required.', ['status' => 401]);
@@ -223,8 +233,17 @@ final class Access
         if (!wp_mkdir_p($dir)) {
             return new \WP_Error('wpsso_media_vault', 'The private media directory is not writable.');
         }
-        $real = wp_normalize_path(realpath($dir));
-        $public = wp_normalize_path(realpath(($_SERVER['DOCUMENT_ROOT'] ?? '') ?: ABSPATH) ?: ABSPATH);
+        $resolved = realpath($dir);
+        if ($resolved === false) {
+            return new \WP_Error('wpsso_media_vault', 'The private media directory cannot be resolved.');
+        }
+        $real = wp_normalize_path($resolved);
+        $document_root = isset($_SERVER['DOCUMENT_ROOT']) && is_string($_SERVER['DOCUMENT_ROOT']) ? sanitize_text_field(wp_unslash($_SERVER['DOCUMENT_ROOT'])) : '';
+        $resolved_public = realpath($document_root ?: ABSPATH);
+        if ($resolved_public === false) {
+            return new \WP_Error('wpsso_media_public', 'The web document root cannot be resolved safely.');
+        }
+        $public = wp_normalize_path($resolved_public);
         if ($real === $public || str_starts_with($real . '/', rtrim($public, '/') . '/')) {
             return new \WP_Error('wpsso_media_public', 'Define WPSSO_PRIVATE_MEDIA_DIR outside the web document root.');
         }
@@ -237,7 +256,7 @@ final class Access
         if (is_array($existing) && $existing) {
             $public = get_post_meta($id, '_wpsso_public_files', true);
             foreach (is_array($public) ? $public : [] as $name => $path) {
-                if (is_file($path) && (!isset($existing[$name]) || !is_file($existing[$name]) || !hash_equals(hash_file('sha256', $path), hash_file('sha256', $existing[$name])) || !unlink($path))) {
+                if (is_file($path) && (!isset($existing[$name]) || !is_file($existing[$name]) || !hash_equals(hash_file('sha256', $path), hash_file('sha256', $existing[$name])) || !self::delete_public_copy($path))) {
                     return new \WP_Error('wpsso_media_unlink', 'A public copy remains or has changed. Review the attachment files before retrying protection.');
                 }
             }
@@ -287,12 +306,20 @@ final class Access
         update_post_meta($id, '_wpsso_private_files', $private);
         update_post_meta($id, '_wpsso_public_files', array_intersect_key($files, $private));
         foreach ($files as $name => $source) {
-            if (isset($private[$name]) && is_file($source) && !unlink($source)) {
+            if (isset($private[$name]) && is_file($source) && !self::delete_public_copy($source)) {
                 return new \WP_Error('wpsso_media_unlink', 'A public file could not be removed. Fix filesystem permissions before relying on protection.');
             }
         }
         clean_post_cache($id);
         return true;
+    }
+
+    /** wp_delete_file() returns void and may be vetoed by a filter; verify the exact public path. */
+    private static function delete_public_copy(string $path): bool
+    {
+        wp_delete_file($path);
+        clearstatcache(true, $path);
+        return !file_exists($path) && !is_link($path);
     }
 
     public static function unprotect_media(int $id)
@@ -384,10 +411,13 @@ final class Access
 
     public static function media_request(): void
     {
-        if (($_GET['wpsso_action'] ?? '') !== 'media') {
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only media delivery uses the current WordPress session and attachment access policy, like a private post.
+        $action = isset($_GET['wpsso_action']) && is_string($_GET['wpsso_action']) ? sanitize_key(wp_unslash($_GET['wpsso_action'])) : '';
+        if ($action !== 'media') {
             return;
         }
-        $id = absint($_GET['attachment_id'] ?? 0);
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only attachment lookup; can_post() checks authorization before any file is sent.
+        $id = isset($_GET['attachment_id']) && is_scalar($_GET['attachment_id']) ? absint(wp_unslash($_GET['attachment_id'])) : 0;
         nocache_headers();
         if (!$id || !self::is_protected($id) || !self::can_post($id)) {
             self::deny();
@@ -395,8 +425,9 @@ final class Access
         $files = get_post_meta($id, '_wpsso_private_files', true);
         $files = is_array($files) ? $files : [];
         $original = get_attached_file($id, true);
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Validate the exact basename and attachment-map membership below; sanitization must not turn a different requested path into an allowed file.
         $name = isset($_GET['file']) ? wp_unslash($_GET['file']) : basename((string) $original);
-        if (!is_string($name) || basename($name) !== $name || !isset($files[$name]) || !is_file($files[$name])) {
+        if (!is_string($name) || basename($name) !== $name || !isset($files[$name]) || !is_file($files[$name]) || !is_readable($files[$name])) {
             wp_die('Protected media is unavailable.', 'SSO media', ['response' => 404]);
         }
         header('X-Content-Type-Options: nosniff');
@@ -404,6 +435,8 @@ final class Access
         header('Content-Type: ' . (wp_check_filetype($name)['type'] ?: 'application/octet-stream'));
         header('Content-Length: ' . filesize($files[$name]));
         header('Content-Disposition: inline; filename="' . sanitize_file_name($name) . '"');
+        // Core's filesystem get_contents() loads the entire file into memory and offers no streaming response API.
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_readfile -- Stream an authorized, allowlisted local binary file without unbounded PHP memory use.
         readfile($files[$name]);
         exit;
     }
