@@ -47,6 +47,42 @@ final class Auth {
         return add_query_arg($args, home_url('/'));
     }
 
+    public static function setup_test_url(): string {
+        return add_query_arg('portalweave_sso_action', 'test_setup', home_url('/', 'https'));
+    }
+
+    /** Validate a new provider without saving settings or enabling sign-in. */
+    public static function prepare_setup_test(array $input, bool $network = false) {
+        if (($network && !is_multisite()) || !current_user_can($network ? 'manage_network_options' : 'manage_options') || wp_get_session_token() === '') {
+            return new \WP_Error('portalweave_sso_test_permission', __('The original administrator session is required to test a connection.', 'portalweave-sso'));
+        }
+        if (!$network && is_multisite() && !empty(get_site_option('portalweave_sso_settings', [])['network_enforced'])) {
+            return new \WP_Error('portalweave_sso_network_enforced', __('This network enforces its SSO configuration.', 'portalweave-sso'));
+        }
+        if (array_keys($input) !== ['provider_setup'] || !is_array($input['provider_setup'])) {
+            return new \WP_Error('portalweave_sso_settings_scope', __('Submit one new provider from guided setup.', 'portalweave-sso'));
+        }
+        $prepared = AdminSettings::prepare($input, 'providers', '', true, $network);
+        if (is_wp_error($prepared)) {
+            return $prepared;
+        }
+        $app = $prepared['apps'][$input['provider_setup']['id']];
+        // JSON must preserve opaque credential bytes, including non-UTF-8 data.
+        $sealed = $app;
+        foreach (['client_secret', 'jwt_secret'] as $key) {
+            $sealed[$key] = base64_encode($sealed[$key]);
+        }
+        $encoded = wp_json_encode($sealed);
+        if (!is_string($encoded)) {
+            return new \WP_Error('portalweave_sso_config_changed', __('The provider details could not be prepared. Review the setup and try again.', 'portalweave-sso'));
+        }
+        return ['app' => $app, 'context' => [
+            'test_user' => get_current_user_id(), 'test_session' => hash('sha256', wp_get_session_token()),
+            'test_network' => $network, 'test_network_id' => is_multisite() ? get_current_network_id() : 0,
+            'test_config' => Secrets::encrypt($encoded),
+        ]];
+    }
+
     public static function filter_logout_url($url, $redirect) {
         if (is_user_logged_in() && get_user_meta(get_current_user_id(), self::app_meta_key(), true)) {
             return self::logout_url(is_string($redirect) ? $redirect : '');
@@ -56,7 +92,7 @@ final class Auth {
 
     public static function dispatch() {
         $action = sanitize_key(self::input($_GET, 'portalweave_sso_action')); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Routes only; each handler applies its browser-bound state, signed-token or WordPress-nonce authorization.
-        if (!in_array($action, ['login', 'callback', 'logout', 'logout_callback', 'password', 'backchannel_logout'], true)) {
+        if (!in_array($action, ['login', 'test_setup', 'callback', 'logout', 'logout_callback', 'password', 'backchannel_logout'], true)) {
             return;
         }
         nocache_headers();
@@ -69,6 +105,7 @@ final class Auth {
         try {
             switch ($action) {
                 case 'login': self::start(); break;
+                case 'test_setup': self::start_setup_test(); break;
                 case 'callback': self::callback(); break;
                 case 'password': self::password(); break;
                 case 'logout': self::logout(); break;
@@ -92,6 +129,29 @@ final class Auth {
         if ($test && (!current_user_can('manage_options') || !wp_verify_nonce(sanitize_text_field(self::input($_GET, '_wpnonce')), 'portalweave_sso_test_' . $id))) {
             self::fail(new \WP_Error('portalweave_sso_test_permission', __('A fresh administrator test link is required.', 'portalweave-sso')), $id);
         }
+        self::begin($app, $test ? ['test_user' => get_current_user_id()] : []);
+    }
+
+    private static function start_setup_test() {
+        if (self::request_method() !== 'POST' || !wp_verify_nonce(sanitize_text_field(self::input($_POST, '_wpnonce')), 'portalweave_sso_save')) {
+            self::fail(new \WP_Error('portalweave_sso_test_permission', __('Reload guided setup and try the connection test again.', 'portalweave-sso')));
+        }
+        if (self::input($_POST, 'portalweave_sso_complete') !== '1') {
+            self::fail(new \WP_Error('portalweave_sso_form_incomplete', __('The setup form was incomplete. Reload guided setup and try again.', 'portalweave-sso')));
+        }
+        $network = self::input($_POST, 'network') === '1';
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- prepare_setup_test() checks permission and validates every creation-only recipe field, preserving opaque secret bytes.
+        $input = isset($_POST['settings']) && is_array($_POST['settings']) ? wp_unslash($_POST['settings']) : [];
+        $prepared = self::prepare_setup_test($input, $network);
+        if (is_wp_error($prepared)) {
+            self::fail($prepared);
+        }
+        self::begin($prepared['app'], $prepared['context']);
+    }
+
+    /** Both saved sign-in and unsaved tests use the same protocol validation. */
+    private static function begin(array $app, array $context = []) {
+        $id = $app['id'];
         $callback = Config::callback($app);
         if (!self::https_endpoint($callback)) {
             self::fail(new \WP_Error('portalweave_sso_callback_https', __('The canonical callback must use HTTPS. Check the WordPress site URL.', 'portalweave-sso')), $id);
@@ -105,17 +165,18 @@ final class Auth {
         if (in_array($grant, ['implicit', 'password'], true) && empty($app['legacy_grants'])) {
             self::fail(new \WP_Error('portalweave_sso_legacy_disabled', __('This legacy grant is disabled. Use Authorization Code with PKCE.', 'portalweave-sso')), $id);
         }
-        $redirect = self::input($_GET, 'redirect_to');
+        $redirect = self::input($_GET, 'redirect_to'); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Public login navigation only; the redirect allowlist below validates the destination independently of authentication.
         if ($redirect === '') {
             $redirect = (string) Config::get('login_redirect', home_url('/'));
         }
         $flow = [
             'app' => $id, 'redirect' => Redirect::validate($redirect), 'callback' => $callback,
             'nonce' => Jwt::encode(random_bytes(32)), 'verifier' => Jwt::encode(random_bytes(48)),
-            'test_user' => $test ? get_current_user_id() : 0, 'popup' => self::input($_GET, 'popup') === '1',
+            'test_user' => 0, 'popup' => self::input($_GET, 'popup') === '1', // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Public login display preference only; completion still requires the full browser-bound OAuth flow.
             'kind' => 'login', 'grant' => $grant,
             'config_hash' => self::config_hash($app),
         ];
+        $flow = array_replace($flow, $context);
         $state = self::create_flow($flow, (string) ($app['state_parameter'] ?? ''));
         if (is_wp_error($state)) {
             self::fail($state, $id);
@@ -160,15 +221,9 @@ final class Auth {
         if (is_wp_error($flow)) {
             self::fail($flow);
         }
-        $app = Config::app($flow['app']);
-        if (!$app || empty($app['enabled'])) {
-            self::fail(new \WP_Error('portalweave_sso_app', __('The selected provider is unavailable.', 'portalweave-sso')));
-        }
-        if (!hash_equals((string) ($flow['config_hash'] ?? ''), self::config_hash($app))) {
-            self::fail(new \WP_Error('portalweave_sso_config_changed', __('The provider configuration changed. Start sign in again.', 'portalweave-sso')), $app['id']);
-        }
-        if (!empty($flow['test_user']) && (get_current_user_id() !== (int) $flow['test_user'] || !current_user_can('manage_options'))) {
-            self::fail(new \WP_Error('portalweave_sso_test_permission', __('The original administrator session is required to view test results.', 'portalweave-sso')), $app['id']);
+        $app = self::flow_app($flow);
+        if (is_wp_error($app)) {
+            self::fail($app);
         }
         if (self::input($request, 'error') !== '') {
             self::fail(new \WP_Error('portalweave_sso_provider_denied', __('The identity provider declined authentication.', 'portalweave-sso')), $app['id']);
@@ -300,7 +355,10 @@ final class Auth {
         }
         if (!empty($flow['test_user'])) {
             Audit::record('test_success', $app['id'], wp_get_current_user(), '', $flow['redirect']);
-            self::page(__('SSO configuration test', 'portalweave-sso'), '<p>' . esc_html__('Authentication succeeded. These are the attributes returned by the configured provider. No user account was created or signed in.', 'portalweave-sso') . '</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere">' . esc_html(wp_json_encode($attributes, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)) . '</pre><p><a href="' . esc_url(admin_url('options-general.php?page=portalweave-sso')) . '">' . esc_html__('Return to settings', 'portalweave-sso') . '</a></p>');
+            $draft = !empty($flow['test_config']);
+            $message = $draft ? '<p>' . esc_html__('Connection test succeeded. Return to the setup tab to save your provider. These details have not been saved.', 'portalweave-sso') . '</p>' : '';
+            $settings_url = !empty($flow['test_network']) ? network_admin_url('admin.php?page=portalweave-sso') : admin_url('options-general.php?page=portalweave-sso');
+            self::page(__('SSO configuration test', 'portalweave-sso'), $message . '<p>' . esc_html__('Authentication succeeded. These are the attributes returned by the configured provider. No user account was created or signed in.', 'portalweave-sso') . '</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere">' . esc_html(wp_json_encode($attributes, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)) . '</pre><p><a href="' . esc_url($settings_url) . '">' . esc_html__('Return to settings', 'portalweave-sso') . '</a></p>');
         }
         $user = Accounts::resolve($app, $attributes, $tokens);
         if (!is_wp_error($user)) {
@@ -690,7 +748,51 @@ final class Auth {
     }
 
     private static function config_hash(array $app) {
+        foreach (['client_secret', 'jwt_secret'] as $key) {
+            if (isset($app[$key]) && is_string($app[$key])) {
+                $app[$key] = base64_encode($app[$key]);
+            }
+        }
         return hash('sha256', wp_json_encode($app));
+    }
+
+    /** Resolve a draft only inside a consumed, administrator-bound test flow. */
+    private static function flow_app(array $flow) {
+        if (array_key_exists('test_config', $flow)) {
+            $network = $flow['test_network'] ?? null;
+            if (!is_bool($network) || ($network && !is_multisite()) || empty($flow['test_user'])
+                || get_current_user_id() !== (int) $flow['test_user'] || !current_user_can($network ? 'manage_network_options' : 'manage_options')
+                || ($flow['test_network_id'] ?? null) !== (is_multisite() ? get_current_network_id() : 0)
+                || ($flow['blog_id'] ?? 0) !== get_current_blog_id() || wp_get_session_token() === ''
+                || !is_string($flow['test_session'] ?? null) || !hash_equals($flow['test_session'], hash('sha256', wp_get_session_token()))
+                || (!$network && is_multisite() && !empty(get_site_option('portalweave_sso_settings', [])['network_enforced']))) {
+                return new \WP_Error('portalweave_sso_test_permission', __('The original administrator session is required to view test results.', 'portalweave-sso'));
+            }
+            $plain = is_string($flow['test_config']) ? Secrets::decrypt($flow['test_config']) : '';
+            $app = json_decode($plain, true);
+            if (!is_array($app) || ($app['id'] ?? '') !== ($flow['app'] ?? '') || empty($app['enabled']) || ($app['grant'] ?? '') !== 'authorization_code') {
+                return new \WP_Error('portalweave_sso_config_changed', __('The provider configuration changed. Start the connection test again.', 'portalweave-sso'));
+            }
+            foreach (['client_secret', 'jwt_secret'] as $key) {
+                $decoded = isset($app[$key]) && is_string($app[$key]) ? base64_decode($app[$key], true) : false;
+                if ($decoded === false) {
+                    return new \WP_Error('portalweave_sso_config_changed', __('The provider configuration changed. Start the connection test again.', 'portalweave-sso'));
+                }
+                $app[$key] = $decoded;
+            }
+        } else {
+            $app = Config::app($flow['app']);
+            if (!$app || empty($app['enabled'])) {
+                return new \WP_Error('portalweave_sso_app', __('The selected provider is unavailable.', 'portalweave-sso'));
+            }
+            if (!empty($flow['test_user']) && (get_current_user_id() !== (int) $flow['test_user'] || !current_user_can('manage_options'))) {
+                return new \WP_Error('portalweave_sso_test_permission', __('The original administrator session is required to view test results.', 'portalweave-sso'));
+            }
+        }
+        if (!hash_equals((string) ($flow['config_hash'] ?? ''), self::config_hash($app))) {
+            return new \WP_Error('portalweave_sso_config_changed', __('The provider configuration changed. Start sign in again.', 'portalweave-sso'));
+        }
+        return $app;
     }
 
     private static function redirect($url) {
