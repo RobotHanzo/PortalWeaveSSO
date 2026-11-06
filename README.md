@@ -47,6 +47,10 @@ Return to the provider list to configure an existing connection.
 
 ![Identity provider list with sample saved connections](docs/screenshots/providers.png)
 
+Configure an existing provider through focused tabs. Switching tabs keeps your edits; **Save provider** saves every section.
+
+![Provider configuration with Connection, Endpoints, Security, Mapping, Accounts, Integrations and Login button tabs](docs/screenshots/provider-settings.png)
+
 </details>
 
 ### Add login buttons
