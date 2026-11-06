@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: PortalWeave SSO
- * Plugin URI: https://github.com/RobotHanzo/WordPressSSO
+ * Plugin URI: https://github.com/RobotHanzo/PortalWeaveSSO
  * Description: Multi-provider OAuth/OIDC sign-in, provisioning, access control and audit tools.
  * Version: 1.0.0
  * Requires at least: 6.5

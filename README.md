@@ -1,6 +1,6 @@
 # PortalWeave SSO
 
-[![CI](https://github.com/RobotHanzo/WordPressSSO/actions/workflows/verify.yml/badge.svg)](https://github.com/RobotHanzo/WordPressSSO/actions/workflows/verify.yml)
+[![CI](https://github.com/RobotHanzo/PortalWeaveSSO/actions/workflows/verify.yml/badge.svg)](https://github.com/RobotHanzo/PortalWeaveSSO/actions/workflows/verify.yml)
 
 An installable WordPress plugin for multiple OAuth 2.0 and OpenID Connect providers. PHP 8.1+ with OpenSSL and WordPress 6.5+ are required. There are no Composer or production JavaScript dependencies. All modules are bundled.
 

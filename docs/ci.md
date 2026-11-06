@@ -1,6 +1,6 @@
 # PortalWeave SSO GitHub CI and reports
 
-[CI runs](https://github.com/RobotHanzo/WordPressSSO/actions/workflows/verify.yml) run on pushes to `main`, pull requests, merge-queue checks and manual dispatch. The [release workflow](https://github.com/RobotHanzo/WordPressSSO/actions/workflows/release.yml) calls the same CI workflow with the exact release commit; a previously green unrelated commit cannot authorize publication.
+[CI runs](https://github.com/RobotHanzo/PortalWeaveSSO/actions/workflows/verify.yml) run on pushes to `main`, pull requests, merge-queue checks and manual dispatch. The [release workflow](https://github.com/RobotHanzo/PortalWeaveSSO/actions/workflows/release.yml) calls the same CI workflow with the exact release commit; a previously green unrelated commit cannot authorize publication.
 
 ## Checks
 
@@ -57,7 +57,7 @@ The fixture titles `WPSSO Integration` and `WPSSO Multisite Integration`, fixtur
 
 ## WordPress.org directory checks and approval
 
-The [WordPress.org directory review workflow](https://github.com/RobotHanzo/WordPressSSO/actions/workflows/wordpress-review.yml) stages production files under the intended directory slug and runs the official Plugin Check action. CI calls this workflow before it can publish a package artifact; it can also be dispatched manually. Its native findings are annotated, parsed fail-closed by `scripts/plugin-check.mjs`, and retained with JSON/JUnit reports. Error findings are not ignored, and an empty, truncated or unfamiliar report cannot become a passing check. Warnings remain visible for manual review; the parser's optional `--strict` policy fails warnings as well.
+The [WordPress.org directory review workflow](https://github.com/RobotHanzo/PortalWeaveSSO/actions/workflows/wordpress-review.yml) stages production files under the intended directory slug and runs the official Plugin Check action. CI calls this workflow before it can publish a package artifact; it can also be dispatched manually. Its native findings are annotated, parsed fail-closed by `scripts/plugin-check.mjs`, and retained with JSON/JUnit reports. Error findings are not ignored, and an empty, truncated or unfamiliar report cannot become a passing check. Warnings remain visible for manual review; the parser's optional `--strict` policy fails warnings as well.
 
 Directory checks can fail while functional test jobs pass, because coding and packaging requirements extend beyond runtime behavior. Initial WordPress.org approval is a separate external process even when all automated gates pass. Historical findings and current evidence requirements are recorded in [directory-review.md](directory-review.md).
 

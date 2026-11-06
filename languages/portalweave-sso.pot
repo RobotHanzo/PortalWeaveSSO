@@ -25,7 +25,7 @@ msgstr ""
 
 #. Plugin URI of the plugin
 #: portalweave-sso.php
-msgid "https://github.com/RobotHanzo/WordPressSSO"
+msgid "https://github.com/RobotHanzo/PortalWeaveSSO"
 msgstr ""
 
 #. Description of the plugin

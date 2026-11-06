@@ -105,7 +105,7 @@ The media endpoint streams already-authorized private files without loading
 the complete binary into memory. Admin-supplied data is escaped at output.
 
 SOURCE, LICENSING AND PACKAGING
-Source and build/test tools: https://github.com/RobotHanzo/WordPressSSO
+Source and build/test tools: https://github.com/RobotHanzo/PortalWeaveSSO
 PORTALWEAVE_SSO_* bootstrap constants use the new public prefix. The retained
 WPSSO namespace, hooks, shortcode and CLI/settings names are compatibility
 identifiers, not the display name or an affiliation with another plugin.

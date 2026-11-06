@@ -6,7 +6,7 @@ PortalWeave SSO proposes the directory slug and text domain `portalweave-sso`. I
 
 Run the checks against the exact candidate commit and its staged production files. The current report artifacts and associated commit identify the applicable findings. Historical counts below are a baseline, not the final candidate's result. Do not claim zero findings without a fresh complete staged-package report.
 
-The rebuilt Windows ZIP was installed and activated in disposable WordPress, then passed **68 integration checks and seven real HTTPS flow checks**. Plugin Check 2.1.0 on that installed package reported **zero errors and 17 warnings**, matching the [first successful hosted compliance run](https://github.com/RobotHanzo/WordPressSSO/actions/runs/42172566475). The warnings concern nonce-flow analysis (3), exact usermeta identity/session lookups (6), prepared operations on the plugin audit table (7), and deliberate uninstall schema removal (1). See `submission/REVIEWER-NOTES.txt` and the complete raw/JSON/JUnit reports in the reviewer-materials archive for the contextual assessment. No error category was ignored. The Windows builder also verifies canonical ZIP entry paths and every file hash; this caught and corrected a Windows backslash-path incompatibility before the upload was prepared.
+The rebuilt Windows ZIP was installed and activated in disposable WordPress, then passed **68 integration checks and seven real HTTPS flow checks**. Plugin Check 2.1.0 on that installed package reported **zero errors and 17 warnings**, matching the [first successful hosted compliance run](https://github.com/RobotHanzo/PortalWeaveSSO/actions/runs/42172566475). The warnings concern nonce-flow analysis (3), exact usermeta identity/session lookups (6), prepared operations on the plugin audit table (7), and deliberate uninstall schema removal (1). See `submission/REVIEWER-NOTES.txt` and the complete raw/JSON/JUnit reports in the reviewer-materials archive for the contextual assessment. No error category was ignored. The Windows builder also verifies canonical ZIP entry paths and every file hash; this caught and corrected a Windows backslash-path incompatibility before the upload was prepared.
 
 The candidate ZIP is `dist/portalweave-sso-1.0.0.zip` for version 1.0.0. It contains the `portalweave-sso/` top-level directory and matching `portalweave-sso.php` entry filename, runtime code/assets, `readme.txt`, `LICENSE`, translations, and the four bundled user guides. Repository-only tests, build tools, README and development/review documents are excluded.
 
@@ -25,13 +25,13 @@ Plugin Check 2.1.0 was initially run on WordPress 7.1.4 against the source tree 
 | Hidden source file | 1 | `.gitattributes` was included in the source scan. The explicit production allowlist excludes it. |
 | Missing compatibility header | 1 | The readme gained `Tested up to: 7.1` after verification on WordPress 7.1.4. |
 
-The first [hosted staged-package review](https://github.com/RobotHanzo/WordPressSSO/actions/runs/42169165192) correctly failed with **89 errors and 142 warnings**. Its errors were the same 71 text-domain, nine escaping, eight filesystem and one translator-comment findings; the source-only hidden-file and missing-header findings were absent. Those historical numbers must not be presented as fresh measurements of the renamed candidate.
+The first [hosted staged-package review](https://github.com/RobotHanzo/PortalWeaveSSO/actions/runs/42169165192) correctly failed with **89 errors and 142 warnings**. Its errors were the same 71 text-domain, nine escaping, eight filesystem and one translator-comment findings; the source-only hidden-file and missing-header findings were absent. Those historical numbers must not be presented as fresh measurements of the renamed candidate.
 
 Warnings covered direct-query/caching advice, nonce/input analysis, externally allowed redirects, WordPress hook names and asset scope. Review each in context. OAuth/OIDC callbacks and authenticated SCIM requests use their protocol-specific authentication; indiscriminately adding a WordPress browser nonce would break those endpoints. Tests must demonstrate their actual state/signature/bearer and authorization boundaries.
 
 ## Reproduce and retain the check
 
-Dispatch the [directory review workflow](https://github.com/RobotHanzo/WordPressSSO/actions/workflows/wordpress-review.yml) for the candidate commit:
+Dispatch the [directory review workflow](https://github.com/RobotHanzo/PortalWeaveSSO/actions/workflows/wordpress-review.yml) for the candidate commit:
 
 ```sh
 gh workflow run wordpress-review.yml --ref main -f checkout_ref=CANDIDATE_COMMIT -f slug=portalweave-sso

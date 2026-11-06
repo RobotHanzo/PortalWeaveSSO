@@ -48,7 +48,7 @@ Preset service policy references:
 
 Optional mapped pictures and custom provider icons are browser requests to administrator-selected image hosts. Those hosts receive browser network information. Support email is sent only after an administrator explicitly submits a message or requests sending through the support ability; its recipient is administrator configured. MCP transport and any data handling by a connected AI client belong to the separately configured adapter/client.
 
-The external-services document is included in the ZIP. Its maintained source is [available here](https://github.com/RobotHanzo/WordPressSSO/blob/compliance/wordpress-org-submission/docs/external-services.md). Site operators must publish the policies applicable to their configured providers.
+The external-services document is included in the ZIP. Its maintained source is [available here](https://github.com/RobotHanzo/PortalWeaveSSO/blob/compliance/wordpress-org-submission/docs/external-services.md). Site operators must publish the policies applicable to their configured providers.
 
 == Privacy and data retention ==
 
@@ -67,7 +67,7 @@ Deactivation preserves data. Uninstall preserves settings unless the administrat
 4. Run Test SSO Config as an administrator to inspect returned attributes. Configure mappings and test an ordinary user before enforcing login.
 5. Add [wpsso_oauth_login], the PortalWeave SSO login widget or use the WordPress/WooCommerce login form integration.
 
-Optional features start disabled. Use the distributed user guides for provider, SCIM, media and MCP setup. Development source and build tools are [publicly maintained](https://github.com/RobotHanzo/WordPressSSO).
+Optional features start disabled. Use the distributed user guides for provider, SCIM, media and MCP setup. Development source and build tools are [publicly maintained](https://github.com/RobotHanzo/PortalWeaveSSO).
 
 == Frequently Asked Questions ==
 = Can media be private? =

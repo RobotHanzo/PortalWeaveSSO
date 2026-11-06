@@ -10,7 +10,7 @@ License: GPL-2.0-or-later; complete license included in the plugin.
 Requires WordPress: 6.5 or newer
 Requires PHP: 8.1 or newer, with OpenSSL
 SSO requires HTTPS and an administrator-configured identity provider.
-Source and issue tracker: https://github.com/RobotHanzo/WordPressSSO
+Source and issue tracker: https://github.com/RobotHanzo/PortalWeaveSSO
 Author in plugin header: RobotHanzo (the repository's verified GitHub identity).
 
 Short description:
