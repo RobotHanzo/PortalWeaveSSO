@@ -17,7 +17,7 @@ portalweave_sso_test('Compliance: widget wrappers and session messages reject ac
     portalweave_sso_assert(str_contains($html, '<aside class="widget">') && str_contains($html, 'portalweave-sso-button'), 'Escaping removed valid widget structure or login links');
     portalweave_sso_assert(!preg_match('/<(?:script|svg)\b|<[^>]+\son[a-z]+\s*=/i', $html), 'Widget emitted executable markup');
     wp_set_current_user(get_user_by('login', 'portalweave_sso_test_admin')->ID);
-    $html = do_shortcode('[portalweave_sso_oauth_login]');
+    $html = do_shortcode('[sso_oauth_login]');
     portalweave_sso_assert(str_contains($html, '<strong>Welcome ') && str_contains($html, 'portalweave-sso-logout'), 'Session placeholders or permitted message markup broke');
     portalweave_sso_assert(!str_contains($html, '##user##') && !str_contains($html, '##Sign Out##'), 'Session placeholders were not replaced');
     portalweave_sso_assert(!preg_match('/<script\b|<[^>]+\son[a-z]+\s*=|href\s*=\s*["\']javascript:/i', $html), 'Session message emitted executable markup');
@@ -40,7 +40,7 @@ portalweave_sso_test('Compliance: login assets load only for relevant content an
         portalweave_sso_assert(!wp_style_is('portalweave-sso-buttons', 'enqueued') && !wp_script_is('portalweave-sso-login', 'enqueued'), 'Unrelated pages load login assets');
         portalweave_sso_assert(\PortalWeaveSSO\Config::save(['apps' => ['fixture' => portalweave_sso_app()]]) === true, 'Fixture configuration failed');
         wp_set_current_user(0);
-        $GLOBALS['wp_query']->posts = [new WP_Post((object) ['ID' => 0, 'post_content' => '[portalweave_sso_oauth_login]'])];
+        $GLOBALS['wp_query']->posts = [new WP_Post((object) ['ID' => 0, 'post_content' => '[sso_oauth_login]'])];
         \PortalWeaveSSO\Display::frontend_assets();
         portalweave_sso_assert(wp_style_is('portalweave-sso-buttons', 'enqueued') && wp_script_is('portalweave-sso-login', 'enqueued'), 'Shortcode content did not enqueue its assets');
         portalweave_sso_assert(wp_scripts()->get_data('portalweave-sso-login', 'strategy') === 'defer', 'Popup script does not use WordPress defer strategy');
@@ -54,7 +54,7 @@ portalweave_sso_test('Compliance: login assets load only for relevant content an
         portalweave_sso_assert(preg_match_all('/id=["\']portalweave-sso-buttons-css["\']/', $html) === 1, 'Late shortcode styles were omitted or printed more than once');
         wp_dequeue_script('portalweave-sso-login');
         wp_dequeue_style('portalweave-sso-buttons');
-        do_shortcode('[portalweave_sso_oauth_login]');
+        do_shortcode('[sso_oauth_login]');
         portalweave_sso_assert(wp_script_is('portalweave-sso-login', 'enqueued'), 'Template-rendered shortcode lost popup behavior');
     } finally {
         remove_filter('sidebars_widgets', $empty_widgets);
