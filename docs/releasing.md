@@ -55,7 +55,7 @@ On Windows or a runner with PowerShell, build the installable ZIP and SHA-256 fi
 ./scripts/build.ps1 -Slug portalweave-sso
 ```
 
-The version comes from validated plugin metadata. An explicitly supplied `-Version` must match that metadata. Version 1.0.0 produces `dist/portalweave-sso-1.0.0.zip` and its `.zip.sha256` checksum. Packaging includes `wordpress-sso.php`, `uninstall.php`, `readme.txt`, `LICENSE`, `includes/`, runtime `assets/`, `languages/` and exactly four user guides: `docs/provider-setup.md`, `docs/integrations.md`, `docs/external-services.md` and `docs/privacy.md`. The source entry filename remains `wordpress-sso.php` for compatibility; the installable containing directory is `portalweave-sso`.
+The version comes from validated plugin metadata. An explicitly supplied `-Version` must match that metadata. Version 1.0.0 produces `dist/portalweave-sso-1.0.0.zip` and its `.zip.sha256` checksum. Packaging includes `portalweave-sso.php`, `uninstall.php`, `readme.txt`, `LICENSE`, `includes/`, runtime `assets/`, `languages/` and exactly four user guides: `docs/provider-setup.md`, `docs/integrations.md`, `docs/external-services.md` and `docs/privacy.md`. The main filename, containing directory and text domain match the proposed `portalweave-sso` slug, and the release validator enforces that relationship.
 
 Repository `README.md`, architecture/verification/CI/release/review documents, development code, fixture IdPs, Git configuration, environment files, logs and private key material are excluded or rejected. Symlinks are refused. Verification compares both the file set and SHA-256 digest of every staged file against source. Fresh package extraction is checked independently before using its contents.
 

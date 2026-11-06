@@ -2,7 +2,7 @@ PORTALWEAVE SSO 1.0.0 — REVIEWER NOTES
 Proposed slug: portalweave-sso. Prepared 6 November 2026.
 
 Thank you for reviewing PortalWeave SSO. This is the first proposed directory
-release. The main plugin file is wordpress-sso.php inside the portalweave-sso
+release. The main plugin file is portalweave-sso.php inside the portalweave-sso
 folder. PHP 8.1+, OpenSSL, WordPress 6.5+ and HTTPS are required for SSO.
 
 PURPOSE AND BUSINESS MODEL

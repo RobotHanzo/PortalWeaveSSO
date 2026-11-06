@@ -29,7 +29,7 @@ The numbers below refer to the official [Detailed Plugin Guidelines](https://dev
 
 ## Additional engineering checks
 
-The [common-issues checklist](https://developer.wordpress.org/plugins/wordpress-org/common-issues/) informed changes to contextual output escaping, strict scalar/type validation, capability plus nonce checks, HTTP/enqueue APIs, SQL preparation, direct-access guards and production packaging. Provider callbacks use protocol authentication, with rationale at the boundary; they do not bypass authentication.
+The [common-issues checklist](https://developer.wordpress.org/plugins/wordpress-org/common-issues/) informed changes to contextual output escaping, strict scalar/type validation, capability plus nonce checks, HTTP/enqueue APIs, SQL preparation, direct-access guards and production packaging. The directory slug, main filename and text domain match; service and policy links appear directly in readme.txt as well as the detailed user guide. Provider callbacks use protocol authentication, with rationale at the boundary; they do not bypass authentication.
 
 Settings/support/configuration actions enforce administrator authority. The eight abilities recheck `manage_options` and their disabled-by-default switch even on direct execution, and validate JSON primitive types before changes. Network configuration uses the current network. SCIM bearer credentials cannot confer privileged WordPress roles or mutate shared/privileged accounts. Redirect allowlists use exact origins and path boundaries. JWT validation pins trusted inputs and rejects replay. No token or credential is copied into the personal-data export or structured support configuration.
 

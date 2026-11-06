@@ -4,7 +4,7 @@ Prepared 6 November 2026. This is an unsubmitted release candidate.
 Plugin name: PortalWeave SSO
 Proposed directory slug: portalweave-sso
 Version / stable tag: 1.0.0
-Main plugin file: portalweave-sso/wordpress-sso.php
+Main plugin file: portalweave-sso/portalweave-sso.php
 Upload: dist/portalweave-sso-1.0.0.zip
 License: GPL-2.0-or-later; complete license included in the plugin.
 Requires WordPress: 6.5 or newer
@@ -37,7 +37,7 @@ HOW TO SUBMIT
 
 The proposed slug is not reserved. WordPress.org assigns the actual slug and
 reviews the submission manually. If the assigned slug differs, update the
-text domain, translated call sites, POT filename/domain, release/workflow
+main filename, text domain, translated call sites, POT filename/domain, release/workflow
 defaults and documentation together, then rebuild and repeat verification.
 
 The readme intentionally has no Contributors field because a WordPress.org

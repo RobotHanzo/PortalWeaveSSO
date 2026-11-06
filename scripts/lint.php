@@ -1,7 +1,7 @@
 <?php
 if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 $root = dirname(__DIR__);
-$files = [$root . '/wordpress-sso.php', $root . '/uninstall.php'];
+$files = [$root . '/portalweave-sso.php', $root . '/uninstall.php'];
 foreach (['includes', 'tests', 'scripts'] as $directory) {
     foreach (new RecursiveIteratorIterator(new RecursiveDirectoryIterator($root . '/' . $directory, FilesystemIterator::SKIP_DOTS)) as $file) {
         if ($file->getExtension() === 'php') { $files[] = $file->getPathname(); }

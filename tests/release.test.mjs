@@ -35,7 +35,7 @@ function fixture(work) {
   try {
     for (const dir of ['includes', 'assets', 'docs', 'languages']) mkdirSync(path.join(root, dir));
     for (const [name, value] of Object.entries({
-      'wordpress-sso.php': plugin, 'readme.txt': readme, 'uninstall.php': '<?php // fixture',
+      'portalweave-sso.php': plugin, 'readme.txt': readme, 'uninstall.php': '<?php // fixture',
       'README.md': '# Fixture', LICENSE: 'GNU GENERAL PUBLIC LICENSE\nVersion 2, June 1991\n',
       'includes/class-fixture.php': '<?php // production', 'assets/login.js': '// production',
       'languages/portalweave-sso.pot': 'msgid ""\nmsgstr ""\n"X-Domain: portalweave-sso\\n"\n',
@@ -59,10 +59,10 @@ test('release metadata matches PHP header, constant, readme and stable tag', () 
 
 test('version mismatches and prereleases cannot become marketplace releases', () => fixture(root => {
   for (const replacement of ["define('PORTALWEAVE_SSO_VERSION', '9.9.9');", "define('PORTALWEAVE_SSO_VERSION', '1.2.3-beta.1');"]) {
-    writeFileSync(path.join(root, 'wordpress-sso.php'), plugin.replace("define('PORTALWEAVE_SSO_VERSION', '1.2.3');", replacement));
+    writeFileSync(path.join(root, 'portalweave-sso.php'), plugin.replace("define('PORTALWEAVE_SSO_VERSION', '1.2.3');", replacement));
     assert.throws(() => validateRelease({ root }), /version/i);
   }
-  writeFileSync(path.join(root, 'wordpress-sso.php'), plugin);
+  writeFileSync(path.join(root, 'portalweave-sso.php'), plugin);
   for (const tag of ['v1.2.4', '1.2.3', 'v1.2.3-rc.1', 'refs/heads/main']) {
     assert.throws(() => validateRelease({ root, tag }), /tag/i);
   }
@@ -78,9 +78,9 @@ test('minimum runtime headers must agree across the distributed files', () => fi
 }));
 
 test('release metadata refuses missing and ambiguous header declarations', () => fixture(root => {
-  writeFileSync(path.join(root, 'wordpress-sso.php'), plugin.replace(' * Version: 1.2.3', ' * Version: 1.2.3\n * Version: 1.2.4'));
+  writeFileSync(path.join(root, 'portalweave-sso.php'), plugin.replace(' * Version: 1.2.3', ' * Version: 1.2.3\n * Version: 1.2.4'));
   assert.throws(() => validateRelease({ root }), /version|ambiguous/i);
-  writeFileSync(path.join(root, 'wordpress-sso.php'), plugin.replace("define('PORTALWEAVE_SSO_VERSION', '1.2.3');", ''));
+  writeFileSync(path.join(root, 'portalweave-sso.php'), plugin.replace("define('PORTALWEAVE_SSO_VERSION', '1.2.3');", ''));
   assert.throws(() => validateRelease({ root }), /version/i);
 }));
 
@@ -90,18 +90,18 @@ test('release branding requires matching plugin and readme titles', () => fixtur
   writeFileSync(path.join(root, 'readme.txt'), `${readme}\n=== PortalWeave SSO ===\n`);
   assert.throws(() => validateRelease({ root }), /title/i);
   writeFileSync(path.join(root, 'readme.txt'), readme);
-  writeFileSync(path.join(root, 'wordpress-sso.php'), plugin.replace(' * Plugin Name: PortalWeave SSO\n', ''));
+  writeFileSync(path.join(root, 'portalweave-sso.php'), plugin.replace(' * Plugin Name: PortalWeave SSO\n', ''));
   assert.throws(() => validateRelease({ root }), /Plugin Name/i);
 }));
 
-test('slug metadata is derived from a valid declared text domain and matching POT', () => fixture(root => {
+test('slug metadata requires a valid text domain matching the main filename and POT', () => fixture(root => {
   for (const replacement of ['', ' * Text Domain: Another_Slug\n']) {
-    writeFileSync(path.join(root, 'wordpress-sso.php'), plugin.replace(' * Text Domain: portalweave-sso\n', replacement));
+    writeFileSync(path.join(root, 'portalweave-sso.php'), plugin.replace(' * Text Domain: portalweave-sso\n', replacement));
     assert.throws(() => validateRelease({ root }), /Text Domain|slug/i);
   }
-  writeFileSync(path.join(root, 'wordpress-sso.php'), plugin.replace('portalweave-sso', 'another-valid-slug'));
+  writeFileSync(path.join(root, 'portalweave-sso.php'), plugin.replace('portalweave-sso', 'another-valid-slug'));
   writeFileSync(path.join(root, 'languages/another-valid-slug.pot'), 'msgid ""\nmsgstr ""\n"X-Domain: another-valid-slug\\n"\n');
-  assert.equal(validateRelease({ root }).slug, 'another-valid-slug');
+  assert.throws(() => validateRelease({ root }), /filename|slug/i);
 }));
 
 test('the declared translation template is mandatory and must match the text domain', () => fixture(root => {
@@ -113,7 +113,7 @@ test('the declared translation template is mandatory and must match the text dom
   writeFileSync(template, 'msgid ""\nmsgstr ""\n"X-Domain: portalweave-sso\\n"\n"X-Domain: another-plugin\\n"\n');
   assert.throws(() => validateRelease({ root }), /translation|text domain/i);
   writeFileSync(template, 'msgid ""\nmsgstr ""\n"X-Domain: portalweave-sso\\n"\n');
-  writeFileSync(path.join(root, 'wordpress-sso.php'), plugin.replace(' * Domain Path: /languages', ' * Domain Path: /other'));
+  writeFileSync(path.join(root, 'portalweave-sso.php'), plugin.replace(' * Domain Path: /languages', ' * Domain Path: /other'));
   assert.throws(() => validateRelease({ root }), /Domain Path/i);
 }));
 
@@ -122,8 +122,8 @@ test('production staging excludes root development files and preserves exact pro
   const result = stageRelease({ root, output, tag: 'v1.2.3' });
   assert.equal(result.slug, 'portalweave-sso');
   assert.equal(result.files.length, 11);
-  assert.deepEqual(result.files.map(file => file.path), ['LICENSE', 'assets/login.js', 'docs/external-services.md', 'docs/integrations.md', 'docs/privacy.md', 'docs/provider-setup.md', 'includes/class-fixture.php', 'languages/portalweave-sso.pot', 'readme.txt', 'uninstall.php', 'wordpress-sso.php']);
-  assert.equal(readFileSync(path.join(output, 'wordpress-sso.php'), 'utf8'), plugin);
+  assert.deepEqual(result.files.map(file => file.path), ['LICENSE', 'assets/login.js', 'docs/external-services.md', 'docs/integrations.md', 'docs/privacy.md', 'docs/provider-setup.md', 'includes/class-fixture.php', 'languages/portalweave-sso.pot', 'portalweave-sso.php', 'readme.txt', 'uninstall.php']);
+  assert.equal(readFileSync(path.join(output, 'portalweave-sso.php'), 'utf8'), plugin);
   assert.equal(existsSync(path.join(output, 'languages/portalweave-sso.pot')), true);
   for (const excluded of ['README.md', '.env', 'tests', 'compose.test.yml', 'scripts', '.git', 'docs/setup.md', 'docs/verification.md', 'docs/releasing.md', 'docs/directory-review.md']) assert.equal(existsSync(path.join(output, excluded)), false);
   assert.equal(verifyStage({ root, output, slug: 'portalweave-sso' }).files.length, 11);

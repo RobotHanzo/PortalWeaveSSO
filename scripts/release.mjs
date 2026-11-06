@@ -4,7 +4,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const checkout = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const production = ['wordpress-sso.php', 'uninstall.php', 'readme.txt', 'LICENSE', 'includes', 'assets', 'languages',
+const production = ['portalweave-sso.php', 'uninstall.php', 'readme.txt', 'LICENSE', 'includes', 'assets', 'languages',
   'docs/provider-setup.md', 'docs/integrations.md', 'docs/external-services.md', 'docs/privacy.md'];
 const sourceRoots = new Set(production.map(relative => relative.split('/')[0].toLowerCase()));
 const stableVersion = /^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/;
@@ -36,32 +36,33 @@ function regularFile(root, relative) {
 }
 
 export function validateRelease({ root = checkout, tag, slug: expectedSlug } = {}) {
-  const source = regularFile(root, 'wordpress-sso.php');
+  const source = regularFile(root, 'portalweave-sso.php');
   const header = source.match(/^\s*<\?php\s*\/\*\*([\s\S]*?)\*\//)?.[1];
-  if (!header) throw new Error('Plugin header is missing from wordpress-sso.php.');
+  if (!header) throw new Error('Plugin header is missing from portalweave-sso.php.');
   const readme = regularFile(root, 'readme.txt').replaceAll('\r\n', '\n');
-  const title = field(header, 'Plugin Name', 'wordpress-sso.php');
+  const title = field(header, 'Plugin Name', 'portalweave-sso.php');
   const headings = [...readme.matchAll(/^[ \t]*===[ \t]+([^\r\n]+?)[ \t]+===[ \t]*$/gm)];
   if (headings.length !== 1 || headings[0][1].trim() !== title) throw new Error('The readme.txt title must match the Plugin Name header exactly.');
-  const slug = field(header, 'Text Domain', 'wordpress-sso.php');
+  const slug = field(header, 'Text Domain', 'portalweave-sso.php');
   if (slug.length > 100 || !packageSlug.test(slug)) throw new Error('The Text Domain must be a lowercase plugin slug with words/digits separated by single dashes.');
+  if (production[0] !== `${slug}.php`) throw new Error('The main plugin filename must match the declared text domain and directory slug.');
   if (expectedSlug !== undefined && expectedSlug !== slug) throw new Error(`The package slug must match the plugin Text Domain: ${slug}.`);
-  if (field(header, 'Domain Path', 'wordpress-sso.php') !== '/languages') throw new Error('The plugin Domain Path must be /languages.');
+  if (field(header, 'Domain Path', 'portalweave-sso.php') !== '/languages') throw new Error('The plugin Domain Path must be /languages.');
   const template = regularFile(root, `languages/${slug}.pot`);
   const domains = [...template.matchAll(/^"X-Domain: ([^"\r\n]+)\\n"\r?$/gm)];
   if (domains.length !== 1 || domains[0][1] !== slug) throw new Error('The translation POT template must declare the plugin text domain exactly once.');
-  const version = field(header, 'Version', 'wordpress-sso.php');
+  const version = field(header, 'Version', 'portalweave-sso.php');
   if (!stableVersion.test(version)) throw new Error('Plugin version must be a stable X.Y.Z number without leading zeroes.');
   const constants = [...source.matchAll(/\bdefine\s*\(\s*(['"])PORTALWEAVE_SSO_VERSION\1\s*,\s*(['"])([^'"]+)\2\s*\)\s*;/g)];
   if (constants.length !== 1 || constants[0][3] !== version) throw new Error('PORTALWEAVE_SSO_VERSION must match the plugin header version exactly.');
   if (field(readme, 'Stable tag', 'readme.txt') !== version) throw new Error('readme.txt Stable tag must match the plugin version, not trunk.');
   if (tag !== undefined && tag !== `v${version}`) throw new Error(`Git tag must be v${version} for this release.`);
-  const php = field(header, 'Requires PHP', 'wordpress-sso.php');
-  const wordpress = field(header, 'Requires at least', 'wordpress-sso.php');
+  const php = field(header, 'Requires PHP', 'portalweave-sso.php');
+  const wordpress = field(header, 'Requires at least', 'portalweave-sso.php');
   for (const [label, value] of [['Requires PHP', php], ['Requires at least', wordpress]]) {
     if (!runtimeVersion.test(value) || field(readme, label, 'readme.txt') !== value) throw new Error(`Minimum runtime ${label} must match between plugin and readme headers.`);
   }
-  if (!/^GPL(?:-?v?2(?:\.0)?)(?:-or-later|\s+or\s+later)?$/i.test(field(header, 'License', 'wordpress-sso.php'))
+  if (!/^GPL(?:-?v?2(?:\.0)?)(?:-or-later|\s+or\s+later)?$/i.test(field(header, 'License', 'portalweave-sso.php'))
     || !/^GPL(?:-?v?2(?:\.0)?)(?:-or-later|\s+or\s+later)?$/i.test(field(readme, 'License', 'readme.txt'))
     || !/GNU GENERAL PUBLIC LICENSE/.test(regularFile(root, 'LICENSE'))) {
     throw new Error('The GPL license declarations and distributed LICENSE must be present.');

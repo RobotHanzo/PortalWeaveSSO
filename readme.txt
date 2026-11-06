@@ -35,11 +35,15 @@ After an administrator configures a provider, sign-in redirects the browser to t
 
 Preset service policy references:
 
-* Microsoft identity services: [privacy](https://privacy.microsoft.com/privacystatement), [terms](https://www.microsoft.com/servicesagreement).
-* Amazon Cognito: [privacy](https://aws.amazon.com/privacy/), [service terms](https://aws.amazon.com/service-terms/).
-* Google identity services: [privacy](https://policies.google.com/privacy), [terms](https://policies.google.com/terms).
-* Okta and Auth0: see the current official links and provider-specific details in the distributed docs/external-services.md.
-* Salesforce, OneLogin, Discord and ClassLink: see the current official links in docs/external-services.md.
+* [Microsoft identity services](https://learn.microsoft.com/entra/identity/): [privacy](https://www.microsoft.com/en-us/privacy/privacystatement), [product terms](https://www.microsoft.com/licensing/terms/).
+* [Amazon Cognito](https://aws.amazon.com/cognito/): [privacy](https://aws.amazon.com/privacy/), [customer agreement](https://aws.amazon.com/agreement/), [service terms](https://aws.amazon.com/service-terms/).
+* [Google identity services](https://developers.google.com/identity): [privacy](https://policies.google.com/privacy), [API terms](https://developers.google.com/terms), [user data policy](https://developers.google.com/terms/api-services-user-data-policy).
+* [Okta](https://www.okta.com/): [privacy](https://www.okta.com/legal/privacy-policy/), [agreements](https://www.okta.com/legal/).
+* [Auth0](https://auth0.com/): [privacy](https://www.okta.com/legal/privacy-policy/), [legal resources](https://auth0.com/legal).
+* [Salesforce](https://www.salesforce.com/): [privacy](https://www.salesforce.com/company/legal/privacy/), [customer agreements](https://www.salesforce.com/company/legal/customer-agreements/).
+* [OneLogin](https://www.onelogin.com/): [privacy](https://www.oneidentity.com/legal/privacy.aspx), [legal resources](https://www.oneidentity.com/legal/).
+* [Discord](https://discord.com/developers/docs/topics/oauth2): [privacy](https://discord.com/privacy), [developer terms](https://support-dev.discord.com/hc/en-us/articles/8562894815383-Discord-Developer-Terms-of-Service).
+* [ClassLink](https://www.classlink.com/): [privacy](https://www.classlink.com/company/privacy), [contact](https://www.classlink.com/contact). Obtain the applicable school/organization license and service agreement from ClassLink.
 * Keycloak, authentik and custom providers: the administrator chooses the deployment, endpoint and applicable operator terms/privacy policy. Selecting a self-hosted preset does not contact the software project's developer.
 
 Optional mapped pictures and custom provider icons are browser requests to administrator-selected image hosts. Those hosts receive browser network information. Support email is sent only after an administrator explicitly submits a message or requests sending through the support ability; its recipient is administrator configured. MCP transport and any data handling by a connected AI client belong to the separately configured adapter/client.
