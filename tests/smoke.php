@@ -91,3 +91,13 @@ wpsso_test('Global media protection cannot be removed through an individual chec
         wpsso_assert(file_exists($upload['file']), 'Explicitly removed protection failed to restore media');
     } finally { wp_delete_attachment($id, true); }
 });
+
+wpsso_test('Plugin lifecycle cleanup runs on single-site WordPress', function () {
+    do_action('deactivate_' . plugin_basename(WPSSO_FILE), false);
+    wpsso_assert(wp_next_scheduled('wpsso_cleanup') === false, 'Audit cleanup remained scheduled');
+    wpsso_assert(wp_next_scheduled('wpsso_state_cleanup') === false, 'State cleanup remained scheduled');
+    wpsso_assert(wp_next_scheduled('wpsso_extension_cleanup') === false, 'Extension cleanup remained scheduled');
+    \WPSSO\Audit::install();
+    \WPSSO\Auth::register();
+    \WPSSO\Extensions::register();
+});

@@ -37,12 +37,16 @@ register_activation_hook(__FILE__, function ($network_wide) {
 register_deactivation_hook(__FILE__, function ($network_wide) {
     $sites = is_multisite() && $network_wide ? get_sites(['fields' => 'ids', 'number' => 0, 'network_id' => get_current_network_id()]) : [get_current_blog_id()];
     foreach ($sites as $site_id) {
-        switch_to_blog($site_id);
+        if (is_multisite()) {
+            switch_to_blog($site_id);
+        }
         wp_clear_scheduled_hook('wpsso_cleanup');
         wp_clear_scheduled_hook('wpsso_state_cleanup');
         wp_clear_scheduled_hook('wpsso_extension_cleanup');
         wp_unschedule_hook('wpsso_expire_claim');
-        restore_current_blog();
+        if (is_multisite()) {
+            restore_current_blog();
+        }
     }
 });
 add_action('wp_initialize_site', function ($site) {

@@ -8,7 +8,7 @@ The combined source was exercised with WordPress 7.1.4, PHP 8.3.36 and MariaDB 1
 | --- | --- |
 | PHP syntax | `php scripts/lint.php` checks plugin, scripts and test files |
 | JavaScript syntax | `node --check` on both production scripts and protocol harness |
-| Real WordPress integration | `php tests/run.php`: 47 checks covering crypto, state, refresh, mappings, registration/linking, administrator policy, domains, duplicate emails, REST/content/oEmbed, media vault/restore, audit/privacy, backups, SCIM, moderation and native abilities |
+| Real WordPress integration | `php tests/run.php`: 48 checks covering crypto, state, refresh, mappings, registration/linking, administrator policy, domains, duplicate emails, REST/content/oEmbed, media vault/restore, audit/privacy, backups, SCIM, moderation, native abilities and lifecycle cleanup |
 | HTTPS authorization flow | `node tests/e2e.mjs`: 7 protocol checks using actual HTTPS WordPress requests and cookies with a guarded local test IdP; PKCE, initiating redirect, bad state/browser/verifier, replay, external redirect rejection and admin test isolation |
 | Real WordPress multisite | `php tests/multisite.php`: 9 checks covering new-site schema, independent networks, enforced network configuration, global privileged identities, provider groups, OAuth token isolation/refresh, scoped back-channel logout, SCIM ownership, moderation and avatar isolation |
 | Packaging | Installable ZIP contains a single wordpress-sso directory, production code, assets, license and docs; excludes git history, tests, Docker fixtures, credentials and development caches |
