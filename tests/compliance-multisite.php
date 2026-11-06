@@ -168,3 +168,68 @@ portalweave_sso_test('multisite: audit reads and privacy anonymization remain lo
         wpmu_delete_user($id);
     }
 });
+
+portalweave_sso_test('multisite: Activity summaries keep identical provider IDs and private audit data scoped to each blog', function () {
+    global $wpdb, $portalweave_sso_blog_a, $portalweave_sso_blog_b;
+    $now = gmmktime(12, 0, 0, 7, 19, 2004);
+    $app = 'shared-activity-provider';
+    $email = 'private-summary-' . bin2hex(random_bytes(5)) . '@example.org';
+    $inserted = [];
+    $queries = [];
+    $capture = static function ($query) use (&$queries) {
+        if (preg_match('/^\s*SELECT\b/i', $query) && str_contains($query, 'portalweave_sso_audit')) { $queries[] = $query; }
+        return $query;
+    };
+    try {
+        foreach ([
+            $portalweave_sso_blog_a => [['success', '2004-07-19 08:00:00']],
+            $portalweave_sso_blog_b => [['failure', '2004-07-17 09:00:00'], ['local_logout', '2004-07-18 10:00:00'], ['test_success', '2004-07-19 11:00:00']],
+        ] as $blog => $events) {
+            portalweave_sso_compliance_multisite_at($blog, static function () use ($app, $email, $events, &$inserted) {
+                global $wpdb;
+                \PortalWeaveSSO\Audit::install();
+                $table = $wpdb->prefix . 'portalweave_sso_audit';
+                foreach ($events as [$status, $created]) {
+                    $result = $wpdb->insert($table, [
+                        'user_id' => 424242, 'username' => 'private-summary-user', 'email' => $email,
+                        'status' => $status, 'app' => $app, 'error_code' => 'private-summary-error',
+                        'client_ip' => '198.51.100.123', 'navigation' => 'https://private.example.org/summary-fixture', 'created_at' => $created,
+                    ], ['%d', '%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s']);
+                    portalweave_sso_assert($result === 1, 'Unable to insert scoped Activity fixture');
+                    $inserted[] = ['table' => $table, 'id' => (int) $wpdb->insert_id];
+                }
+            });
+        }
+        add_filter('query', $capture);
+        try {
+            [$first, $second] = portalweave_sso_compliance_multisite_at($portalweave_sso_blog_a, static function () use ($now, $portalweave_sso_blog_a, $portalweave_sso_blog_b) {
+                $first = \PortalWeaveSSO\Audit::summary(7, $now);
+                $second = portalweave_sso_compliance_multisite_at($portalweave_sso_blog_b, static fn() => \PortalWeaveSSO\Audit::summary(7, $now));
+                portalweave_sso_assert(get_current_blog_id() === $portalweave_sso_blog_a && \PortalWeaveSSO\Audit::summary(7, $now) === $first, 'Restoring the blog reused another site\'s Activity summary');
+                return [$first, $second];
+            });
+        } finally { remove_filter('query', $capture); }
+        foreach ([
+            [$first, 1, ['sign_ins' => 1, 'failures' => 0, 'sign_outs' => 0, 'tests' => 0, 'other' => 0]],
+            [$second, 3, ['sign_ins' => 0, 'failures' => 1, 'sign_outs' => 1, 'tests' => 1, 'other' => 0]],
+        ] as [$summary, $total, $types]) {
+            portalweave_sso_assert(is_array($summary) && $summary['total'] === $total && $summary['types'] === $types, 'Activity totals or event types crossed a blog boundary');
+            portalweave_sso_assert($summary['days'] === 7 && $summary['start'] === '2004-07-13' && $summary['end'] === '2004-07-19'
+                && count($summary['daily']) === 7 && array_sum(array_column($summary['daily'], 'count')) === $total, 'Scoped Activity daily counts lost the fixed UTC window');
+            portalweave_sso_assert($summary['providers'] === [['app' => $app, 'count' => $total]] && $summary['other_providers'] === 0, 'Identical app IDs combined events from different blogs');
+            foreach ($summary['daily'] as $day) {
+                portalweave_sso_assert(array_keys($day) === ['date', 'count'] && is_string($day['date']) && is_int($day['count']), 'Daily Activity data contains unexpected fields or untyped counts');
+            }
+            $json = wp_json_encode($summary);
+            foreach ([$email, 'private-summary-user', 'private-summary-error', '198.51.100.123', 'private.example.org', '424242'] as $private) {
+                portalweave_sso_assert(!str_contains($json, $private), 'Activity summary exposed a personal audit value');
+            }
+        }
+        portalweave_sso_assert(count($queries) === 3, 'Scoped Activity summary reads were not exercised across the restored blog');
+        foreach ($queries as $query) {
+            portalweave_sso_assert(!preg_match('/\b(?:user_id|username|email|client_ip|navigation|error_code)\b|SELECT\s+\*/i', $query), 'Scoped Activity aggregate fetched personal audit columns');
+        }
+    } finally {
+        foreach ($inserted as $row) { $wpdb->delete($row['table'], ['id' => $row['id']], ['%d']); }
+    }
+});

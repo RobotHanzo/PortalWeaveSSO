@@ -10,7 +10,7 @@ PortalWeave's administrator UI is organized around tasks, using server-rendered 
 | Access policies | Site/domain/content/media restrictions and network enforcement |
 | Appearance | Login buttons, widget text and signed-in messages |
 | Integrations | Optional modules, SCIM/shared credentials and AI abilities |
-| Activity | Audit transactions, collection choices, retention and debugging |
+| Activity | Retained-event overview, audit logs, collection choices, retention and debugging |
 | Tools & support | Configuration backup/restore, troubleshooting and support |
 
 Navigation uses real URLs and works without JavaScript. The current screen is marked with `aria-current="page"`. Overview and the provider list render no settings form. Each editor posts its explicit screen scope, preserves the truncation sentinel and returns to that screen after saving or validation failure. Adding a provider uses a separate `new_provider=1` flag; an existing provider whose ID is `new` remains editable normally.
@@ -37,6 +37,26 @@ Validated provider, settings, import and support submissions show an action-spec
 
 Guided forms submit an explicitly allowed scalar `provider_setup` map, accepted only for new-provider creation and never alongside an existing provider map. `ProviderSetup::prepare()` validates the selected catalog, fields, conditions, HTTPS addresses, issuer conventions and opaque credentials, then derives the ordinary provider configuration on the server. `AdminSettings::prepare()` reuses its existing one-provider preservation path before `Config::save()`. JavaScript does not supply authoritative endpoints or policy defaults. Unsupported discovery assumptions are exposed as explicit provider inputs rather than fetched remotely or filled with placeholders.
 
+## Activity views
+
+Activity opens Overview by default, with a separate Audit logs view. Ordinary server-rendered links preserve browser history and work without JavaScript. GET `activity_view` accepts only `overview` or `audit`; `activity_days` accepts 7, 30 or 90, defaulting to 30. Audit preference forms carry the corresponding allowlisted POST context so scoped saves and validation errors return to the same view and overview period. Navigation values are not stored settings. Overview renders no preference form, raw audit rows or CSV control.
+
+`Audit::summary()` aggregates all retained rows in the selected range, independently of the audit table's latest-100 limit. The window includes today and the preceding calendar days in UTC; today is partial, and zero-event days are included. One prepared SQL statement returns daily/category counts and the eight most active provider identifiers from one read view. Remaining provider events form a remainder bucket. Configured names label known identifiers, with an identifier fallback; a displayed empty identifier is labelled WordPress / system. The API does not fetch user IDs, usernames, emails, IPs, navigation URLs or error codes, and creates no new store or cache.
+
+The categories are fixed audit statuses, not distinct people, sessions or authentication attempts:
+
+| Category | Recorded statuses |
+| --- | --- |
+| Sign-in events | `success`, `local_login` |
+| Failure events | `failure`, `local_failure` |
+| Sign-out events | `logout`, `local_logout` |
+| Provider test events | `test_success` |
+| Other events | Every remaining status, including refresh, provisioning and administrative events |
+
+One action may generate several events. Retention and disabled collection can leave gaps; switching collection off does not hide retained history. An empty period gets explicit guidance, while an aggregate query error displays an unavailable notice instead of zero statistics. In Network Admin, history still belongs to the current site. Provider labels and the collection-status notice use that site's active configuration, including enforced network policy, rather than an inactive network draft.
+
+The daily SVG has an accessible name and description, supplementary native hover titles and an equivalent expandable date/count table. Category and provider bars expose their labels and numeric values as text. Chart and table scroll regions support keyboard access; the two-column table fits narrow layouts and the timeline scrolls within its container. Rendering requires no JavaScript, chart library or remote assets. Audit logs retains the latest 100 rows, CSV export of up to 5,000 rows and existing collection/retention controls; the overview period does not filter those rows or the export.
+
 ## Visual and interaction choices
 
 The layout uses WordPress's inherited system font, white surfaces, cool gray borders and blue actions. Persistent task navigation provides hierarchy; the main content shows one task rather than a long page of unrelated controls. The setup workbench uses a genuine numbered sequence and a single main task beside its provider-console guidance, rather than repeated settings cards. On narrow screens the guide moves below the fields, progress wraps, navigation moves above content and the audit table scrolls within its container. Controls have visible keyboard focus, associated labels/help and generous touch targets. No remote fonts, frontend framework or production dependency was added.
@@ -47,6 +67,6 @@ The design work used the official [frontend-design skill](https://github.com/ant
 
 ## Verification
 
-PHP regression checks cover screen isolation, active navigation, secret-free rendering, scoped writes, retained providers/credentials, checkbox false values, malformed/cross-screen inputs and real multisite credential preservation. Guided-setup regressions additionally cover every recipe's derived endpoints, issuer variants, conditional/public clients, exact secret bytes, creation-only scope and the actual administrative POST/redirect boundary. Existing protocol and account tests remain applicable.
+PHP regression checks cover screen isolation, active navigation, secret-free rendering, scoped writes, retained providers/credentials, checkbox false values, malformed/cross-screen inputs and real multisite credential preservation. Guided-setup regressions additionally cover every recipe's derived endpoints, issuer variants, conditional/public clients, exact secret bytes, creation-only scope and the actual administrative POST/redirect boundary. Activity regressions cover UTC boundaries, full-range totals, category/provider grouping, private-field exclusion, empty/error handling, view/range round trips and current-site multisite scope. Existing protocol and account tests remain applicable.
 
 Browser verification uses the disposable integration site and fake providers, snapshots/restores raw settings, and exercises desktop/mobile layout, keyboard focus, history, no-JavaScript navigation, provider presets and real form submissions. Raw captures, traces and authenticated test browser state stay in ignored local artifact paths such as `output/playwright/`; they must never be committed or shipped. Reviewed product screenshots with clearly fictional sample data may be saved separately in `docs/screenshots/` for the README, following the [repository screenshot guidance](../AGENTS.md#documentation-and-screenshots). Those images are excluded from the production ZIP. Current CI reports are the authoritative runtime evidence; historical counts in older verification notes do not describe every later revision.

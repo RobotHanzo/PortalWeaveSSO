@@ -420,7 +420,7 @@ portalweave_sso_test('core: admin navigation renders one task screen and keeps p
         wp_set_current_user($admin->ID);
         $old_get = $_GET;
         try {
-            foreach (['overview' => '', 'providers' => '', 'login' => 'settings[default_app]', 'access' => 'settings[allowed_domains]', 'appearance' => 'settings[button][theme]', 'modules' => 'settings[scim_token]', 'reports' => 'settings[audit_enabled]', 'tools' => 'settings[support][email]'] as $screen => $field) {
+            foreach (['overview' => '', 'providers' => '', 'login' => 'settings[default_app]', 'access' => 'settings[allowed_domains]', 'appearance' => 'settings[button][theme]', 'modules' => 'settings[scim_token]', 'reports' => '', 'tools' => 'settings[support][email]'] as $screen => $field) {
                 $_GET = ['page' => 'portalweave-sso', 'tab' => $screen];
                 ob_start();
                 \PortalWeaveSSO\Admin::page();
@@ -438,6 +438,9 @@ portalweave_sso_test('core: admin navigation renders one task screen and keeps p
                 }
                 if ($screen !== 'reports') {
                     portalweave_sso_assert(!str_contains($html, 'Export audit CSV'), 'Audit data should only render on Activity');
+                } else {
+                    portalweave_sso_assert(str_contains($html, 'data-activity-overview') && !str_contains($html, 'id="portalweave-sso-reports"')
+                        && !str_contains($html, 'Export audit CSV'), 'Default Activity must show aggregate graphs instead of the raw audit table');
                 }
                 if ($screen !== 'appearance') {
                     portalweave_sso_assert(!str_contains($html, 'name="settings[button][theme]"'), 'Appearance fields leaked into another task');
