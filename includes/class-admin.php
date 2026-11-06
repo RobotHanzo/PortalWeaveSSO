@@ -331,6 +331,10 @@ final class Admin {
         foreach (['authorize_url' => 'Authorization endpoint', 'token_url' => 'Token endpoint', 'userinfo_url' => 'User-info endpoint', 'groupinfo_url' => 'Group-info endpoint', 'jwks_url' => 'JWKS endpoint', 'issuer' => 'Issuer', 'logout_url' => 'OIDC end-session endpoint', 'callback_url' => 'Callback URL override'] as $key => $label) {
             self::field($prefix . '[' . $key . ']', $app[$key], $label, 'url', $key === 'callback_url' ? 'Optional. Use an allowed origin that routes to this WordPress installation; register this exact URL with the provider.' : '');
         }
+        self::check($prefix . '[backchannel_logout]', $app['backchannel_logout'] ?? false, 'Enable signed OIDC back-channel logout', 'Configure the back-channel URL at the provider. Logout tokens must pass signature, issuer, audience, event, expiry, and replay checks.');
+        if (!$new) {
+            echo '<div class="wpsso-callback"><strong>OIDC back-channel logout URL</strong><code>' . esc_html(add_query_arg(['wpsso_action' => 'backchannel_logout', 'app' => $id], home_url('/'))) . '</code></div>';
+        }
         echo '<div class="wpsso-callback"><strong>Registered callback URL</strong><code>' . esc_html(Config::callback($app)) . '</code></div>';
         self::field($prefix . '[state_parameter]', $app['state_parameter'], 'Additional state value', 'text', 'Stored inside a random, browser-bound, one-use state transaction.');
         self::field($prefix . '[algorithms]', implode("\n", $app['algorithms']), 'Allowed JWT algorithms', 'textarea', 'One per line: RS256, RS384, RS512, HS256, HS384, HS512. Pin only the algorithms used by this provider.');

@@ -33,6 +33,8 @@ Install the ZIP through **Plugins → Add New → Upload Plugin**, activate it, 
 
 Multiple apps can be enabled at once. Each button selects its own app. The default app is used for forced and single-flow login.
 
+For provider-initiated OIDC session revocation, enable **signed OIDC back-channel logout** on the app and register the displayed back-channel URL with your provider. The provider must send a signed logout token; the endpoint validates the provider signature and logout-token claims and rejects replays. The ordinary end-session URL is used for browser-initiated logout.
+
 Provider references: [Microsoft discovery metadata](https://learn.microsoft.com/en-us/entra/identity-platform/v2-protocols-oidc), [Cognito endpoints](https://docs.aws.amazon.com/cognito/latest/developerguide/federation-endpoints.html), [OneLogin user-info](https://developers.onelogin.com/docs/openid-connect/api/user-info/), [ClassLink user-info](https://apisandbox.classlink.com/reference/v2myinfo), and [authentik OAuth2 provider](https://docs.goauthentik.io/add-secure-apps/providers/oauth2/).
 
 ## Mapping
