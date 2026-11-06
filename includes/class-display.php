@@ -7,7 +7,7 @@ final class Display
 {
     public static function register(): void
     {
-        add_shortcode('portalweave_sso_oauth_login', [self::class, 'shortcode']);
+        add_shortcode('sso_oauth_login', [self::class, 'shortcode']);
         add_action('widgets_init', static fn() => register_widget(Login_Widget::class));
         add_action('wp_enqueue_scripts', [self::class, 'frontend_assets']);
         add_action('wp_footer', [self::class, 'late_styles']);
@@ -38,7 +38,7 @@ final class Display
         $has_buttons = is_active_widget(false, false, 'portalweave_sso_oauth_login', true)
             || (function_exists('is_account_page') && is_account_page());
         foreach (($GLOBALS['wp_query']->posts ?? []) as $post) {
-            if ($post instanceof \WP_Post && has_shortcode($post->post_content, 'portalweave_sso_oauth_login')) {
+            if ($post instanceof \WP_Post && has_shortcode($post->post_content, 'sso_oauth_login')) {
                 $has_buttons = true;
                 break;
             }
@@ -84,7 +84,7 @@ final class Display
 
     public static function shortcode($atts = []): string
     {
-        return self::buttons(shortcode_atts(['app' => '', 'redirect' => '', 'popup' => '', 'title' => ''], $atts, 'portalweave_sso_oauth_login'));
+        return self::buttons(shortcode_atts(['app' => '', 'redirect' => '', 'popup' => '', 'title' => ''], $atts, 'sso_oauth_login'));
     }
 
     public static function login_buttons(): void
