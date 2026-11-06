@@ -1,7 +1,7 @@
 PortalWeave SSO branding
 ======================
 
-logo.png (128 x 128) and logo@2x.png (256 x 256) are transparent PNG
+logo.png (128 x 128) and logo-2x.png (256 x 256) are transparent PNG
 exports of the original PortalWeave SSO interwoven portal mark, created
 with image generation from the project's own design brief on 2026-11-07.
 They contain no third-party provider marks.

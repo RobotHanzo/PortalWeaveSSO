@@ -18,7 +18,7 @@ The shared settings header uses locally served PNG copies of the mark:
 | File | Dimensions |
 | --- | --- |
 | [assets/branding/logo.png](../../assets/branding/logo.png) | 128 × 128 pixels |
-| [assets/branding/logo@2x.png](../../assets/branding/logo@2x.png) | 256 × 256 pixels |
+| [assets/branding/logo-2x.png](../../assets/branding/logo-2x.png) | 256 × 256 pixels |
 
 These optimized UI images are included in the installable plugin through the existing `assets/` production allowlist.
 
