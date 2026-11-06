@@ -34,7 +34,7 @@ final class Admin {
         if (strpos($hook, 'portalweave-sso') === false) {
             return;
         }
-        $version = defined('PORTALWEAVE_SSO_VERSION') ? PORTALWEAVE_SSO_VERSION : '1.0.0';
+        $version = defined('PORTALWEAVE_SSO_VERSION') ? PORTALWEAVE_SSO_VERSION : '1.0.1';
         $style = dirname(__DIR__) . '/assets/admin.css';
         $script = dirname(__DIR__) . '/assets/admin.js';
         // File revisions also refresh assets when administrators test an unpublished build at the same plugin version.
@@ -425,7 +425,7 @@ final class Admin {
         $notices = ['saved' => __('Changes saved.', 'portalweave-sso'), 'imported' => __('Configuration imported. Existing credentials were retained by app ID. Incomplete restored providers and login enforcement are disabled until you configure credentials and test SSO.', 'portalweave-sso'), 'sent' => __('Support message submitted to the WordPress mail service.', 'portalweave-sso')];
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Selects a display-only notice; error details come from the current administrator's server transient.
         $notice = self::request_key($_GET, 'portalweave_sso_notice');
-        echo '<div class="wrap portalweave-sso-admin"><header class="portalweave-sso-header"><div><h1>' . esc_html__('PortalWeave SSO', 'portalweave-sso') . '</h1><p>' . esc_html($network ? __('Single sign-on for your network', 'portalweave-sso') : __('Identity and access for your WordPress site', 'portalweave-sso')) . '</p></div><span class="portalweave-sso-version">' . esc_html(defined('PORTALWEAVE_SSO_VERSION') ? PORTALWEAVE_SSO_VERSION : '1.0.0') . '</span></header>';
+        echo '<div class="wrap portalweave-sso-admin"><header class="portalweave-sso-header"><div><h1>' . esc_html__('PortalWeave SSO', 'portalweave-sso') . '</h1><p>' . esc_html($network ? __('Single sign-on for your network', 'portalweave-sso') : __('Identity and access for your WordPress site', 'portalweave-sso')) . '</p></div><span class="portalweave-sso-version">' . esc_html(defined('PORTALWEAVE_SSO_VERSION') ? PORTALWEAVE_SSO_VERSION : '1.0.1') . '</span></header>';
         if ($notice === 'error') {
             $error = get_transient('portalweave_sso_admin_error_' . get_current_user_id());
             delete_transient('portalweave_sso_admin_error_' . get_current_user_id());

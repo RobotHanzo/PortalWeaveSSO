@@ -6,7 +6,7 @@ An installable WordPress plugin for multiple OAuth 2.0 and OpenID Connect provid
 
 ## Installation
 
-1. Build `dist/portalweave-sso-1.0.0.zip` with `bash scripts/build.sh --slug portalweave-sso`, then upload it through **Plugins → Add New → Upload Plugin**.
+1. Build `dist/portalweave-sso-1.0.1.zip` with `bash scripts/build.sh --slug portalweave-sso`, then upload it through **Plugins → Add New → Upload Plugin**.
 2. Activate **PortalWeave SSO** and open **Settings → PortalWeave SSO**.
 3. Add a provider, copy its callback URL into the provider registration, and configure its issuer, credentials, endpoints and signing algorithms. The callback always uses the canonical WordPress origin; the initiating page is retained separately as the post-login destination.
 4. Run **Test SSO Config** to inspect attributes. Configure username/email/group mappings and account policies, then test a regular user before enforcing SSO.
