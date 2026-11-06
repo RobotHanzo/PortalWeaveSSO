@@ -6,7 +6,7 @@ Capture the actual interface with Playwright. Keep the WordPress styling and use
 
 Leave 24 CSS pixels of the surrounding native background on every side of each capture. Preserve the content's original dimensions and typography; panels, headings and controls must not touch the image edges. Apply this padding only in the capture framing, without changing production styles or redrawing the interface. Check the content bounds and restore any temporary capture wrapper after each screenshot.
 
-The gallery covers overview, provider choice and setup, public login and shortcode placement, appearance, account mapping and verification, access policy, optional modules, audit/privacy, backup/restore and genuine multisite enforcement. Current site screens use `wp-admin/options-general.php?page=portalweave-sso&tab=...`; network controls use the corresponding Network Admin screen. See [admin screen design](../admin-design.md) for the route and interaction contracts.
+The gallery covers overview, provider choice and setup, public login and shortcode placement, appearance, account mapping and verification, access policy, optional modules, audit/privacy, backup/restore and genuine multisite enforcement. Current site screens use `wp-admin/admin.php?page=portalweave-sso&tab=...`; network controls use the corresponding Network Admin screen. See [admin screen design](../admin-design.md) for the route and interaction contracts.
 
 Existing-provider configuration uses its seven tabs; capture the appropriate active tab for mapping and account-policy views. Keep these editor screenshots distinct from the step-by-step creation guide.
 
