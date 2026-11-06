@@ -107,7 +107,7 @@ the complete binary into memory. Admin-supplied data is escaped at output.
 SOURCE, LICENSING AND PACKAGING
 Source and build/test tools: https://github.com/RobotHanzo/PortalWeaveSSO
 PORTALWEAVE_SSO_* constants, the PortalWeaveSSO PHP namespace,
-portalweave_sso_* hooks/settings, [portalweave_sso_oauth_login] and
+portalweave_sso_* hooks/settings, [sso_oauth_login] and
 wp portalweave-sso commands use the current product name throughout.
 Earlier technical names have no compatibility aliases or automatic stored-data
 conversion. Existing deployments require the controlled replacement procedure

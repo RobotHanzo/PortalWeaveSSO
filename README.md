@@ -10,7 +10,7 @@ An installable WordPress plugin for multiple OAuth 2.0 and OpenID Connect provid
 2. Activate **PortalWeave SSO** and open **Settings → PortalWeave SSO**.
 3. Add a provider, copy its callback URL into the provider registration, and configure its issuer, credentials, endpoints and signing algorithms. The callback always uses the canonical WordPress origin; the initiating page is retained separately as the post-login destination.
 4. Run **Test SSO Config** to inspect attributes. Configure username/email/group mappings and account policies, then test a regular user before enforcing SSO.
-5. Add `[portalweave_sso_oauth_login]`, the **PortalWeave SSO login** widget, or use the automatic WordPress/WooCommerce login buttons.
+5. Add `[sso_oauth_login]`, the **PortalWeave SSO login** widget, or use the automatic WordPress/WooCommerce login buttons.
 
 SSO requires HTTPS. Configure HTTPS detection correctly when WordPress is behind a trusted reverse proxy. Keep `AUTH_KEY`, `SECURE_AUTH_KEY` and WordPress salts stable: they protect stored secrets and tokens. Changing them requires re-entering credentials and signing in again.
 

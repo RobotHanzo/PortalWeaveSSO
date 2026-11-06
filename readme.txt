@@ -15,7 +15,7 @@ PortalWeave SSO connects a site to administrator-configured OAuth 2.0 and OpenID
 * Configure multiple providers, attribute mappings and group/email-domain role policies.
 * Register users at first login or allow only existing accounts. Account linking requires explicit configuration and a verified, unique email.
 * Keep administrator SSO disabled by default; enable it per provider with a verified account claim.
-* Display login buttons using the login widget, [portalweave_sso_oauth_login] shortcode, WordPress login screen or WooCommerce login form.
+* Display login buttons using the login widget, [sso_oauth_login] shortcode, WordPress login screen or WooCommerce login form.
 * Restrict posts, pages, categories and media using login, role or group rules.
 * Review local authentication transactions and export CSV reports. Debug logging, client IP collection and optional modules are administrator controlled.
 * Enable SCIM Users/Groups, JWT sign-in, temporary guest accounts, moderation, mapped pictures, attribute redirects or a short shared-subdomain handoff.
@@ -67,7 +67,7 @@ This release replaces the technical namespace without aliases or automatic conve
 2. Activate PortalWeave SSO and open Settings > PortalWeave SSO.
 3. Add a provider, register the displayed callback URL, enter its credentials/endpoints/signing settings and save.
 4. Run Test SSO Config as an administrator to inspect returned attributes. Configure mappings and test an ordinary user before enforcing login.
-5. Add [portalweave_sso_oauth_login], the PortalWeave SSO login widget or use the WordPress/WooCommerce login form integration.
+5. Add [sso_oauth_login], the PortalWeave SSO login widget or use the WordPress/WooCommerce login form integration.
 
 Optional features start disabled. Use the distributed user guides for provider, SCIM, media and MCP setup. Development source and build tools are [publicly maintained](https://github.com/RobotHanzo/PortalWeaveSSO).
 
