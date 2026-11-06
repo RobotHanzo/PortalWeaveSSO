@@ -1,11 +1,14 @@
 import https from 'node:https';
 import assert from 'node:assert/strict';
 import { randomBytes } from 'node:crypto';
+import { reportGuard } from './report.mjs';
 
 // The only TLS exception is the self-signed, loopback-only disposable fixture.
 const origin = 'https://localhost:8448';
 let failures = 0;
 let tests = 0;
+const results = [];
+const finishReports = reportGuard('https', results);
 
 class Cookies {
     constructor(source) { this.values = new Map(source?.values ?? []); }
@@ -53,8 +56,16 @@ function request(path, jar = new Cookies(), { method = 'GET', body, headers = {}
 
 async function test(name, work) {
     tests++;
-    try { await work(); console.log(`PASS ${name}`); }
-    catch (error) { failures++; console.error(`FAIL ${name}: ${error.stack ?? error}`); }
+    const started = performance.now();
+    try {
+        await work();
+        results.push({ name, pass: true, duration: (performance.now() - started) / 1000 });
+        console.log(`PASS ${name}`);
+    } catch (error) {
+        failures++;
+        results.push({ name, pass: false, duration: (performance.now() - started) / 1000, error: String(error.stack ?? error) });
+        console.error(`FAIL ${name}: ${error.stack ?? error}`);
+    }
 }
 
 async function start(jar, { redirect = `${origin}/origin-login-initiator/`, url } = {}) {
@@ -166,3 +177,4 @@ await test('Administrator Test SSO Config displays attributes and preserves the 
 
 console.log(`${tests} HTTPS protocol tests, ${failures} failures`);
 process.exitCode = failures ? 1 : 0;
+finishReports();

@@ -1,5 +1,7 @@
 <?php
 if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
+require_once __DIR__ . '/report.php';
+wpsso_report_bootstrap('multisite');
 ob_start();
 $_SERVER['HTTP_HOST'] = 'network.example.test';
 $_SERVER['HTTPS'] = 'on';
@@ -13,7 +15,6 @@ if (!is_multisite() || !in_array(get_network()->site_name, ['WPSSO Multisite Int
     fwrite(STDERR, "Refusing multisite fixtures outside the disposable WPSSO network.\n"); exit(2);
 }
 add_filter('pre_wp_mail', static fn() => true);
-$wpsso_results = [];
 $wpsso_blog_a = get_main_site_id();
 $wpsso_blog_b = domain_exists('second.network.example.test', '/', get_current_network_id());
 if (!$wpsso_blog_b) {
@@ -49,13 +50,14 @@ function wpsso_app(array $overrides = []): array {
 }
 function wpsso_test(string $name, callable $callback): void {
     global $wpsso_results, $wpsso_blog_a, $wpsso_blog_b;
+    $started = microtime(true);
     $user = get_current_user_id();
     $network = get_site_option('wpsso_settings', []);
     try {
         $callback();
-        $wpsso_results[] = ['pass' => true, 'name' => $name];
+        $wpsso_results[] = ['pass' => true, 'name' => $name, 'duration' => microtime(true) - $started];
     } catch (Throwable $error) {
-        $wpsso_results[] = ['pass' => false, 'name' => $name, 'error' => $error->getMessage() . ' (' . basename($error->getFile()) . ':' . $error->getLine() . ')'];
+        $wpsso_results[] = ['pass' => false, 'name' => $name, 'duration' => microtime(true) - $started, 'error' => $error->getMessage() . ' (' . basename($error->getFile()) . ':' . $error->getLine() . ')'];
     } finally {
         while (ms_is_switched()) { restore_current_blog(); }
         update_site_option('wpsso_settings', $network);
@@ -140,11 +142,4 @@ foreach ($wpsso_original_sites as $site => $settings) {
 }
 restore_error_handler();
 $noise = ob_get_clean();
-$failures = 0;
-foreach ($wpsso_results as $result) {
-    echo ($result['pass'] ? 'PASS ' : 'FAIL ') . $result['name'] . (isset($result['error']) ? ': ' . $result['error'] : '') . "\n";
-    $failures += $result['pass'] ? 0 : 1;
-}
-if (trim($noise)) { echo 'Unexpected output: ' . substr($noise, 0, 2000) . "\n"; $failures++; }
-echo count($wpsso_results) . ' multisite tests, ' . $failures . " failures\n";
-exit($failures ? 1 : 0);
+exit(wpsso_report_finish('multisite', $wpsso_results, $noise, 'multisite tests'));

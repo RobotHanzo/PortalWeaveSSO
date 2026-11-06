@@ -1,6 +1,8 @@
 <?php
 /** Run only against the disposable compose.test.yml WordPress database. */
 if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
+require_once __DIR__ . '/report.php';
+wpsso_report_bootstrap('integration');
 ob_start();
 define('WPSSO_PRIVATE_MEDIA_DIR', '/tmp/wpsso-private-tests');
 $_SERVER['HTTPS'] = 'on';
@@ -16,7 +18,6 @@ if (get_option('blogname') !== 'WPSSO Integration') {
     exit(2);
 }
 $wpsso_original_settings = get_option('wpsso_settings', []);
-$wpsso_results = [];
 set_error_handler(static function ($severity, $message, $file, $line) {
     if ((error_reporting() & $severity) && str_contains(str_replace('\\', '/', $file), '/plugins/wordpress-sso/')) {
         throw new ErrorException($message, 0, $severity, $file, $line);
@@ -41,14 +42,15 @@ function wpsso_app(array $override = []): array {
 }
 function wpsso_test(string $name, callable $test): void {
     global $wpsso_results;
+    $started = microtime(true);
     $settings = get_option('wpsso_settings', []);
     $user_id = get_current_user_id();
     try {
         update_option('wpsso_settings', \WPSSO\Config::defaults(), false);
         $test();
-        $wpsso_results[] = ['name' => $name, 'pass' => true];
+        $wpsso_results[] = ['name' => $name, 'pass' => true, 'duration' => microtime(true) - $started];
     } catch (Throwable $error) {
-        $wpsso_results[] = ['name' => $name, 'pass' => false, 'error' => $error->getMessage() . ' (' . basename($error->getFile()) . ':' . $error->getLine() . ')'];
+        $wpsso_results[] = ['name' => $name, 'pass' => false, 'duration' => microtime(true) - $started, 'error' => $error->getMessage() . ' (' . basename($error->getFile()) . ':' . $error->getLine() . ')'];
     } finally {
         update_option('wpsso_settings', $settings, false);
         wp_set_current_user($user_id);
@@ -70,14 +72,4 @@ try {
 }
 restore_error_handler();
 $noise = ob_get_clean();
-$failures = 0;
-foreach ($wpsso_results as $result) {
-    echo ($result['pass'] ? 'PASS ' : 'FAIL ') . $result['name'] . (isset($result['error']) ? ': ' . $result['error'] : '') . "\n";
-    $failures += $result['pass'] ? 0 : 1;
-}
-if (trim($noise) !== '') {
-    echo "Unexpected output: " . substr($noise, 0, 2000) . "\n";
-    $failures++;
-}
-echo count($wpsso_results) . ' tests, ' . $failures . " failures\n";
-exit($failures ? 1 : 0);
+exit(wpsso_report_finish('integration', $wpsso_results, $noise));
