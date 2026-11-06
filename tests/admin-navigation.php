@@ -85,6 +85,46 @@ portalweave_sso_test('Admin sidebar registration preserves site and network capa
     }
 });
 
+portalweave_sso_test('Legacy admin bookmarks redirect with local navigation only and require administrator capability', function () {
+    $old_get = $_GET;
+    $old_page = $GLOBALS['pagenow'] ?? null;
+    $old_method = $_SERVER['REQUEST_METHOD'] ?? null;
+    $destination = '';
+    $redirect = static function ($url) use (&$destination) {
+        $destination = $url;
+        throw new RuntimeException('portalweave_sso_expected_legacy_redirect');
+    };
+    add_filter('wp_redirect', $redirect);
+    try {
+        $GLOBALS['pagenow'] = 'options-general.php';
+        $_SERVER['REQUEST_METHOD'] = 'GET';
+        $_GET = ['page' => 'portalweave-sso', 'tab' => 'providers', 'provider' => 'sample', 'provider_section' => 'mapping',
+            'redirect_to' => 'https://untrusted.example/', 'token' => 'must-not-be-copied', 'appearance_section' => ['wordpress']];
+        wp_set_current_user(get_user_by('login', 'portalweave_sso_test_admin')->ID);
+        $before = get_option('portalweave_sso_settings');
+        try {
+            \PortalWeaveSSO\Admin::redirect_legacy_page();
+        } catch (RuntimeException $error) {
+            if ($error->getMessage() !== 'portalweave_sso_expected_legacy_redirect') throw $error;
+        }
+        portalweave_sso_assert(wp_parse_url($destination, PHP_URL_PATH) === wp_parse_url(admin_url('admin.php'), PHP_URL_PATH), 'Legacy bookmark did not redirect to the canonical admin page');
+        parse_str((string) wp_parse_url($destination, PHP_URL_QUERY), $query);
+        portalweave_sso_assert($query === ['page' => 'portalweave-sso', 'tab' => 'providers', 'provider' => 'sample', 'provider_section' => 'mapping'], 'Legacy bookmark forwarded non-navigation or structured data');
+        portalweave_sso_assert(get_option('portalweave_sso_settings') === $before, 'Bookmark navigation mutated settings');
+        wp_set_current_user(0);
+        $destination = '';
+        \PortalWeaveSSO\Admin::redirect_legacy_page();
+        portalweave_sso_assert($destination === '', 'An unauthorized visitor received the legacy administrator redirect');
+    } finally {
+        remove_filter('wp_redirect', $redirect);
+        $_GET = $old_get;
+        if ($old_page === null) unset($GLOBALS['pagenow']);
+        else $GLOBALS['pagenow'] = $old_page;
+        if ($old_method === null) unset($_SERVER['REQUEST_METHOD']);
+        else $_SERVER['REQUEST_METHOD'] = $old_method;
+    }
+});
+
 portalweave_sso_test('Admin form saves one screen without changing hidden providers or login policy', function () {
     wp_set_current_user(get_user_by('login', 'portalweave_sso_test_admin')->ID);
     $app = portalweave_sso_app();

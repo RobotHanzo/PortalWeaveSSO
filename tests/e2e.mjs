@@ -252,12 +252,21 @@ await test('Test configuration requires an authenticated administrator and a fre
 await test('The administrator sidebar opens PortalWeave SSO and existing Settings bookmarks still work', async () => {
     const { jar } = await administrator();
     for (const route of ['admin.php', 'options-general.php']) {
-        const response = await request(`/wp-admin/${route}?page=portalweave-sso&tab=providers`, jar);
+        let response = await request(`/wp-admin/${route}?page=portalweave-sso&tab=providers`, jar);
+        if (route === 'options-general.php') {
+            assert.equal(response.status, 302);
+            const destination = new URL(response.headers.location);
+            assert.equal(destination.pathname, '/wp-admin/admin.php');
+            assert.equal(destination.searchParams.get('tab'), 'providers');
+            response = await request(destination.href, jar);
+        }
         assert.equal(response.status, 200, response.body.slice(0, 1000));
         assert.match(response.body, /id=["']toplevel_page_portalweave-sso["']/);
         assert.match(response.body, /href=["']admin\.php\?page=portalweave-sso["']/);
         assert.match(response.body, /portalweave-sso-provider-list/);
-        assert.doesNotMatch(response.body, /href=["'][^"']*options-general\.php\?page=portalweave-sso/);
+        const navigation = response.body.match(/<aside class="portalweave-sso-sidebar">([\s\S]*?)<\/aside>/)?.[1];
+        assert.ok(navigation, 'Plugin task navigation is missing');
+        assert.doesNotMatch(navigation, /options-general\.php/);
     }
 });
 
