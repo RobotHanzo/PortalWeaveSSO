@@ -41,6 +41,10 @@ final class Extensions {
         return '_wpsso_scim_' . $name . (is_multisite() ? '_' . get_current_blog_id() : '');
     }
 
+    private static function moderation_meta(): string {
+        return '_wpsso_moderation' . (is_multisite() ? '_' . get_current_blog_id() : '');
+    }
+
     public static function scim_groups(int $user_id): array {
         return array_values(array_unique(array_map('strval', array_merge(
             (array) get_user_meta($user_id, self::scim_meta('groups'), true),
@@ -529,8 +533,8 @@ final class Extensions {
     }
 
     public static function resolved($user, array $app, array $attributes, array $tokens = []): void {
-        if (self::enabled('moderation') && !empty($app['moderation']) && !self::privileged($user->ID) && get_user_meta($user->ID, '_wpsso_moderation', true) === '') {
-            update_user_meta($user->ID, '_wpsso_moderation', 'pending');
+        if (self::enabled('moderation') && !empty($app['moderation']) && !self::privileged($user->ID) && get_user_meta($user->ID, self::moderation_meta(), true) === '') {
+            update_user_meta($user->ID, self::moderation_meta(), 'pending');
         }
         if (self::enabled('avatar')) {
             $url = self::claim($attributes, (string) ($app['avatar_attribute'] ?? 'picture'));
@@ -551,10 +555,10 @@ final class Extensions {
         if ($expires && $expires <= time()) {
             return new \WP_Error('wpsso_guest_expired', 'This guest account has expired.');
         }
-        if (get_user_meta($user->ID, '_wpsso_moderation', true) === 'pending') {
+        if (get_user_meta($user->ID, self::moderation_meta(), true) === 'pending') {
             return new \WP_Error('wpsso_approval_pending', 'An administrator must approve this account before login.');
         }
-        if (get_user_meta($user->ID, '_wpsso_moderation', true) === 'blocked') {
+        if (get_user_meta($user->ID, self::moderation_meta(), true) === 'blocked') {
             return new \WP_Error('wpsso_account_blocked', 'An administrator has blocked this account.');
         }
         return $user;
@@ -573,10 +577,10 @@ final class Extensions {
     }
 
     public static function moderation_profile($user): void {
-        if (!current_user_can('manage_options') || !current_user_can('edit_user', $user->ID) || !self::enabled('moderation')) {
+        if (!current_user_can('manage_options') || !current_user_can('edit_user', $user->ID) || !self::enabled('moderation') || self::privileged($user->ID)) {
             return;
         }
-        $status = get_user_meta($user->ID, '_wpsso_moderation', true);
+        $status = get_user_meta($user->ID, self::moderation_meta(), true);
         echo '<h2>SSO account moderation</h2><table class="form-table"><tr><th><label for="wpsso-moderation">Approval</label></th><td>';
         wp_nonce_field('wpsso_moderate_' . $user->ID, 'wpsso_moderation_nonce');
         echo '<select id="wpsso-moderation" name="wpsso_moderation">';
@@ -587,7 +591,7 @@ final class Extensions {
     }
 
     public static function moderation_save(int $user_id): void {
-        if (!self::enabled('moderation') || !current_user_can('manage_options') || !current_user_can('edit_user', $user_id) ||
+        if (!self::enabled('moderation') || !current_user_can('manage_options') || !current_user_can('edit_user', $user_id) || self::privileged($user_id) ||
             empty($_POST['wpsso_moderation_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['wpsso_moderation_nonce'])), 'wpsso_moderate_' . $user_id)) {
             return;
         }
@@ -595,7 +599,7 @@ final class Extensions {
         if (!in_array($status, ['', 'pending', 'approved', 'blocked'], true)) {
             return;
         }
-        update_user_meta($user_id, '_wpsso_moderation', $status);
+        update_user_meta($user_id, self::moderation_meta(), $status);
         if (in_array($status, ['pending', 'blocked'], true)) {
             \WP_Session_Tokens::get_instance($user_id)->destroy_all();
         }
