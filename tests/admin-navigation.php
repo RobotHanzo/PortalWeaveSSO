@@ -153,6 +153,82 @@ portalweave_sso_test('Admin form rejects cross-screen fields and structured navi
     delete_transient('portalweave_sso_admin_error_' . get_current_user_id());
 });
 
+portalweave_sso_test('Integration directory renders complete separated settings without exposing stored secrets', function () {
+    wp_set_current_user(get_user_by('login', 'portalweave_sso_test_admin')->ID);
+    portalweave_sso_assert(\PortalWeaveSSO\Config::save([
+        'apps' => ['fixture' => portalweave_sso_app()],
+        'scim_token' => 'fixture-only-scim-token-at-least-thirty-two-bytes',
+        'shared_secret' => 'fixture-only-shared-secret-at-least-thirty-two-bytes',
+    ]) === true, 'Unable to save integration directory fixture');
+    $stored = get_option('portalweave_sso_settings');
+    $old_get = $_GET;
+    try {
+        foreach ([['shared_sso', 'shared_sso'], ['unknown', 'scim'], [['guest'], 'scim']] as [$requested, $selected]) {
+            $_GET = ['page' => 'portalweave-sso', 'tab' => 'modules', 'integration_section' => $requested];
+            ob_start();
+            \PortalWeaveSSO\Admin::page();
+            $html = ob_get_clean();
+            portalweave_sso_assert(str_contains($html, 'data-integration-section="' . $selected . '"')
+                && str_contains($html, 'name="portalweave_sso_integration_section" value="' . $selected . '"'), 'Integration navigation did not bound the selected panel');
+            portalweave_sso_assert(substr_count($html, '<form ') === 1 && str_contains($html, 'name="portalweave_sso_complete" value="1"'), 'Integration directory split the form or lost its truncation guard');
+            foreach (['scim', 'jwt_sso', 'shared_sso', 'guest', 'moderation', 'avatar', 'attribute_redirect', 'abilities'] as $key) {
+                portalweave_sso_assert(str_contains($html, 'href="#portalweave-sso-integration-panel-' . $key . '"'), 'Integration has no ordinary anchor: ' . $key);
+                portalweave_sso_assert(preg_match('/<section\b[^>]*\bdata-integration-panel="' . $key . '"[^>]*>/', $html, $panel) === 1
+                    && !preg_match('/\shidden(?:\s|=|>)|aria-hidden="true"/', $panel[0]), 'Integration is absent or hidden without JavaScript: ' . $key);
+                $field = $key === 'abilities' ? 'settings[abilities_enabled]' : 'settings[modules][' . $key . ']';
+                portalweave_sso_assert(substr_count($html, 'name="' . $field . '"') === 2, 'Integration checkbox or explicit false field is missing: ' . $key);
+            }
+            foreach (['scim_token', 'shared_secret'] as $key) {
+                portalweave_sso_assert(!str_contains($html, $stored[$key]) && !str_contains($html, \PortalWeaveSSO\Config::all()[$key]), 'Integration directory exposed stored credential: ' . $key);
+                portalweave_sso_assert(preg_match('/<input\b(?=[^>]*\bname="settings\[' . $key . '\]")(?=[^>]*\btype="password")(?=[^>]*\bvalue="")[^>]*>/', $html) === 1, 'Integration credential has no empty password field: ' . $key);
+            }
+            portalweave_sso_assert(str_contains($html, 'provider_section=integrations') && !str_contains($html, 'name="settings[apps]'), 'Related provider links are missing or provider configuration entered the global form');
+        }
+    } finally { $_GET = $old_get; }
+});
+
+portalweave_sso_test('Integration panels preserve context, hidden settings and provider ciphertext through real saves', function () {
+    wp_set_current_user(get_user_by('login', 'portalweave_sso_test_admin')->ID);
+    portalweave_sso_assert(\PortalWeaveSSO\Config::save([
+        'apps' => ['fixture' => portalweave_sso_app()], 'default_app' => 'fixture',
+        'scim_token' => 'fixture-only-scim-token-at-least-thirty-two-bytes',
+        'shared_secret' => 'fixture-only-shared-secret-at-least-thirty-two-bytes',
+        'modules' => ['avatar' => true, 'moderation' => true],
+    ]) === true, 'Unable to save integration persistence fixture');
+    $before = get_option('portalweave_sso_settings');
+    foreach (['scim', 'jwt_sso', 'shared_sso', 'guest', 'moderation', 'avatar', 'attribute_redirect', 'abilities'] as $section) {
+        $destination = portalweave_sso_admin_form_submit([
+            'modules' => ['guest' => '1', 'moderation' => '0'], 'guest_ttl' => '7200', 'scim_token' => '', 'shared_secret' => '',
+        ], ['portalweave_sso_screen' => 'modules', 'portalweave_sso_integration_section' => $section]);
+        parse_str((string) wp_parse_url($destination, PHP_URL_QUERY), $query);
+        portalweave_sso_assert(($query['tab'] ?? '') === 'modules' && ($query['integration_section'] ?? '') === $section
+            && ($query['portalweave_sso_notice'] ?? '') === 'saved', 'Save lost the selected integration: ' . $section);
+        $after = get_option('portalweave_sso_settings');
+        portalweave_sso_assert($after['modules']['guest'] && !$after['modules']['moderation'] && $after['modules']['avatar']
+            && $after['guest_ttl'] === 7200, 'Integration save lost explicit or omitted module values');
+        foreach (['apps', 'default_app', 'scim_token', 'shared_secret'] as $key) {
+            portalweave_sso_assert($after[$key] === $before[$key], 'Integration navigation changed hidden configuration or ciphertext: ' . $key);
+        }
+        portalweave_sso_assert(!isset($after['integration_section']), 'Integration navigation entered stored configuration');
+    }
+});
+
+portalweave_sso_test('Integration navigation rejects structured context and bounds error destinations before mutation', function () {
+    wp_set_current_user(get_user_by('login', 'portalweave_sso_test_admin')->ID);
+    $before = get_option('portalweave_sso_settings');
+    try {
+        foreach ([['shared_sso'], 'unknown-panel', 'shared_sso'] as $section) {
+            $destination = portalweave_sso_admin_form_submit(['shared_secret' => 'too-short'], [
+                'portalweave_sso_screen' => 'modules', 'portalweave_sso_integration_section' => $section,
+            ]);
+            parse_str((string) wp_parse_url($destination, PHP_URL_QUERY), $query);
+            portalweave_sso_assert(($query['portalweave_sso_notice'] ?? '') === 'error'
+                && ($query['integration_section'] ?? '') === ($section === 'shared_sso' ? 'shared_sso' : 'scim'), 'Rejected integration context was reflected or lost its safe destination');
+            portalweave_sso_assert(get_option('portalweave_sso_settings') === $before, 'Rejected integration settings changed configuration');
+        }
+    } finally { delete_transient('portalweave_sso_admin_error_' . get_current_user_id()); }
+});
+
 portalweave_sso_test('Activity routes expose aggregate-only overview and a separate complete audit screen', function () {
     global $wpdb;
     $admin = get_user_by('login', 'portalweave_sso_test_admin');
@@ -381,6 +457,11 @@ portalweave_sso_test('Provider sections render one complete secret-free form and
             }
             foreach (['name', 'token_url', 'algorithms', 'mapping', 'verified_attribute', 'avatar_attribute', 'button_text'] as $field) {
                 portalweave_sso_assert(substr_count($html, 'name="settings[apps][alpha][' . $field . ']"') === 1, 'A section field is missing or duplicated: ' . $field);
+            }
+            foreach (['mapping', 'custom_mapping', 'role_mapping', 'domain_roles', 'domain_mapping', 'redirect_rules'] as $field) {
+                portalweave_sso_assert(substr_count($html, 'data-mapping-editor="' . $field . '"') === 1, 'A mapping has no progressive visual editor: ' . $field);
+                portalweave_sso_assert(preg_match('/<textarea\b(?=[^>]*\bname="settings\[apps\]\[alpha\]\[' . $field . '\]")([^>]*)>/', $html, $textarea) === 1
+                    && !str_contains($textarea[1], 'hidden') && !str_contains($textarea[1], 'disabled'), 'A mapping JSON fallback is unavailable without JavaScript: ' . $field);
             }
             foreach (['client_secret', 'jwt_secret'] as $key) {
                 portalweave_sso_assert(!str_contains($html, $app[$key]) && !str_contains($html, $stored['apps']['alpha'][$key]), 'Section rendering disclosed a stored credential: ' . $key);
