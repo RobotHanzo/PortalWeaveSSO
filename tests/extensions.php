@@ -94,6 +94,93 @@ portalweave_sso_test('SCIM rejects unsupported filters and read-only PATCH paths
     portalweave_sso_error($result, 'portalweave_sso_scim_patch');
 });
 
+portalweave_sso_test('SCIM deactivation denies existing Application Passwords without deleting credentials', function () {
+    $id = 0;
+    $api_request = static fn() => true;
+    add_filter('application_password_is_api_request', $api_request);
+    try {
+        $secret = bin2hex(random_bytes(24));
+        portalweave_sso_assert(\PortalWeaveSSO\Config::save(['modules' => ['scim' => true], 'scim_token' => $secret]) === true, 'SCIM setup failed');
+        rest_get_server();
+        \PortalWeaveSSO\Extensions::routes();
+        $call = static function ($method, $path, $body = null) use ($secret) {
+            $request = new WP_REST_Request($method, '/portalweave-sso/v1/scim/v2/' . $path);
+            $request->set_header('Authorization', 'Bearer ' . $secret);
+            $request->set_header('Content-Type', 'application/scim+json');
+            if ($body !== null) { $request->set_body(wp_json_encode($body)); }
+            return rest_do_request($request);
+        };
+        $name = 'scim_api_' . bin2hex(random_bytes(6));
+        $body = ['userName' => $name, 'emails' => [['value' => $name . '@example.org']], 'active' => true];
+        $created = $call('POST', 'Users', $body);
+        portalweave_sso_assert($created->get_status() === 201, 'SCIM user creation failed');
+        $id = (int) $created->get_data()['id'];
+        $credential = WP_Application_Passwords::create_new_application_password($id, ['name' => 'Disposable API regression']);
+        portalweave_sso_assert(is_array($credential), 'Application Password creation failed');
+        $authenticate = static fn() => wp_authenticate_application_password(null, $name, $credential[0]);
+        portalweave_sso_assert($authenticate() instanceof WP_User, 'Active account could not authenticate');
+        foreach (['PATCH', 'PUT', 'DELETE'] as $method) {
+            if ($method === 'PATCH') {
+                $disabled = $call($method, 'Users/' . $id, ['Operations' => [['op' => 'replace', 'path' => 'active', 'value' => false]]]);
+            } else {
+                $disabled = $call($method, 'Users/' . $id, $method === 'PUT' ? array_replace($body, ['active' => false]) : null);
+            }
+            portalweave_sso_assert($disabled->get_status() === ($method === 'DELETE' ? 204 : 200), $method . ' deactivation failed');
+            portalweave_sso_error($authenticate(), 'portalweave_sso_account_inactive');
+            portalweave_sso_assert(count(WP_Application_Passwords::get_user_application_passwords($id)) === 1, 'Deactivation deleted global API credentials');
+            $active = $call('PATCH', 'Users/' . $id, ['Operations' => [['op' => 'replace', 'path' => 'active', 'value' => true]]]);
+            portalweave_sso_assert($active->get_status() === 200 && $authenticate() instanceof WP_User, 'Reactivation did not restore legitimate API authentication');
+        }
+    } finally {
+        remove_filter('application_password_is_api_request', $api_request);
+        if ($id) { wp_delete_user($id); }
+    }
+});
+
+portalweave_sso_test('Native API authentication enforces moderation and expiry while retaining earlier errors', function () {
+    $id = wp_insert_user(['user_login' => 'moderation_api_' . bin2hex(random_bytes(6)), 'user_pass' => wp_generate_password(32), 'role' => 'editor']);
+    portalweave_sso_assert(!is_wp_error($id), 'API user creation failed');
+    $server = $_SERVER;
+    $post = $_POST;
+    $api_status = $GLOBALS['wp_rest_application_password_status'] ?? null;
+    $api_request = static fn() => true;
+    add_filter('application_password_is_api_request', $api_request);
+    try {
+        portalweave_sso_assert(\PortalWeaveSSO\Config::save(['modules' => ['moderation' => true]]) === true, 'Moderation setup failed');
+        $credential = WP_Application_Passwords::create_new_application_password($id, ['name' => 'Disposable moderation API regression']);
+        portalweave_sso_assert(is_array($credential), 'Application Password creation failed');
+        $_SERVER['PHP_AUTH_USER'] = get_userdata($id)->user_login;
+        $_SERVER['PHP_AUTH_PW'] = $credential[0];
+        portalweave_sso_assert(wp_validate_application_password(false) === $id, 'Native API authentication rejected an active editor');
+        $admin = get_user_by('login', 'portalweave_sso_test_admin');
+        wp_set_current_user($admin->ID);
+        foreach (['pending' => 'portalweave_sso_approval_pending', 'blocked' => 'portalweave_sso_account_blocked', 'approved' => ''] as $status => $code) {
+            $_POST = ['portalweave_sso_moderation' => $status, 'portalweave_sso_moderation_nonce' => wp_create_nonce('portalweave_sso_moderate_' . $id)];
+            \PortalWeaveSSO\Extensions::moderation_save($id);
+            $authenticated = wp_validate_application_password(false);
+            if ($code !== '') {
+                portalweave_sso_assert($authenticated === false, 'Blocked account retained native API access');
+                portalweave_sso_error(rest_application_password_check_errors(null), $code);
+            } else {
+                portalweave_sso_assert($authenticated === $id, 'Approved account lost API access');
+            }
+        }
+        update_user_meta($id, '_portalweave_sso_guest_expires', time() - 1);
+        portalweave_sso_assert(wp_validate_application_password(false) === false, 'Expired guest retained native API access');
+        portalweave_sso_error(rest_application_password_check_errors(null), 'portalweave_sso_guest_expired');
+        $prior = new WP_Error('other_policy', 'Existing authentication rejection');
+        do_action('wp_authenticate_application_password_errors', $prior, get_userdata($id), [], $credential[0]);
+        portalweave_sso_assert($prior->get_error_code() === 'other_policy' && in_array('portalweave_sso_guest_expired', $prior->get_error_codes(), true), 'Account policy replaced an earlier authentication error');
+        portalweave_sso_assert(get_userdata($id)->roles === ['editor'] && count(WP_Application_Passwords::get_user_application_passwords($id)) === 1, 'API admission changed account roles or credentials');
+    } finally {
+        remove_filter('application_password_is_api_request', $api_request);
+        $_SERVER = $server;
+        $_POST = $post;
+        $GLOBALS['wp_rest_application_password_status'] = $api_status;
+        wp_delete_user($id);
+    }
+});
+
 portalweave_sso_test('JWT/shared assertion replay claims are atomic and purpose-bound', function () {
     $id = bin2hex(random_bytes(12));
     portalweave_sso_assert(\PortalWeaveSSO\Extensions::consume('test-jwt', $id, 1), 'First claim failed');

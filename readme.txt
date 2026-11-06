@@ -3,7 +3,7 @@ Tags: oauth, openid-connect, sso, scim, login
 Requires at least: 6.5
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 1.3.0
+Stable tag: 1.3.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -64,7 +64,7 @@ Deactivation preserves data. Uninstall preserves settings unless the administrat
 == Installation ==
 Upgrades from PortalWeave SSO 1.0.1 retain existing configuration. Replacing an installation that uses the earlier technical namespace requires the controlled procedure in docs/provider-setup.md; there are no earlier-name aliases or automatic conversion of that stored data. Restrict access externally during that replacement, including settings, identity links, access rules, provider URLs and private-media metadata.
 
-1. Upload portalweave-sso-1.3.0.zip or copy the portalweave-sso directory into wp-content/plugins.
+1. Upload portalweave-sso-1.3.1.zip or copy the portalweave-sso directory into wp-content/plugins.
 2. Activate PortalWeave SSO and open PortalWeave SSO in the WordPress admin sidebar.
 3. Add a provider, register the displayed callback URL and enter its details. Use Test connection on the final review step before saving the provider.
 4. Saved providers also offer Test SSO Config to inspect returned attributes. Configure mappings and test an ordinary user before enforcing login.
@@ -93,6 +93,11 @@ Run wp portalweave-sso recover (or --network), or temporarily define PORTALWEAVE
 No. Re-enter credentials on a new installation. Same-site restores retain existing credentials.
 
 == Changelog ==
+= 1.3.1 =
+* Enforce content restrictions for mixed-case WordPress REST routes.
+* Deny native Application Password authentication for deactivated, moderated and expired accounts while preserving multisite isolation.
+* Prevent request parameters from suppressing local-login audit events and avoid duplicate SSO login events.
+
 = 1.3.0 =
 * Redesign sign-out with a named identity-provider action, site-only sign-out and Go back.
 * Show provider sign-out only when the linked provider has a valid HTTPS end-session endpoint.
@@ -132,6 +137,9 @@ Initial multi-provider OAuth/OIDC, access policy, provisioning and operations re
 Includes private-media recovery, privacy-policy guidance, data export/erasure and administrator-controlled retention.
 
 == Upgrade Notice ==
+= 1.3.1 =
+Security update for REST content restrictions, Application Password account policies and login auditing. Existing settings and credentials are retained.
+
 = 1.3.0 =
 Choose whether to sign out of this site alone or also the named identity provider. Providers without a configured end-session endpoint show site-only sign-out and Go back. Existing confirmation preferences are retained.
 

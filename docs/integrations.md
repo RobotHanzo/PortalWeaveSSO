@@ -18,6 +18,8 @@ Supported filters are `userName eq "value"`, `externalId eq "value"`, `id eq "va
 
 PATCH accepts add, replace and remove for userName, externalId, displayName, active, name, emails and members; `name.givenName`/`name.familyName` and `members[value eq "123"]` removal are supported. Unsupported paths fail explicitly. PUT replaces the supported mutable fields; absent optional attributes are cleared or use their standard active default. DELETE users deactivates the local account and revokes every WordPress session instead of deleting authored content. GET continues returning the retained resource with active=false. Group deletion removes memberships. Reprovision the user with active=true to restore access.
 
+Deactivated, pending, blocked and expired guest accounts also fail native WordPress Application Password authentication for REST and XML-RPC. Existing Application Password records are retained, so reactivation or approval restores their use. On multisite, site-scoped account restrictions apply only on that site and do not delete credentials shared with other sites.
+
 ### Example
 
 ```http

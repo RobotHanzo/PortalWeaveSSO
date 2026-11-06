@@ -18,13 +18,13 @@ final class Display
             array_unshift($links, '<a href="' . esc_url(admin_url('admin.php?page=portalweave-sso')) . '">' . esc_html__('Settings', 'portalweave-sso') . '</a>');
             return $links;
         });
-        add_action('wp_login', static function ($name, $user) {
-            // SSO records success separately once navigation has been resolved.
-            // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only routing context for an already authenticated core login event.
-            if (empty($_GET['portalweave_sso_action'])) {
+        add_action('wp_login', static function ($name, $user, $context = '') {
+            // Only internal SSO emitters supply this context; request parameters
+            // and persistent provider links cannot identify the current login.
+            if ($context !== 'portalweave-sso') {
                 Audit::record('local_login', '', $user);
             }
-        }, 20, 2);
+        }, 20, 3);
         add_action('wp_login_failed', static fn($name) => Audit::record('local_failure', '', null, 'portalweave_sso_local_credentials'));
         add_action('wp_logout', static fn($id) => Audit::record('local_logout', '', $id));
         add_action('show_user_profile', [self::class, 'profile']);

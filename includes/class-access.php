@@ -14,7 +14,7 @@ final class Access
         add_action('template_redirect', [self::class, 'gate'], 1);
         add_action('pre_get_posts', [self::class, 'filter_query']);
         add_filter('rest_authentication_errors', [self::class, 'rest_gate'], 100);
-        add_filter('rest_pre_dispatch', [self::class, 'rest_content'], 20, 3);
+        add_filter('rest_request_before_callbacks', [self::class, 'rest_content'], 20, 3);
         add_action('init', static function () {
             foreach (get_post_types(['show_in_rest' => true]) as $type) {
                 add_filter('rest_' . $type . '_query', [self::class, 'rest_query'], 20);
@@ -205,7 +205,7 @@ final class Access
         return new \WP_Error('portalweave_sso_login_required', 'Authentication is required.', ['status' => 401]);
     }
 
-    public static function rest_content($result, $server, \WP_REST_Request $request)
+    public static function rest_content($result, $handler, \WP_REST_Request $request)
     {
         if ($result !== null) {
             return $result;
@@ -213,8 +213,14 @@ final class Access
         foreach (get_post_types(['show_in_rest' => true], 'objects') as $type) {
             $base = $type->rest_base ?: $type->name;
             $namespace = $type->rest_namespace ?: 'wp/v2';
-            if (preg_match('~^/' . preg_quote($namespace . '/' . $base, '~') . '/(\d+)(?:/|$)~', $request->get_route(), $match) && !self::can_post((int) $match[1])) {
-                return new \WP_Error('portalweave_sso_content_denied', 'You do not have access to this content.', ['status' => is_user_logged_in() ? 403 : 401]);
+            if (preg_match('~^/' . preg_quote($namespace . '/' . $base, '~') . '/(\d+)(?:/|$)~i', $request->get_route(), $match)) {
+                // Core has now matched and validated parameters. Query/JSON IDs
+                // can override URL IDs; revision/autosave routes use parent.
+                $parameter = array_key_exists('parent', $request->get_url_params()) ? 'parent' : 'id';
+                $id = $request->get_param($parameter) ?? $match[1];
+                if (!self::can_post((int) $id)) {
+                    return new \WP_Error('portalweave_sso_content_denied', 'You do not have access to this content.', ['status' => is_user_logged_in() ? 403 : 401]);
+                }
             }
         }
         return $result;
