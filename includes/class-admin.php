@@ -42,6 +42,16 @@ final class Admin {
         $script_version = $version . '-' . (is_file($script) ? (string) filemtime($script) : '0');
         wp_enqueue_style('portalweave-sso-admin', plugins_url('../assets/admin.css', __FILE__), [], $style_version);
         wp_enqueue_script('portalweave-sso-admin', plugins_url('../assets/admin.js', __FILE__), [], $script_version, ['in_footer' => true, 'strategy' => 'defer']);
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only provider navigation loads local image controls; settings saves and WordPress uploads retain their own authorization.
+        if (self::request_key($_GET, 'tab') === 'providers' && self::request_key($_GET, 'provider') !== '' && self::request_key($_GET, 'new_provider') !== '1' && current_user_can(is_network_admin() ? 'manage_network_options' : 'manage_options')) {
+            $dependencies = [];
+            if (current_user_can('upload_files')) {
+                wp_enqueue_media();
+                $dependencies[] = 'media-editor';
+            }
+            wp_enqueue_style('portalweave-sso-provider-logo', plugins_url('../assets/provider-logo.css', __FILE__), ['portalweave-sso-admin'], $version . '-' . (string) filemtime(dirname(__DIR__) . '/assets/provider-logo.css'));
+            wp_enqueue_script('portalweave-sso-provider-logo', plugins_url('../assets/provider-logo.js', __FILE__), $dependencies, $version . '-' . (string) filemtime(dirname(__DIR__) . '/assets/provider-logo.js'), ['in_footer' => true, 'strategy' => 'defer']);
+        }
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation decides whether to load the local setup interface; saves retain their own nonce and capability checks.
         if (self::request_key($_GET, 'tab') === 'providers' && self::request_key($_GET, 'new_provider') === '1') {
             $setup_style = dirname(__DIR__) . '/assets/provider-setup.css';
@@ -718,7 +728,7 @@ final class Admin {
         echo '</div>';
         self::provider_panel('button', __('Login button', 'portalweave-sso'));
         self::field($prefix . '[button_text]', $app['button_text'], __('Button text', 'portalweave-sso'), 'text', __('Leave blank to use the global text and provider name.', 'portalweave-sso'));
-        self::field($prefix . '[icon_url]', $app['icon_url'], __('Custom icon URL', 'portalweave-sso'), 'url', __('Use an HTTPS image you control.', 'portalweave-sso'));
+        self::provider_logo($prefix, $app['icon_url']);
         echo '</div><div class="portalweave-sso-provider-body portalweave-sso-provider-footer">';
         if (!$new) {
             if ($can_test) {
@@ -912,6 +922,16 @@ final class Admin {
             echo '<p class="portalweave-sso-preview-note">' . esc_html__('No providers are configured. This preview uses a fictional provider.', 'portalweave-sso') . '</p>';
         }
         echo '<p class="portalweave-sso-appearance-status" data-appearance-status role="status" aria-live="polite" aria-atomic="true"></p></aside>';
+    }
+
+    private static function provider_logo(string $prefix, string $url): void {
+        echo '<div class="portalweave-sso-provider-logo" data-provider-logo data-logo-invalid="' . esc_attr__('Choose an HTTPS image URL without embedded credentials or a fragment. Media library images must also be served over HTTPS.', 'portalweave-sso') . '" data-logo-selected="' . esc_attr__('Custom logo selected. Save provider to apply it.', 'portalweave-sso') . '" data-logo-removed="' . esc_attr__('Custom logo removed. Save provider to apply it.', 'portalweave-sso') . '" data-logo-error="' . esc_attr__('The image could not be loaded. Check its URL or choose another image.', 'portalweave-sso') . '">';
+        self::field($prefix . '[icon_url]', $url, __('Custom logo URL', 'portalweave-sso'), 'url', __('Choose or upload an image, or paste an HTTPS image URL you control. This provider logo is used by shared buttons and the WordPress provider-icon option. Leave blank for the default appearance.', 'portalweave-sso'), ['maxlength' => 2048, 'pattern' => 'https://.+']);
+        echo '<div class="portalweave-sso-provider-logo-actions">';
+        if (current_user_can('upload_files')) {
+            echo '<button type="button" class="button button-secondary" data-logo-media data-media-title="' . esc_attr__('Choose a provider button logo', 'portalweave-sso') . '" data-media-button="' . esc_attr__('Use this image', 'portalweave-sso') . '" hidden>' . esc_html__('Choose or upload image', 'portalweave-sso') . '</button>';
+        }
+        echo '<button type="button" class="button button-secondary" data-logo-remove hidden>' . esc_html__('Remove custom logo', 'portalweave-sso') . '</button></div><div class="portalweave-sso-provider-logo-preview" data-logo-preview hidden><img data-logo-image alt="" referrerpolicy="no-referrer" width="64" height="64"><span>' . esc_html__('Custom logo preview', 'portalweave-sso') . '</span></div><p data-logo-status role="status" aria-live="polite" aria-atomic="true"></p></div>';
     }
 
     private static function field(string $name, $value, string $label, string $type = 'text', string $help = '', array $attributes = []): void {

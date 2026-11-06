@@ -385,3 +385,44 @@ portalweave_sso_test('Every provider recipe displays a bundled local logo with a
         portalweave_sso_assert(str_contains($html, '<strong>' . esc_html($recipe['label']) . '</strong>'), 'Provider logo has no adjacent accessible service name: ' . $key);
     }
 });
+
+portalweave_sso_test('Provider logos retain a manual URL and guard WordPress media selection by upload permission', function () {
+    $user = get_current_user_id();
+    $get = $_GET;
+    $deny_upload = static fn($caps, $cap) => $cap === 'upload_files' ? ['do_not_allow'] : $caps;
+    try {
+        wp_set_current_user(get_user_by('login', 'portalweave_sso_test_admin')->ID);
+        portalweave_sso_assert(\PortalWeaveSSO\Config::save(['apps' => ['logo' => portalweave_sso_app(['id' => 'logo'])]]) === true, 'Provider logo render fixture failed');
+        $_GET = ['page' => 'portalweave-sso', 'tab' => 'providers', 'provider' => 'logo', 'provider_section' => 'button'];
+        foreach ([true, false] as $can_upload) {
+            if (!$can_upload) add_filter('map_meta_cap', $deny_upload, 10, 2);
+            ob_start();
+            \PortalWeaveSSO\Admin::page();
+            $html = ob_get_clean();
+            portalweave_sso_assert(str_contains($html, 'data-provider-logo') && str_contains($html, 'name="settings[apps][logo][icon_url]"')
+                && str_contains($html, 'data-logo-preview') && str_contains($html, 'data-logo-remove'), 'Provider logo controls lost the URL fallback, preview or removal');
+            portalweave_sso_assert(str_contains($html, 'data-logo-media') === $can_upload, 'Provider media selection ignored upload permission');
+            portalweave_sso_assert(str_contains($html, 'data-logo-image alt="" referrerpolicy="no-referrer"'), 'Provider logo preview lost its decorative or privacy attributes');
+            remove_filter('map_meta_cap', $deny_upload, 10);
+        }
+    } finally {
+        remove_filter('map_meta_cap', $deny_upload, 10);
+        $_GET = $get;
+        wp_set_current_user($user);
+    }
+});
+
+portalweave_sso_test('Provider logo saves and removals preserve other providers and credentials', function () {
+    wp_set_current_user(get_user_by('login', 'portalweave_sso_test_admin')->ID);
+    portalweave_sso_assert(\PortalWeaveSSO\Config::save(['apps' => [
+        'alpha' => portalweave_sso_app(['id' => 'alpha']), 'beta' => portalweave_sso_app(['id' => 'beta']),
+    ]]) === true, 'Provider logo save fixture failed');
+    $before = get_option('portalweave_sso_settings');
+    $context = ['portalweave_sso_screen' => 'providers', 'portalweave_sso_provider' => 'alpha', 'portalweave_sso_provider_section' => 'button'];
+    foreach (['https://images.example.org/uploaded-logo.png', ''] as $url) {
+        $destination = portalweave_sso_admin_form_submit(['apps' => ['alpha' => ['id' => 'alpha', 'icon_url' => $url]]], $context);
+        $after = get_option('portalweave_sso_settings');
+        portalweave_sso_assert(str_contains($destination, 'portalweave_sso_notice=saved') && $after['apps']['alpha']['icon_url'] === $url, 'Provider logo draft did not save or remove through the scoped form');
+        portalweave_sso_assert($after['apps']['beta'] === $before['apps']['beta'] && $after['apps']['alpha']['client_secret'] === $before['apps']['alpha']['client_secret'], 'Provider logo save changed another provider or its stored credentials');
+    }
+});
