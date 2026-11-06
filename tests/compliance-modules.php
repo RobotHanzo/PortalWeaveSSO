@@ -32,9 +32,11 @@ wpsso_test('compliance: CLI backups create a private local file and never replac
     $file = $directory . '/backup.json';
     $link = $directory . '/existing-link.json';
     $contents = "{\"backup\":\"redacted\"}\n";
+    $original_mask = umask();
     try {
         wpsso_assert(\WPSSO\Cli::write_backup($file, $contents) === true, 'Exclusive backup creation failed.');
         wpsso_assert(file_get_contents($file) === $contents, 'Backup bytes were incomplete.');
+        wpsso_assert(umask() === $original_mask, 'Backup creation changed the process permission mask.');
         if (DIRECTORY_SEPARATOR === '/') {
             wpsso_assert((fileperms($file) & 0777) === 0600, 'Backup must only be readable and writable by its owner.');
         }
@@ -47,6 +49,8 @@ wpsso_test('compliance: CLI backups create a private local file and never replac
         }
         wpsso_error(\WPSSO\Cli::write_backup('php://output', 'replacement'), 'wpsso_backup_path');
         wpsso_error(\WPSSO\Cli::write_backup("bad\0name", 'replacement'), 'wpsso_backup_path');
+        wpsso_error(\WPSSO\Cli::write_backup($directory . '/absent/backup.json', 'replacement'), 'wpsso_backup_create');
+        wpsso_assert(umask() === $original_mask, 'Failed backup creation changed the process permission mask.');
     } finally {
         wp_delete_file($link);
         wp_delete_file($file);
