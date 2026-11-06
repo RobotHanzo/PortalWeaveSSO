@@ -632,7 +632,7 @@ final class Admin {
         echo '<div class="portalweave-sso-callout"><strong>' . esc_html__('Protected media delivery', 'portalweave-sso') . '</strong><p>' . wp_kses($media_help, ['code' => []]) . '</p></div>';
         } elseif ($screen === 'appearance') {
         /* translators: %s: login button shortcode, displayed as code. */
-        $placement = sprintf(__('Use %s, the PortalWeave SSO widget, or the WooCommerce login form.', 'portalweave-sso'), '<code>[portalweave_sso_oauth_login]</code>');
+        $placement = sprintf(__('Use %s, the PortalWeave SSO widget, or the WooCommerce login form.', 'portalweave-sso'), '<code>[sso_oauth_login]</code>');
         echo '<section id="portalweave-sso-appearance" class="portalweave-sso-section"><h3>' . esc_html__('Login button and widget', 'portalweave-sso') . '</h3><p>' . wp_kses($placement, ['code' => []]) . '</p>';
         $button = $settings['button'];
         self::select('settings[button][theme]', $button['theme'], __('Button theme', 'portalweave-sso'), ['default' => __('Default', 'portalweave-sso'), 'white' => __('White', 'portalweave-sso'), 'hover' => __('Hover', 'portalweave-sso'), 'custom' => __('Custom', 'portalweave-sso'), 'smart' => __('Smart', 'portalweave-sso')]);
