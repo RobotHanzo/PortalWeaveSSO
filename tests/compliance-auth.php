@@ -59,6 +59,34 @@ wpsso_test('Every provider profile endpoint requires a bounded bearer credential
     } finally { remove_filter('pre_http_request', $http, 10); }
 });
 
+wpsso_test('Malformed token response fields fail without replacing encrypted refresh credentials', function () {
+    $id = 0;
+    $app = wpsso_app(['id' => 'malformed-response', 'enabled' => true]);
+    $response = ['access_token' => 'valid-access', 'token_type' => ['Bearer']];
+    $http = static function ($pre, $args, $url) use ($app, &$response) {
+        if ($url !== $app['token_url']) { return $pre; }
+        return ['response' => ['code' => 200], 'body' => json_encode($response), 'headers' => []];
+    };
+    add_filter('pre_http_request', $http, 10, 3);
+    try {
+        wpsso_assert(\WPSSO\Config::save(['apps' => [$app['id'] => $app], 'default_app' => $app['id']]) === true, 'Token fixture configuration failed');
+        $id = wp_insert_user(['user_login' => 'token_boundary_' . wp_generate_password(10, false), 'user_pass' => wp_generate_password(32), 'user_email' => wp_generate_password(16, false) . '@example.org', 'role' => 'subscriber']);
+        wpsso_assert(is_int($id) && $id > 0, 'Token fixture user failed');
+        wp_set_current_user($id);
+        $meta = \WPSSO\Auth::token_meta_key($app['id']);
+        $encrypted = \WPSSO\Secrets::encrypt('{"refresh_token":"previous-secret","_subject":"subject","_nonce":"nonce"}');
+        update_user_meta($id, $meta, $encrypted);
+        foreach ([['token_type' => ['Bearer']], ['refresh_token' => ['invalid']], ['id_token' => ['invalid']], ['access_token' => "unsafe\0header"]] as $override) {
+            $response = array_replace(['access_token' => 'valid-access', 'token_type' => 'Bearer'], $override);
+            wpsso_error(\WPSSO\Auth::refresh($id, $app['id']), 'wpsso_token');
+            wpsso_assert(get_user_meta($id, $meta, true) === $encrypted, 'Malformed response replaced stored credentials');
+        }
+    } finally {
+        remove_filter('pre_http_request', $http, 10);
+        if (is_int($id) && $id > 0) { wp_delete_user($id); }
+    }
+});
+
 wpsso_test('An expired account worker cannot release a newer lock owner', function () {
     $id = 0;
     $app = wpsso_app();

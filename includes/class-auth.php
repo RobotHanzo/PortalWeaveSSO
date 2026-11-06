@@ -215,10 +215,21 @@ final class Auth {
         if (is_wp_error($tokens)) {
             return $tokens;
         }
-        if (empty($tokens['access_token']) || !is_string($tokens['access_token']) || strlen($tokens['access_token']) > 65536 || preg_match('/[\r\n]/', $tokens['access_token']) || strcasecmp((string) ($tokens['token_type'] ?? 'Bearer'), 'Bearer') !== 0) {
+        if (!self::valid_bearer($tokens)) {
             return new \WP_Error('wpsso_token', __('The token endpoint returned an invalid bearer token.', 'stsa-identity-sso'));
         }
+        foreach (['id_token', 'refresh_token'] as $field) {
+            if (array_key_exists($field, $tokens) && (!is_string($tokens[$field]) || $tokens[$field] === '' || strlen($tokens[$field]) > 65536)) {
+                return new \WP_Error('wpsso_token', __('The token endpoint returned an invalid token field.', 'stsa-identity-sso'));
+            }
+        }
         return $tokens;
+    }
+
+    private static function valid_bearer(array $tokens) {
+        return isset($tokens['access_token']) && is_string($tokens['access_token']) && $tokens['access_token'] !== ''
+            && strlen($tokens['access_token']) <= 65536 && !preg_match('/[\x00-\x20\x7f]/', $tokens['access_token'])
+            && is_string($tokens['token_type'] ?? 'Bearer') && strcasecmp($tokens['token_type'] ?? 'Bearer', 'Bearer') === 0;
     }
 
     private static function attributes(array $app, array $tokens, array $flow) {
@@ -243,7 +254,7 @@ final class Auth {
             }
         }
         if (!empty($app['userinfo_url']) || !empty($app['groupinfo_url'])) {
-            if (empty($tokens['access_token']) || !is_string($tokens['access_token']) || strlen($tokens['access_token']) > 65536 || preg_match('/[\x00-\x20\x7f]/', $tokens['access_token']) || !is_string($tokens['token_type'] ?? 'Bearer') || strcasecmp($tokens['token_type'] ?? 'Bearer', 'Bearer') !== 0) {
+            if (!self::valid_bearer($tokens)) {
                 return new \WP_Error('wpsso_token', __('A valid bearer token is required for user information.', 'stsa-identity-sso'));
             }
         }
