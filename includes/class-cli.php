@@ -76,8 +76,14 @@ final class Cli {
         }
         // WP_Filesystem::put_contents() opens with "wb" and has no exclusive-create mode.
         // The CLI must never truncate a destination created between the check above and opening it.
-        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- Local CLI exclusive-create semantics are unavailable in the WordPress Filesystem API.
-        $stream = @fopen($file, 'x');
+        // A restrictive creation mask avoids a readable interval before descriptor permissions are checked.
+        $previous_mask = umask(0077);
+        try {
+            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen -- Local CLI exclusive-create semantics are unavailable in the WordPress Filesystem API.
+            $stream = @fopen($file, 'x');
+        } finally {
+            umask($previous_mask);
+        }
         if (!$stream) {
             return new \WP_Error('wpsso_backup_create', 'Cannot create the backup file.');
         }
