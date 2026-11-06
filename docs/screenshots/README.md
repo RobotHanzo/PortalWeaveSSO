@@ -8,6 +8,8 @@ The gallery covers overview, provider choice and setup, public login and shortco
 
 Existing-provider configuration uses its seven tabs; capture the appropriate active tab for mapping and account-policy views. Keep these editor screenshots distinct from the step-by-step creation guide.
 
+Activity screenshots separate the count-only Overview from Audit logs. Chart history is fictional seeded data; capture the selected UTC period and labels so the sample does not imply live authentication or complete historical coverage.
+
 Review images individually for clipping, misleading state and sensitive data before replacing them. Update the matching README captions and alternative text when the interface changes. Raw browser output, authenticated profiles, cookies, traces and fixture setup files stay in ignored local artifact directories.
 
 These are repository documentation assets. Both the production allowlist and `.distignore` exclude this directory from the installable plugin ZIP. Follow [AGENTS.md](../../AGENTS.md#documentation-and-screenshots) and the [disposable verification guidance](../verification.md#reproduce-the-current-checks) when refreshing the gallery.

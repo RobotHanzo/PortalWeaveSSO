@@ -104,7 +104,11 @@ Enable provisioning, shared sign-in, guest accounts, moderation and other module
 <details>
 <summary>Activity, backups and network administration</summary>
 
-Review login activity and choose audit collection and retention settings.
+See daily trends, event types and provider activity over 7, 30 or 90 days.
+
+![Activity overview showing daily event charts, event types and provider activity](docs/screenshots/activity-overview.png)
+
+Open **Audit logs** to inspect individual records, export CSV and choose collection and retention settings.
 
 ![Activity report containing fictional sample login events](docs/screenshots/activity.png)
 

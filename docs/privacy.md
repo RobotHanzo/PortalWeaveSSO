@@ -20,6 +20,14 @@ The plugin sends no usage analytics or telemetry to its developer. Authenticatio
 
 **Test SSO Config** displays the raw returned attribute set to the initiating authenticated administrator. Review it privately. A screenshot, copied result, CSV download, WordPress personal-data export or support message can create another copy of personal data outside the plugin's retention controls.
 
+### Local activity statistics
+
+The administrator-only Activity Overview aggregates retained rows from the existing site-local audit table over 7, 30 or 90 UTC calendar days, including a partial current day. It returns daily counts, fixed event categories and up to eight provider identifiers with a remainder count. It does not read or display the audit rows' user IDs, usernames, emails, IP addresses, navigation URLs or error codes. Provider names come from the current site's active configuration. Network Admin does not combine other sites' history.
+
+These are recorded-event counts, not unique people or authentication attempts. Disabled collection and retention cleanup can leave gaps. Turning collection off still permits viewing retained history, and erasing identifying audit fields does not remove the remaining event counts. The overview adds no separate analytics store, aggregate cache, cookies, remote chart library or telemetry request; its charts and equivalent daily table are rendered locally. Empty history and a failed statistics query are reported separately.
+
+The separate Audit logs view still displays the latest 100 personal audit rows and offers CSV export of up to 5,000 rows. Selecting an overview period does not filter that view or its export, or change collection/retention preferences. Existing administrator permissions, scoped saving, collection choices and cleanup remain in effect.
+
 ## Cookies and retention
 
 | Cookie or record | Lifetime and handling |
