@@ -61,7 +61,7 @@ function portalweave_sso_test(string $name, callable $test): void {
 
 try {
     \PortalWeaveSSO\Audit::install();
-    foreach (['jwt', 'auth', 'core', 'extensions', 'smoke', 'compliance-auth', 'compliance-ui', 'compliance-modules', 'compliance-privacy', 'admin-settings', 'admin-navigation', 'provider-setup', 'activity'] as $suite) {
+    foreach (['jwt', 'auth', 'core', 'extensions', 'smoke', 'compliance-auth', 'compliance-ui', 'compliance-modules', 'compliance-privacy', 'admin-settings', 'admin-navigation', 'provider-setup', 'activity', 'button-appearance'] as $suite) {
         if (!is_file(__DIR__ . '/' . $suite . '.php')) {
             throw new RuntimeException('Required test suite missing: ' . $suite);
         }
