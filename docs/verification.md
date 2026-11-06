@@ -11,7 +11,7 @@ The combined source was exercised with WordPress 7.1.4, PHP 8.3.36 and MariaDB 1
 | Real WordPress integration | `php tests/run.php`: 48 checks covering crypto, state, refresh, mappings, registration/linking, administrator policy, domains, duplicate emails, REST/content/oEmbed, media vault/restore, audit/privacy, backups, SCIM, moderation, native abilities and lifecycle cleanup |
 | HTTPS authorization flow | `node tests/e2e.mjs`: 7 protocol checks using actual HTTPS WordPress requests and cookies with a guarded local test IdP; PKCE, initiating redirect, bad state/browser/verifier, replay, external redirect rejection and admin test isolation |
 | Real WordPress multisite | `php tests/multisite.php`: 9 checks covering new-site schema, independent networks, enforced network configuration, global privileged identities, provider groups, OAuth token isolation/refresh, scoped back-channel logout, SCIM ownership, moderation and avatar isolation |
-| Packaging | Installable ZIP contains a single wordpress-sso directory, production code, assets, license and docs; excludes git history, tests, Docker fixtures, credentials and development caches |
+| Packaging | All 25 packaged files were compared with source. The extracted ZIP activated and deactivated successfully in WordPress and passed the same 48 integration checks. It contains one wordpress-sso directory and excludes git history, tests, Docker fixtures, credentials and development caches |
 
 ## Run the multisite checks
 
