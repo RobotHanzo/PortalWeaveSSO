@@ -1,4 +1,4 @@
-name: wpsso-test
+name: ${COMPOSE_PROJECT_NAME:-wpsso-test}
 services:
   db:
     image: mariadb:11.4
@@ -14,13 +14,18 @@ services:
     volumes:
       - db:/var/lib/mysql
   wordpress:
-    image: wordpress:php8.3-apache
+    image: ${WPSSO_WORDPRESS_IMAGE:-wordpress:php8.3-apache}
     depends_on:
       db:
         condition: service_healthy
     ports:
       - 127.0.0.1:8098:80
       - 127.0.0.1:8448:443
+    healthcheck:
+      test: [CMD, php, -r, "exit(is_file('/var/www/html/wp-load.php') ? 0 : 1);"]
+      interval: 2s
+      timeout: 5s
+      retries: 60
     environment:
       WORDPRESS_DB_HOST: db
       WORDPRESS_DB_USER: wordpress
@@ -31,11 +36,13 @@ services:
       - wordpress:/var/www/html
       - ./:/var/www/html/wp-content/plugins/wordpress-sso
   cli:
-    image: wordpress:cli-php8.3
+    image: ${WPSSO_CLI_IMAGE:-wordpress:cli-php8.3}
     user: '33:33'
     depends_on:
-      - wordpress
+      wordpress:
+        condition: service_healthy
     environment:
+      WP_CLI_CACHE_DIR: /tmp/wp-cli-cache
       WORDPRESS_DB_HOST: db
       WORDPRESS_DB_USER: wordpress
       WORDPRESS_DB_PASSWORD: wordpress-test-only

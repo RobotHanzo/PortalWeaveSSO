@@ -1,37 +1,209 @@
-name: Verify WordPress SSO
-on: [push, pull_request]
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  merge_group:
+  workflow_dispatch:
+  workflow_call:
+    inputs:
+      checkout_ref:
+        description: Exact commit to verify when called by the release workflow.
+        type: string
+        default: ''
+      release_tag:
+        description: Optional stable release tag whose version must match plugin metadata.
+        type: string
+        default: ''
+      package_slug:
+        description: Approved plugin directory name, or wordpress-sso for local candidates.
+        type: string
+        default: wordpress-sso
+    outputs:
+      version:
+        description: Validated plugin version.
+        value: ${{ jobs.quality.outputs.version }}
+      artifact_name:
+        description: Name of this run's verified plugin artifact.
+        value: plugin-package
+
 permissions:
   contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
 jobs:
-  wordpress:
+  quality:
+    name: Syntax, tooling and release metadata
     runs-on: ubuntu-latest
     timeout-minutes: 15
+    outputs:
+      version: ${{ steps.metadata.outputs.version }}
     steps:
-      - uses: actions/checkout@v4
-      - name: Start disposable WordPress
-        run: |
-          docker compose -f compose.test.yml up -d wordpress
-          docker compose -f compose.test.yml run --rm cli wp core install --url=http://localhost:8098 --title='WPSSO Integration' --admin_user=wpsso_test_admin --admin_password=local-test-password-only --admin_email=admin@example.org --skip-email
-          docker compose -f compose.test.yml run --rm cli wp plugin activate wordpress-sso
-      - name: Syntax and integration checks
-        run: |
-          docker compose -f compose.test.yml exec -T wordpress php /var/www/html/wp-content/plugins/wordpress-sso/scripts/lint.php
-          node --check assets/login.js
-          node --check assets/admin.js
-          docker compose -f compose.test.yml exec -T wordpress php /var/www/html/wp-content/plugins/wordpress-sso/tests/run.php
-      - name: HTTPS OAuth protocol checks
-        run: |
-          docker compose -f compose.test.yml exec -T wordpress bash /var/www/html/wp-content/plugins/wordpress-sso/tests/setup-tls.sh
-          docker compose -f compose.test.yml exec -T wordpress php /var/www/html/wp-content/plugins/wordpress-sso/tests/setup-e2e.php
-          node tests/e2e.mjs
-          docker compose -f compose.test.yml exec -T wordpress php /var/www/html/wp-content/plugins/wordpress-sso/tests/setup-e2e.php --restore
-      - name: Build installable ZIP
-        shell: pwsh
-        run: ./scripts/build.ps1
-      - uses: actions/upload-artifact@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          name: wordpress-sso
-          path: dist/
-      - name: Stop services
+          ref: ${{ inputs.checkout_ref || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+      - name: Validate release metadata
+        id: metadata
+        env:
+          RELEASE_TAG: ${{ inputs.release_tag }}
+        run: |
+          tag_args=()
+          if [[ -n "$RELEASE_TAG" ]]; then tag_args=(--tag "$RELEASE_TAG"); fi
+          node scripts/release.mjs validate "${tag_args[@]}" --github-output "$GITHUB_OUTPUT"
+      - name: Check PHP 8.1 and 8.3 syntax
+        run: |
+          for php in 8.1 8.3; do
+            docker run --rm -v "$GITHUB_WORKSPACE:/workspace:ro" -w /workspace "php:$php-cli" php scripts/lint.php
+          done
+      - name: Check JavaScript and CI tooling
+        run: |
+          node --check assets/admin.js
+          node --check assets/login.js
+          node --check tests/e2e.mjs
+          node --test tests/*.test.mjs
+          bash -n scripts/ci.sh tests/setup-tls.sh
+      - name: Validate GitHub workflow syntax
+        run: |
+          curl --fail --silent --show-error --location --retry 3 \
+            https://github.com/rhysd/actionlint/releases/download/v1.7.12/actionlint_1.7.12_linux_amd64.tar.gz \
+            --output "$RUNNER_TEMP/actionlint.tar.gz"
+          echo '8aca8db96f1b94770f1b0d72b6dddcb1ebb8123cb3712530b08cc387b349a3d8  '"$RUNNER_TEMP/actionlint.tar.gz" | sha256sum --check
+          tar -xzf "$RUNNER_TEMP/actionlint.tar.gz" -C "$RUNNER_TEMP" actionlint
+          "$RUNNER_TEMP/actionlint" -color
+
+  integration:
+    name: WordPress integration (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - name: minimum
+            wordpress: wordpress:6.5.5-php8.1-apache
+            cli: wordpress:cli-php8.1
+          - name: current
+            wordpress: wordpress:php8.3-apache
+            cli: wordpress:cli-php8.3
+    env:
+      COMPOSE_PROJECT_NAME: wpsso-ci-${{ github.run_id }}-${{ matrix.name }}
+      WPSSO_WORDPRESS_IMAGE: ${{ matrix.wordpress }}
+      WPSSO_CLI_IMAGE: ${{ matrix.cli }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.checkout_ref || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+      - name: Run WordPress and HTTPS OAuth tests
+        run: bash scripts/ci.sh integration
+      - name: Report every test, including failures
         if: always()
-        run: docker compose -f compose.test.yml down
+        run: node scripts/report-results.mjs reports --expect integration,https
+      - name: Collect service logs
+        if: always()
+        run: |
+          mkdir -p reports
+          docker compose -f compose.test.yml logs --no-color > reports/compose.log 2>&1
+      - name: Upload JUnit, JSON and service logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: tests-${{ matrix.name }}
+          path: reports/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Stop disposable services
+        if: always()
+        run: docker compose -f compose.test.yml down --volumes --remove-orphans
+
+  multisite:
+    name: Multisite and multinetwork
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      COMPOSE_PROJECT_NAME: wpsso-ci-${{ github.run_id }}-multisite
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.checkout_ref || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+      - name: Run independent network tests
+        run: bash scripts/ci.sh multisite
+      - name: Report every test, including failures
+        if: always()
+        run: node scripts/report-results.mjs reports --expect multisite
+      - name: Collect service logs
+        if: always()
+        run: |
+          mkdir -p reports
+          docker compose -f compose.test.yml logs --no-color > reports/compose.log 2>&1
+      - name: Upload JUnit, JSON and service logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: tests-multisite
+          path: reports/
+          if-no-files-found: error
+          retention-days: 14
+      - name: Stop disposable services
+        if: always()
+        run: docker compose -f compose.test.yml down --volumes --remove-orphans
+
+  package:
+    name: Build verified plugin ZIP
+    needs: [quality, integration, multisite]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    outputs:
+      slug: ${{ inputs.package_slug || 'wordpress-sso' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.checkout_ref || github.sha }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+      - name: Build allowlisted version-matched ZIP
+        shell: pwsh
+        env:
+          PACKAGE_SLUG: ${{ inputs.package_slug || 'wordpress-sso' }}
+        run: ./scripts/build.ps1 -Slug $env:PACKAGE_SLUG
+      - name: Upload installable plugin and checksum
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: plugin-package
+          path: dist/
+          if-no-files-found: error
+          retention-days: 30
+
+  required:
+    name: CI required
+    if: always()
+    needs: [quality, integration, multisite, package]
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Require all verification jobs to pass
+        env:
+          RESULTS: ${{ toJSON(needs) }}
+        run: |
+          node -e 'const jobs = JSON.parse(process.env.RESULTS); const failed = Object.entries(jobs).filter(([, job]) => job.result !== "success"); for (const [name, job] of Object.entries(jobs)) console.log(`${name}: ${job.result}`); if (failed.length) process.exit(1);'

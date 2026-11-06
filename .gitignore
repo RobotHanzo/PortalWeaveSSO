@@ -4,3 +4,5 @@
 *.log
 /.tools/
 /.test-runtime/
+/reports/
+/release-stage/

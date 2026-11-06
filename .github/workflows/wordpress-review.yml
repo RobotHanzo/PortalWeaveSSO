@@ -1,0 +1,48 @@
+name: WordPress.org directory review
+
+on:
+  workflow_dispatch:
+    inputs:
+      checkout_ref:
+        description: Commit, branch or tag to review.
+        type: string
+        default: main
+      slug:
+        description: Assigned directory slug, or wordpress-sso for a preliminary review.
+        type: string
+        default: wordpress-sso
+  workflow_call:
+    inputs:
+      checkout_ref:
+        type: string
+        required: true
+      slug:
+        type: string
+        required: true
+
+permissions:
+  contents: read
+
+jobs:
+  directory:
+    name: WordPress Plugin Check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.checkout_ref }}
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: '24'
+      - name: Stage only distributable files under the intended slug
+        env:
+          PLUGIN_SLUG: ${{ inputs.slug }}
+        run: node scripts/release.mjs stage --output ".test-runtime/directory/$PLUGIN_SLUG" --slug "$PLUGIN_SLUG"
+      - name: Run official directory review without suppressing errors
+        uses: WordPress/plugin-check-action@10857da14b6c2246d15402b3e69f777edcf8c12e # v1.1.9
+        with:
+          build-dir: .test-runtime/directory/${{ inputs.slug }}
+          slug: ${{ inputs.slug }}
+          wp-version: latest
