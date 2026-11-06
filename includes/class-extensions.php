@@ -45,11 +45,15 @@ final class Extensions {
         return '_wpsso_moderation' . (is_multisite() ? '_' . get_current_blog_id() : '');
     }
 
+    private static function avatar_meta(): string {
+        return '_wpsso_avatar' . (is_multisite() ? '_' . get_current_blog_id() : '');
+    }
+
     public static function scim_groups(int $user_id): array {
-        return array_values(array_unique(array_map('strval', array_merge(
+        return array_values(array_filter(array_unique(array_map('strval', array_merge(
             (array) get_user_meta($user_id, self::scim_meta('groups'), true),
             (array) get_user_meta($user_id, self::scim_meta('group_names'), true)
-        ))));
+        ))), static fn($group) => $group !== ''));
     }
 
     private static function scim_owned(int $user_id): bool {
@@ -539,7 +543,7 @@ final class Extensions {
         if (self::enabled('avatar')) {
             $url = self::claim($attributes, (string) ($app['avatar_attribute'] ?? 'picture'));
             if (is_string($url) && strpos($url, 'https://') === 0 && wp_http_validate_url($url)) {
-                update_user_meta($user->ID, '_wpsso_avatar', esc_url_raw($url));
+                update_user_meta($user->ID, self::avatar_meta(), esc_url_raw($url));
             }
         }
     }
@@ -621,7 +625,7 @@ final class Extensions {
             $user = get_user_by('id', $id_or_email->user_id);
         }
         if ($user) {
-            $url = (string) get_user_meta($user->ID, '_wpsso_avatar', true);
+            $url = (string) get_user_meta($user->ID, self::avatar_meta(), true);
             if (strpos($url, 'https://') === 0 && wp_http_validate_url($url)) {
                 $args['url'] = $url;
                 $args['found_avatar'] = true;
@@ -730,7 +734,7 @@ final class Extensions {
         Auth::remember_sid($user->ID, $app, $attributes);
         wp_set_current_user($user->ID);
         wp_set_auth_cookie($user->ID, false, true);
-        update_user_meta($user->ID, '_wpsso_app', $app['id']);
+        update_user_meta($user->ID, Auth::app_meta_key(), $app['id']);
         do_action('wp_login', $user->user_login, $user);
         do_action('wpsso_authenticated', $user, $app, $attributes);
         Audit::record('success', $app['id'], $user);
@@ -852,7 +856,7 @@ final class Extensions {
         Auth::remember_sid($user->ID, $app, $claims['attributes']);
         wp_set_current_user($user->ID);
         wp_set_auth_cookie($user->ID, false, true);
-        update_user_meta($user->ID, '_wpsso_app', $app['id']);
+        update_user_meta($user->ID, Auth::app_meta_key(), $app['id']);
         do_action('wp_login', $user->user_login, $user);
         Audit::record('success', $app['id'], $user, 'wpsso_shared_login');
         wp_safe_redirect(Redirect::current());
