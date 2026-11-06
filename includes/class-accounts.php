@@ -5,6 +5,10 @@ defined('ABSPATH') || exit;
 
 final class Accounts
 {
+    private const ADMIN_CAPABILITIES = ['manage_options', 'promote_users', 'edit_users', 'create_users', 'delete_users',
+        'install_plugins', 'activate_plugins', 'edit_plugins', 'update_plugins', 'delete_plugins',
+        'install_themes', 'edit_themes', 'update_themes', 'delete_themes', 'switch_themes',
+        'manage_network', 'manage_network_options', 'manage_network_plugins', 'manage_network_users', 'setup_network'];
     public static function claim(array $attributes, string $path, $default = null)
     {
         if ($path === '') {
@@ -36,13 +40,29 @@ final class Accounts
 
     public static function is_privileged(\WP_User $user): bool
     {
-        return $user->has_cap('manage_options') || $user->has_cap('promote_users') || $user->has_cap('edit_users') || (is_multisite() && is_super_admin($user->ID));
+        if (is_multisite() && is_super_admin($user->ID)) {
+            return true;
+        }
+        foreach (self::ADMIN_CAPABILITIES as $capability) {
+            if ($user->has_cap($capability)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static function role_privileged(string $slug): bool
     {
         $role = get_role($slug);
-        return !$role || !empty($role->capabilities['manage_options']) || !empty($role->capabilities['promote_users']) || !empty($role->capabilities['edit_users']);
+        if (!$role) {
+            return true;
+        }
+        foreach (self::ADMIN_CAPABILITIES as $capability) {
+            if (!empty($role->capabilities[$capability])) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private static function lock(string $identity)

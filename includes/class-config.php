@@ -122,7 +122,7 @@ final class Config
 
     public static function list($value): array
     {
-        return array_values(array_filter(array_map('trim', is_array($value) ? $value : preg_split('/[\r\n,]+/', (string) $value)), static fn($v) => $v !== ''));
+        return array_values(array_filter(array_map(static fn($v) => is_scalar($v) ? trim((string) $v) : '', is_array($value) ? $value : preg_split('/[\r\n,]+/', (string) $value)), static fn($v) => $v !== ''));
     }
 
     private static function bools(array $data, array $keys): array
@@ -152,6 +152,11 @@ final class Config
         $raw = $network ? get_site_option('wpsso_settings', []) : get_option('wpsso_settings', []);
         $old = array_replace(self::defaults(), is_array($raw) ? $raw : []);
         $settings = array_replace($old, array_intersect_key($input, self::defaults()));
+        foreach (['default_app', 'login_redirect', 'logout_redirect', 'shared_cookie_domain', 'scim_token', 'shared_secret'] as $key) {
+            if (!is_string($settings[$key])) {
+                return new \WP_Error('wpsso_setting_type', 'URL, identifier and credential settings must be strings.');
+            }
+        }
         $settings = self::bools($settings, ['network_enforced', 'force_auth', 'restrict_site', 'disable_wp_login', 'single_flow', 'popup', 'logout_confirmation', 'debug', 'abilities_enabled']);
         foreach (['redirect_allowlist', 'shared_sites'] as $key) {
             $settings[$key] = self::list($settings[$key]);
@@ -185,6 +190,9 @@ final class Config
             $app = array_replace(self::app_defaults(), $prior, array_intersect_key($app, self::app_defaults()), ['id' => $id]);
             $app = self::bools($app, ['enabled', 'legacy_grants', 'pkce', 'keep_roles', 'block_unmapped', 'auto_register', 'link_existing', 'keep_attributes', 'keep_email', 'allow_duplicate_emails', 'allow_admin', 'require_verified_email', 'guest', 'shared_sso', 'moderation', 'jwt_sso', 'backchannel_logout']);
             foreach (['name', 'provider', 'scope', 'client_id', 'state_parameter', 'subject_attribute', 'verified_attribute', 'avatar_attribute', 'button_text'] as $key) {
+                if (!is_scalar($app[$key])) {
+                    return new \WP_Error('wpsso_setting_type', 'Provider text settings must be strings.');
+                }
                 $app[$key] = sanitize_text_field((string) $app[$key]);
             }
             foreach (['protocol' => ['oidc', 'oauth2'], 'credential_method' => ['header', 'body', 'none'], 'grant' => ['authorization_code', 'implicit', 'password']] as $key => $values) {
@@ -202,6 +210,9 @@ final class Config
                 }
             }
             foreach (['authorize_url', 'token_url', 'userinfo_url', 'groupinfo_url', 'jwks_url', 'logout_url', 'issuer', 'callback_url', 'icon_url'] as $key) {
+                if (!is_string($app[$key])) {
+                    return new \WP_Error('wpsso_endpoint', 'Provider endpoints must be URL strings.');
+                }
                 $app[$key] = trim((string) $app[$key]);
                 if ($app[$key] !== '' && (!self::https_url($app[$key]) || wp_parse_url($app[$key], PHP_URL_FRAGMENT))) {
                     return new \WP_Error('wpsso_endpoint', 'Provider endpoints, icons and callbacks must use HTTPS without embedded credentials.');
@@ -257,6 +268,9 @@ final class Config
             }
             foreach (['client_secret', 'jwt_secret'] as $key) {
                 $submitted = $input['apps'][$id][$key] ?? '';
+                if (!is_string($submitted)) {
+                    return new \WP_Error('wpsso_setting_type', 'Provider secrets must be strings.');
+                }
                 if (!empty($input['apps'][$id]['clear_' . $key])) {
                     $app[$key] = '';
                 } elseif ($submitted !== '' && $submitted !== '********') {
@@ -296,6 +310,11 @@ final class Config
         $settings['audit_retention_days'] = max(1, min(3650, absint($settings['audit_retention_days'])));
         $settings['guest_ttl'] = max(300, min(86400, absint($settings['guest_ttl'])));
         $settings['button'] = array_replace(self::defaults()['button'], (array) $settings['button']);
+        foreach (['theme', 'shape', 'text', 'above_text', 'logout_message', 'custom_css'] as $key) {
+            if (!is_string($settings['button'][$key])) {
+                return new \WP_Error('wpsso_button_type', 'Button text and appearance settings must be strings.');
+            }
+        }
         foreach (['size' => [10, 48], 'radius' => [0, 100], 'spacing' => [0, 100]] as $key => $bounds) {
             $settings['button'][$key] = max($bounds[0], min($bounds[1], (int) $settings['button'][$key]));
         }
@@ -311,11 +330,18 @@ final class Config
         if (!is_array($settings['content_rules']) || !is_array($settings['protected_media'])) {
             return new \WP_Error('wpsso_rules', 'Content and media rules must be arrays.');
         }
+        $settings['shared_cookie_domain'] = strtolower(ltrim(trim((string) $settings['shared_cookie_domain']), '.'));
+        if ($settings['shared_cookie_domain'] && (!self::domain($settings['shared_cookie_domain']) || substr_count($settings['shared_cookie_domain'], '.') < 1)) {
+            return new \WP_Error('wpsso_shared_domain', 'Use a registrable parent domain for shared sessions.');
+        }
         $settings['protected_media'] = array_values(array_unique(array_filter(array_map('absint', $settings['protected_media']))));
+        // Complete every validation before moving any media bytes.
         foreach ($settings['protected_media'] as $attachment_id) {
             if (get_post_type($attachment_id) !== 'attachment') {
                 return new \WP_Error('wpsso_media_id', 'Protected media IDs must identify existing attachments.');
             }
+        }
+        foreach ($settings['protected_media'] as $attachment_id) {
             $protected = Access::protect_media($attachment_id);
             if (is_wp_error($protected)) {
                 return $protected;
@@ -329,10 +355,6 @@ final class Config
                 }
             }
         }
-        $settings['shared_cookie_domain'] = strtolower(ltrim(trim((string) $settings['shared_cookie_domain']), '.'));
-        if ($settings['shared_cookie_domain'] && (!self::domain($settings['shared_cookie_domain']) || substr_count($settings['shared_cookie_domain'], '.') < 1)) {
-            return new \WP_Error('wpsso_shared_domain', 'Use a registrable parent domain for shared sessions.');
-        }
         if ($network) {
             update_site_option('wpsso_settings', $settings);
         } else {
@@ -340,6 +362,34 @@ final class Config
         }
         do_action('wpsso_configuration_saved', $network);
         return true;
+    }
+
+    /** Restore portable configuration without discarding locally stored credentials. */
+    public static function import(array $input, bool $network = false)
+    {
+        $old = $network ? get_site_option('wpsso_settings', []) : get_option('wpsso_settings', []);
+        if (isset($input['apps']) && is_array($input['apps'])) {
+            foreach ($input['apps'] as $id => &$app) {
+                if (!is_array($app)) {
+                    return new \WP_Error('wpsso_apps', 'Imported providers must be objects.');
+                }
+                if (empty($app['client_id'])) {
+                    $app['client_id'] = $old['apps'][$id]['client_id'] ?? '';
+                }
+                if (!$app['client_id']) {
+                    $app['enabled'] = false;
+                }
+            }
+            unset($app);
+            $default = $input['default_app'] ?? $old['default_app'] ?? '';
+            if (!$default || empty($input['apps'][$default]['enabled'])) {
+                $input['default_app'] = '';
+                foreach (['force_auth', 'restrict_site', 'disable_wp_login', 'single_flow'] as $key) {
+                    $input[$key] = false;
+                }
+            }
+        }
+        return self::save($input, $network);
     }
 
     public static function https_url(string $url): bool

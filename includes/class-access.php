@@ -210,7 +210,14 @@ final class Access
 
     public static function protect_media(int $id)
     {
-        if (get_post_meta($id, '_wpsso_private_files', true)) {
+        $existing = get_post_meta($id, '_wpsso_private_files', true);
+        if (is_array($existing) && $existing) {
+            $public = get_post_meta($id, '_wpsso_public_files', true);
+            foreach (is_array($public) ? $public : [] as $name => $path) {
+                if (is_file($path) && (!isset($existing[$name]) || !is_file($existing[$name]) || !hash_equals(hash_file('sha256', $path), hash_file('sha256', $existing[$name])) || !unlink($path))) {
+                    return new \WP_Error('wpsso_media_unlink', 'A public copy remains or has changed. Review the attachment files before retrying protection.');
+                }
+            }
             return true;
         }
         $vault = self::vault();
@@ -267,8 +274,10 @@ final class Access
 
     public static function unprotect_media(int $id)
     {
-        $private = (array) get_post_meta($id, '_wpsso_private_files', true);
-        $public = (array) get_post_meta($id, '_wpsso_public_files', true);
+        $private = get_post_meta($id, '_wpsso_private_files', true);
+        $public = get_post_meta($id, '_wpsso_public_files', true);
+        $private = is_array($private) ? $private : [];
+        $public = is_array($public) ? $public : [];
         foreach ($private as $name => $source) {
             if (!isset($public[$name]) || (file_exists($public[$name]) && !hash_equals(hash_file('sha256', $source), hash_file('sha256', $public[$name])))) {
                 return new \WP_Error('wpsso_media_restore', 'An existing public file prevents safe restoration.');
@@ -321,7 +330,8 @@ final class Access
 
     public static function attached_file($file, $id)
     {
-        $files = (array) get_post_meta($id, '_wpsso_private_files', true);
+        $files = get_post_meta($id, '_wpsso_private_files', true);
+        $files = is_array($files) ? $files : [];
         return $files[basename($file)] ?? $file;
     }
 
@@ -356,7 +366,8 @@ final class Access
         if (!$id || !self::is_protected($id) || !self::can_post($id)) {
             self::deny();
         }
-        $files = (array) get_post_meta($id, '_wpsso_private_files', true);
+        $files = get_post_meta($id, '_wpsso_private_files', true);
+        $files = is_array($files) ? $files : [];
         $original = get_attached_file($id, true);
         $name = isset($_GET['file']) ? wp_unslash($_GET['file']) : basename((string) $original);
         if (!is_string($name) || basename($name) !== $name || !isset($files[$name]) || !is_file($files[$name])) {
@@ -373,7 +384,8 @@ final class Access
 
     public static function delete_media(int $id): void
     {
-        foreach ((array) get_post_meta($id, '_wpsso_private_files', true) as $file) {
+        $files = get_post_meta($id, '_wpsso_private_files', true);
+        foreach (is_array($files) ? $files : [] as $file) {
             wp_delete_file($file);
         }
     }
