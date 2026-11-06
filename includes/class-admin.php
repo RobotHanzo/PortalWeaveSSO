@@ -193,19 +193,18 @@ final class Admin {
     }
 
     private static function redact(array $settings): array {
-        foreach ($settings as $key => &$value) {
-            if (preg_match('/(?:client_id|secret|token|password)/i', (string) $key)) {
-                unset($settings[$key]);
-            } elseif (is_array($value)) {
-                $value = self::redact($value);
-            } elseif ($key === 'state_parameter' || $key === 'custom_css') {
-                $value = '';
-            } elseif (is_string($value) && preg_match('/^https?:\/\//i', $value)) {
+        unset($settings['scim_token'], $settings['shared_secret']);
+        foreach ($settings['apps'] ?? [] as $id => $app) {
+            unset($app['client_id'], $app['client_secret'], $app['jwt_secret'], $app['state_parameter']);
+            foreach (['authorize_url', 'token_url', 'userinfo_url', 'groupinfo_url', 'jwks_url', 'logout_url', 'issuer', 'callback_url', 'icon_url'] as $key) {
                 // Endpoints can contain tenant-supplied credentials in query parameters.
-                $value = preg_replace('/[?#].*$/', '', $value);
+                $app[$key] = preg_replace('/[?#].*$/', '', (string) ($app[$key] ?? ''));
             }
+            $settings['apps'][$id] = $app;
         }
-        unset($value);
+        if (isset($settings['button']['custom_css'])) {
+            $settings['button']['custom_css'] = '';
+        }
         return $settings;
     }
 
