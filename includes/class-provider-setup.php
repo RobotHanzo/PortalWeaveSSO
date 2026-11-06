@@ -248,7 +248,8 @@ final class ProviderSetup
             ], 'notices' => [$verify_notice],
         ];
         $catalog['custom']['fields']['scope']['default'] = 'openid profile email';
-        return array_replace(array_fill_keys(['custom', 'entra', 'b2c', 'office365', 'cognito', 'keycloak', 'okta', 'salesforce', 'google', 'auth0', 'onelogin', 'discord', 'classlink', 'authentik'], []), $catalog);
+        uasort($catalog, static fn(array $a, array $b): int => strcasecmp($a['label'], $b['label']));
+        return $catalog;
     }
 
     /** Convert one creation form into an ordinary app. Authorization and persistence belong to the caller. */
