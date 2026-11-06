@@ -47,7 +47,7 @@ usernames if desired; a GitHub username is not evidence of that identity.
 AFTER APPROVAL — OPTIONAL AUTOMATED RELEASES
 Keep WORDPRESS_DEPLOY_ENABLED=false until the repository owner configures:
   - WORDPRESS_PLUGIN_SLUG with the actual assigned slug;
-  - WORDPRESS_SVN_USERNAME and WORDPRESS_SVN_PASSWORD as GitHub environment
+  - WPORG_USERNAME and WPORG_PASSWORD as GitHub environment
     secrets in the protected wordpress-org environment;
   - any desired environment reviewer protection.
 Then enable the deployment repository variable and use a new immutable vX.Y.Z

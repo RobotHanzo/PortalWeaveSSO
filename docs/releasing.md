@@ -2,7 +2,7 @@
 
 The workflows run checks and prepare release files before a publishing job can use WordPress.org credentials. A normal code push never publishes a plugin update. The repository has not yet been approved for WordPress.org; leave deployment disabled until the directory review is complete and an SVN repository has been assigned.
 
-The proposed name is **PortalWeave SSO**, with slug/text domain `portalweave-sso`. The submission candidate is `dist/portalweave-sso-1.0.0.zip`. This proposal is not a directory assignment or publication. If reviewers assign a different slug, update the literal text domains, metadata, translation filenames and packaging configuration together before rebuilding.
+The proposed name is **PortalWeave SSO**, with slug/text domain `portalweave-sso`. The submission candidate is `dist/portalweave-sso-1.0.0.zip`. This proposal is not a directory assignment or publication. If reviewers assign a different slug, update the main filename, literal text domains, metadata, translation filenames and packaging configuration together before rebuilding.
 
 ## One-time WordPress.org setup
 
