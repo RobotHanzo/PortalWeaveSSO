@@ -33,6 +33,32 @@ test('Visual redirect rules retain order, scalar match types and exact URLs', ()
     assert.throws(() => writeRows('redirect_rules', [{ claim: 'active', equals: 'yes', value_type: 'boolean', url: 'https://site.example/' }]), /invalid_value/);
 });
 
+test('Existing redirect integers outside the safe range remain in advanced JSON without rounding', () => {
+    for (const literal of ['9007199254740993', '-9007199254740993', '9007199254740992', '-9007199254740992', '9223372036854775807']) {
+        const source = '[{"claim":"account","equals":' + literal + ',"url":"https://site.example/"}]';
+        assert.throws(() => readRows('redirect_rules', source), /unsafe_number/, literal);
+        assert.ok(source.includes('"equals":' + literal), 'refusing the visual editor must leave exact source text available');
+    }
+    const source = '[{"claim":"account","equals":9007199254740993,"url":"https://site.example/"}]';
+    assert.equal(JSON.parse(source)[0].equals, 9007199254740992, 'fixture must reproduce JavaScript integer rounding');
+});
+
+test('Visual redirect numeric entry rejects unsafe integers but accepts safe boundaries and finite decimals', () => {
+    const row = equals => ({ claim: 'account', equals, value_type: 'number', url: 'https://site.example/' });
+    for (const literal of ['9007199254740992', '9007199254740993', '-9007199254740992', '-9007199254740993', '9.007199254740992e15', '-9.007199254740992e15']) {
+        assert.throws(() => writeRows('redirect_rules', [row(literal)]), /unsafe_number/, literal);
+    }
+    for (const literal of ['9007199254740991', '-9007199254740991', '0', '-42', '1.5', '-0.125', '1.25e-3']) {
+        const encoded = writeRows('redirect_rules', [row(literal)]);
+        assert.equal(JSON.parse(encoded)[0].equals, Number(literal), literal);
+        assert.equal(readRows('redirect_rules', encoded)[0].value_type, 'number');
+    }
+    for (const literal of ['1e400', '-1e400']) {
+        assert.throws(() => writeRows('redirect_rules', [row(literal)]), /invalid_value/, literal);
+        assert.throws(() => readRows('redirect_rules', '[{"claim":"account","equals":' + literal + ',"url":"https://site.example/"}]'), /unsupported/, literal);
+    }
+});
+
 test('Visual content rules retain post/category scope and explicit access choices', () => {
     const value = { posts: { 42: { login: true, roles: ['subscriber'], groups: ['faculty', 'editors'] } }, categories: { 8: { login: false, roles: [], groups: [] } } };
     assert.deepEqual(convert('content_rules', value), value);
