@@ -411,21 +411,49 @@ wpsso_test('core: protection retries remove unchanged public leftovers and prese
     });
 });
 
-wpsso_test('core: admin navigation targets every settings section and includes truncation protection', function (): void {
+wpsso_test('core: admin navigation renders one task screen and keeps provider editing separate', function (): void {
     wpsso_core_fixture(function (): void {
         $admin = get_user_by('login', 'wpsso_test_admin');
         wpsso_assert($admin instanceof WP_User, 'Test administrator fixture is missing.');
         wp_set_current_user($admin->ID);
-        ob_start();
+        $old_get = $_GET;
         try {
+            foreach (['overview' => '', 'providers' => '', 'login' => 'settings[default_app]', 'access' => 'settings[allowed_domains]', 'appearance' => 'settings[button][theme]', 'modules' => 'settings[scim_token]', 'reports' => 'settings[audit_enabled]', 'tools' => 'settings[support][email]'] as $screen => $field) {
+                $_GET = ['page' => 'wpsso', 'tab' => $screen];
+                ob_start();
+                \WPSSO\Admin::page();
+                $html = ob_get_clean();
+                wpsso_assert(substr_count($html, 'aria-current="page"') === 1, 'Navigation must identify exactly one active screen');
+                foreach (['overview', 'providers', 'login', 'access', 'appearance', 'modules', 'reports', 'tools'] as $destination) {
+                    wpsso_assert(str_contains($html, 'tab=' . $destination), 'Missing navigable screen: ' . $destination);
+                }
+                wpsso_assert(!str_contains($html, 'settings[new_app]'), 'A hidden new-provider form was rendered on an unrelated screen');
+                if ($field !== '') {
+                    wpsso_assert(str_contains($html, 'name="' . $field . '"'), 'The current screen is missing its settings');
+                    wpsso_assert(str_contains($html, 'name="wpsso_complete" value="1"'), 'The form lacks truncation protection');
+                } else {
+                    wpsso_assert(!str_contains($html, 'class="wpsso-settings-form"'), 'Read-only navigation screens must not render a settings form');
+                }
+                if ($screen !== 'reports') {
+                    wpsso_assert(!str_contains($html, 'Export audit CSV'), 'Audit data should only render on Activity');
+                }
+                if ($screen !== 'appearance') {
+                    wpsso_assert(!str_contains($html, 'name="settings[button][theme]"'), 'Appearance fields leaked into another task');
+                }
+            }
+            $_GET = ['page' => 'wpsso', 'tab' => 'providers', 'new_provider' => '1'];
+            ob_start();
             \WPSSO\Admin::page();
-        } finally {
             $html = ob_get_clean();
+            wpsso_assert(str_contains($html, 'settings[new_app][backchannel_logout]'), 'The provider editor lost its back-channel setting');
+            wpsso_assert(!str_contains($html, 'name="settings[default_app]"'), 'Provider editing rendered site-wide login settings');
+            $_GET = ['page' => 'wpsso', 'tab' => ['malformed']];
+            ob_start();
+            \WPSSO\Admin::page();
+            $html = ob_get_clean();
+            wpsso_assert(str_contains($html, 'Your sign-in workspace'), 'Invalid navigation must safely fall back to Overview');
+        } finally {
+            $_GET = $old_get;
         }
-        foreach (['providers', 'accounts', 'appearance', 'modules', 'reports', 'tools'] as $section) {
-            wpsso_assert(str_contains($html, 'href="#wpsso-' . $section . '"') && str_contains($html, 'id="wpsso-' . $section . '"'), 'Admin navigation has an absent section: ' . $section);
-        }
-        wpsso_assert(str_contains($html, 'name="wpsso_complete" value="1"'), 'The server-rendered form lacks its truncation sentinel.');
-        wpsso_assert(str_contains($html, 'settings[new_app][backchannel_logout]'), 'OIDC back-channel logout setting is missing.');
     });
 });

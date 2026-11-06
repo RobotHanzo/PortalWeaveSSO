@@ -28,7 +28,7 @@ if (!function_exists('openssl_encrypt') || !function_exists('openssl_verify')) {
     return;
 }
 
-foreach (['config', 'audit', 'http', 'jwt', 'accounts', 'auth', 'access', 'privacy', 'cleanup', 'display', 'admin', 'extensions', 'abilities', 'cli'] as $wpsso_class) {
+foreach (['config', 'audit', 'http', 'jwt', 'accounts', 'auth', 'access', 'privacy', 'cleanup', 'display', 'admin-settings', 'admin', 'extensions', 'abilities', 'cli'] as $wpsso_class) {
     require_once PORTALWEAVE_SSO_DIR . 'includes/class-' . $wpsso_class . '.php';
 }
 unset($wpsso_class);

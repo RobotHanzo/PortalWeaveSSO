@@ -13,6 +13,8 @@
 /scripts
 /dist
 /reports
+/output/playwright
+/.playwright-cli
 /node_modules
 /vendor
 /compose.test.yml

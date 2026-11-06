@@ -21,6 +21,7 @@ Preserve the existing `WPSSO` PHP namespace, `wpsso_*` hooks/options/errors, `[w
 - Keep PHP entry points guarded with `defined('ABSPATH') || exit`. Use WordPress APIs for HTTP, settings, metadata, sessions, mail, scheduling and assets where they meet the operation's contract.
 - Validate types and permissions before mutations, prepare SQL values and identifiers, escape at the output boundary, and translate user-facing strings with the literal `portalweave-sso` domain. Keep stable protocol identifiers separate from display text.
 - Keep code source-readable. Do not introduce remote executable downloads, developer telemetry, hidden external services or paid unlocks. Update service/privacy disclosures when data flows change.
+- Admin navigation renders one task screen at a time. Keep scoped saving through `AdminSettings::prepare()`; a global-screen save must not replace hidden providers or forward stored secrets as newly submitted credentials. See [admin screen design](docs/admin-design.md).
 
 ## Security and data boundaries
 

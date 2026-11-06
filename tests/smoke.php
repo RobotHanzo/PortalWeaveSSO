@@ -10,15 +10,18 @@ wpsso_test('Plugin activates its public hooks and renders provider buttons safel
     wpsso_assert(has_action('widgets_init') !== false, 'Widget hook missing');
 });
 
-wpsso_test('Administrator settings render all panels without revealing stored credentials', function () {
+wpsso_test('Administrator task screens and provider editor never reveal stored secrets', function () {
     $app = wpsso_app();
     wpsso_assert(\WPSSO\Config::save(['apps' => ['fixture' => $app], 'default_app' => 'fixture']) === true, 'Fixture save failed');
     $admin = get_user_by('login', 'wpsso_test_admin');
     wp_set_current_user($admin->ID);
     $original_get = $_GET;
     try {
-        foreach (['wpsso'] as $page) {
-            $_GET = ['page' => $page];
+        foreach (['overview', 'providers', 'login', 'access', 'appearance', 'modules', 'reports', 'tools', 'provider-editor'] as $screen) {
+            $_GET = ['page' => 'wpsso', 'tab' => $screen === 'provider-editor' ? 'providers' : $screen];
+            if ($screen === 'provider-editor') {
+                $_GET['provider'] = 'fixture';
+            }
             ob_start();
             \WPSSO\Admin::page();
             $html = ob_get_clean();

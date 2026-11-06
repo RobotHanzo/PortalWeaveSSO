@@ -73,6 +73,7 @@ Deactivation retains data. Uninstall retains it unless **Delete plugin data when
 - [External services, transmitted data and provider policies](docs/external-services.md)
 - [Local privacy, cookies, retention and removal](docs/privacy.md)
 - [Architecture and developer hooks](docs/architecture.md)
+- [Administrator screen design and safe saving](docs/admin-design.md)
 - [Verification and deployment checklist](docs/verification.md)
 - [GitHub CI and test reports](docs/ci.md)
 - [WordPress.org release automation](docs/releasing.md)
