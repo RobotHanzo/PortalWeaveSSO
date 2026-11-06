@@ -77,6 +77,71 @@ final class Audit
         return $rows;
     }
 
+    /** Aggregate retained audit events for this blog, including in Network Admin. */
+    public static function summary(int $days = 30, ?int $now = null): array|\WP_Error
+    {
+        global $wpdb;
+        $days = in_array($days, [7, 30, 90], true) ? $days : 30;
+        $now ??= time();
+        $start = gmdate('Y-m-d 00:00:00', $now - ($days - 1) * DAY_IN_SECONDS);
+        $end = gmdate('Y-m-d H:i:s', $now + 1);
+        $suppressed = $wpdb->suppress_errors(true);
+        try {
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Core has no audit aggregate API; one prepared UTC statement returns bounded daily/provider counts from this blog in one read view, without personal fields or an extra cache.
+            $rows = $wpdb->get_results($wpdb->prepare(
+                "SELECT 'daily' AS row_type, DATE(created_at) AS bucket, COUNT(*) AS total,
+                    SUM(CASE WHEN status IN ('success', 'local_login') THEN 1 ELSE 0 END) AS sign_ins,
+                    SUM(CASE WHEN status IN ('failure', 'local_failure') THEN 1 ELSE 0 END) AS failures,
+                    SUM(CASE WHEN status IN ('logout', 'local_logout') THEN 1 ELSE 0 END) AS sign_outs,
+                    SUM(CASE WHEN status = 'test_success' THEN 1 ELSE 0 END) AS tests,
+                    SUM(CASE WHEN status NOT IN ('success', 'local_login', 'failure', 'local_failure', 'logout', 'local_logout', 'test_success') THEN 1 ELSE 0 END) AS other
+                FROM %i WHERE created_at >= %s AND created_at < %s
+                GROUP BY DATE(created_at)
+                UNION ALL
+                SELECT 'provider', app, total, 0, 0, 0, 0, 0 FROM (
+                    SELECT app, COUNT(*) AS total FROM %i WHERE created_at >= %s AND created_at < %s
+                    GROUP BY app ORDER BY total DESC, app ASC LIMIT 8
+                ) AS provider_counts
+                ORDER BY row_type ASC, total DESC, bucket ASC",
+                $wpdb->prefix . 'portalweave_sso_audit', $start, $end,
+                $wpdb->prefix . 'portalweave_sso_audit', $start, $end
+            ), ARRAY_A);
+            if ($wpdb->last_error !== '' || !is_array($rows)) {
+                return new \WP_Error('portalweave_sso_audit_summary', __('Activity statistics could not be loaded. Please try again.', 'portalweave-sso'));
+            }
+        } finally {
+            $wpdb->suppress_errors($suppressed);
+        }
+
+        $daily = [];
+        for ($index = $days - 1; $index >= 0; $index--) {
+            $date = gmdate('Y-m-d', $now - $index * DAY_IN_SECONDS);
+            $daily[$date] = ['date' => $date, 'count' => 0];
+        }
+        $total = 0;
+        $types = ['sign_ins' => 0, 'failures' => 0, 'sign_outs' => 0, 'tests' => 0, 'other' => 0];
+        $providers = [];
+        $provider_total = 0;
+        foreach ($rows as $row) {
+            $count = (int) $row['total'];
+            if ($row['row_type'] === 'provider') {
+                $providers[] = ['app' => (string) $row['bucket'], 'count' => $count];
+                $provider_total += $count;
+                continue;
+            }
+            $daily[$row['bucket']]['count'] = $count;
+            $total += $count;
+            foreach (array_keys($types) as $type) {
+                $types[$type] += (int) $row[$type];
+            }
+        }
+        return [
+            'days' => $days, 'start' => substr($start, 0, 10), 'end' => gmdate('Y-m-d', $now),
+            'total' => $total, 'daily' => array_values($daily), 'types' => $types,
+            'providers' => $providers, 'other_providers' => max(0, $total - $provider_total),
+        ];
+    }
+
     public static function for_email(string $email, int $page = 1): array
     {
         global $wpdb;
