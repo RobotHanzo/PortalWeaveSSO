@@ -81,11 +81,7 @@ Check tool. Complete raw output plus machine-readable JSON/JUnit results
 accompany these notes in the reviewer-materials archive. Findings are retained;
 there are no command-line ignored errors or categories.
 
-The locally reviewed warnings fall into these categories:
-  - Prefix scanner: PORTALWEAVE_SSO_* bootstrap constants have a unique public
-    prefix. The scanner primarily infers the retained wpsso namespace used by
-    existing hooks, shortcode, CLI and settings. No unprefixed globals are
-    introduced; legacy configuration names remain for compatibility.
+The verified installed package reports zero errors and 17 warnings:
   - Nonce heuristics: public initiation reads a test flag, then checks the
     administrator nonce whenever testing is requested. The logout path reads
     POST or GET into one request array, then verifies the wpsso_logout nonce
@@ -110,6 +106,9 @@ the complete binary into memory. Admin-supplied data is escaped at output.
 
 SOURCE, LICENSING AND PACKAGING
 Source and build/test tools: https://github.com/RobotHanzo/WordPressSSO
+PORTALWEAVE_SSO_* bootstrap constants use the new public prefix. The retained
+WPSSO namespace, hooks, shortcode and CLI/settings names are compatibility
+identifiers, not the display name or an affiliation with another plugin.
 All shipped code/assets are source-readable and covered by the bundled GPL
 license. The plugin has no bundled runtime package dependencies, copied
 provider logos, minified-only assets, advertising or public developer credits.

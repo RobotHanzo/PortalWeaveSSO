@@ -707,7 +707,7 @@ final class Extensions {
             $target = add_query_arg(['client_id' => $app['client_id'], 'response_type' => 'id_token', 'response_mode' => 'form_post',
                 'scope' => 'openid', 'redirect_uri' => home_url('/?wpsso_action=jwt_callback'), 'state' => $state, 'nonce' => $nonce], $app['authorize_url']);
             // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- OIDC must leave this host for the HTTPS authorization endpoint validated when the administrator saved this provider.
-            wp_redirect($target, 302, 'WPSSO');
+            wp_redirect($target, 302, 'PortalWeave SSO');
             exit;
         }
         $method = isset($_SERVER['REQUEST_METHOD']) && is_string($_SERVER['REQUEST_METHOD']) ? sanitize_text_field(wp_unslash($_SERVER['REQUEST_METHOD'])) : '';
@@ -745,7 +745,7 @@ final class Extensions {
         self::session($user, $app, $claims);
         $redirect = apply_filters('wpsso_login_redirect', $flow['redirect'], $app, $claims, $user);
         // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- Redirect::validate() checks the exact origin/path against the configured allowlist, including intentional external destinations.
-        wp_redirect(Redirect::validate($redirect, home_url('/')), 302, 'WPSSO');
+        wp_redirect(Redirect::validate($redirect, home_url('/')), 302, 'PortalWeave SSO');
         exit;
     }
 

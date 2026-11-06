@@ -94,7 +94,7 @@ final class Access
         }
         $app = Config::get('default_app');
         if ($app && !empty(Config::app($app)['enabled'])) {
-            wp_safe_redirect(Auth::login_url($app, Redirect::current()), 302, 'WPSSO');
+            wp_safe_redirect(Auth::login_url($app, Redirect::current()), 302, 'PortalWeave SSO');
             exit;
         }
         auth_redirect();

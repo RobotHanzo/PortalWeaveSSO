@@ -205,7 +205,7 @@ final class Abilities {
             return new \WP_Error('wpsso_support_destination', 'Configure a support email before sending. The local draft was retained.');
         }
         $body = $draft['message'] . "\n\nRedacted configuration:\n" . wp_json_encode($draft['configuration'], JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES);
-        if (!wp_mail($email, '[WPSSO] ' . $draft['subject'], $body)) {
+        if (!wp_mail($email, '[PortalWeave SSO] ' . $draft['subject'], $body)) {
             return new \WP_Error('wpsso_support_mail', 'WordPress could not submit this email. The local draft was retained.');
         }
         Audit::record('support', '', wp_get_current_user(), 'wpsso_support_sent');
