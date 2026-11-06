@@ -5,6 +5,7 @@
 /.gitattributes
 /.gitignore
 /.distignore
+/AGENTS.md
 /.test-runtime
 /.tools
 /.phpunit.cache
