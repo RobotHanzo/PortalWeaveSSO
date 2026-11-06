@@ -20,7 +20,15 @@ Repository helper steps use Bash entrypoints, including `scripts/build.sh` for p
 
 The helper entrypoints are `release.sh` for metadata/staging, `plugin-check.sh` for complete native-output parsing, `report-results.sh` for suite summaries, `report-tooling.sh` for tooling JUnit summaries, and `check-wordpress-release.sh` for the read-only WordPress.org repository/version preflight. The existing `check-release-ref.sh` retains the remote-tag guard. All are under `scripts/`; invoking the wrappers does not change their verification or publication requirements.
 
-WordPress containers have readiness checks before WP-CLI runs. The minimum and current versions run independently with `fail-fast: false`, so both produce evidence if either fails. Each job uses a disposable database and collects logs before cleanup. Actions are pinned to full commit hashes, and Dependabot proposes updates weekly.
+WordPress containers have readiness checks before WP-CLI runs. The minimum and current versions run independently with `fail-fast: false`, so both produce evidence if either fails. Each job uses a disposable database and collects logs before cleanup. Actions are pinned to full commit hashes.
+
+## Automatic dependency updates
+
+[Dependabot configuration](../.github/dependabot.yml) checks GitHub Actions and the root Docker Compose images every Monday at 09:00 Asia/Singapore. It opens update pull requests against the default branch, using the repository's `ci:` commit prefix and a limit of five open version-update PRs per ecosystem. Minor/patch Actions updates are grouped separately from minor/patch test-image updates; major updates receive individual PRs. Full action commit pins and their inline version comments are maintained by the Actions updater. The plugin has no npm or Composer dependency manifests, so those ecosystems are not configured.
+
+The WordPress Plugin Check action stays outside the routine Actions group. Its exact reviewed SHA is asserted in `tests/deployment.test.mjs`; review the upstream activation/early-CLI bootstrap and retained runtime/experimental coverage before changing that assertion alongside a dependency update. All update PRs use the existing read-only `pull_request` CI and required gate. Dependency automation does not merge PRs or authorize a release.
+
+Dependabot alerts, the dependency graph and automatic security-update PRs are enabled in the repository's GitHub security settings. Security updates run independently of the weekly version-update schedule for supported ecosystems. Docker Compose coverage includes `compose.test.yml` and its environment-variable image defaults; floating image tags can also receive upstream image refreshes without a Git diff. The deliberately fixed minimum/current WordPress/PHP matrix, Node runtime inputs, shell-command image references and actionlint's release URL/checksum still need deliberate maintainer updates; they are not ordinary Action or Compose dependency references. See [GitHub's supported ecosystems](https://docs.github.com/en/code-security/reference/supply-chain-security/supported-ecosystems-and-repositories) and [Dependabot options](https://docs.github.com/en/code-security/reference/supply-chain-security/dependabot-options-reference).
 
 ## Read test results
 
