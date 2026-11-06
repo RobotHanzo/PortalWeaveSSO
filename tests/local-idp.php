@@ -52,7 +52,12 @@ add_filter('pre_http_request', static function ($response, $args, $url) {
     $token = $payload . '.' . portalweave_sso_test_idp_encode(hash_hmac('sha256', $payload, 'portalweave-sso-local-integration-signing-key-only-64-characters-long-fixture', true));
     $access = bin2hex(random_bytes(12));
     set_transient('portalweave_sso_test_access_' . $access, $claims, 600);
-    return portalweave_sso_test_idp_response(['access_token' => 'portalweave-sso-test-access-' . $access, 'token_type' => 'Bearer', 'expires_in' => 300, 'id_token' => $token]);
+    $response = ['access_token' => 'portalweave-sso-test-access-' . $access, 'token_type' => 'Bearer', 'expires_in' => 300];
+    // Explicit OAuth-only test codes omit ID tokens; ordinary OIDC tests stay signed.
+    if (($fixture['oauth2'] ?? false) !== true) {
+        $response['id_token'] = $token;
+    }
+    return portalweave_sso_test_idp_response($response);
 }, 10, 3);
 
 add_action('init', static function () {

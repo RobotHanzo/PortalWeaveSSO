@@ -95,6 +95,101 @@ function noAuthCookies(response) {
     assert.ok(!(response.headers['set-cookie'] ?? []).some(cookie => /^wordpress_(?:logged_in|sec)_/.test(cookie)), 'Rejected login set a WordPress auth cookie');
 }
 
+async function inspect(jar) {
+    const response = await request('/?portalweave_sso_test_inspect=1', jar);
+    assert.equal(response.status, 200, response.body);
+    return JSON.parse(response.body);
+}
+
+async function administrator() {
+    const jar = new Cookies();
+    await request('/wp-login.php', jar);
+    const body = new URLSearchParams({ log: 'portalweave_sso_e2e_admin', pwd: 'Local-E2E-Fixture-Password-Only-2026!',
+        'wp-submit': 'Log In', redirect_to: `${origin}/wp-admin/`, testcookie: '1' }).toString();
+    const response = await request('/wp-login.php', jar, { method: 'POST', body, headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+    assert.equal(response.status, 302, response.body.slice(0, 1000));
+    const identity = await inspect(jar);
+    assert.equal(identity.login, 'portalweave_sso_e2e_admin');
+    assert.ok(identity.roles.includes('administrator'));
+    return { jar, identity };
+}
+
+const authenticationCookies = jar => [...jar.values].filter(([name]) => /^wordpress_(?:logged_in|sec)_/.test(name)).sort();
+
+async function draftForm(jar) {
+    const response = await request('/wp-admin/options-general.php?page=portalweave-sso&tab=providers&new_provider=1&setup_provider=custom', jar);
+    assert.equal(response.status, 200, response.body.slice(0, 1000));
+    const form = response.body.match(/<form\b[^>]*\bdata-setup-form\b[^>]*>([\s\S]*?)<\/form>/i)?.[1];
+    assert.ok(form, 'The administrator guided setup form is missing');
+    const nonce = form.match(/<input\b(?=[^>]*\bname="_wpnonce")(?=[^>]*\bvalue="([a-f0-9]+)")[^>]*>/i)?.[1];
+    assert.ok(nonce, 'Guided setup did not provide its real WordPress form nonce');
+    const id = `draft-${randomBytes(8).toString('hex')}`;
+    const draft = {
+        provider: 'custom', id, name: `Unsaved ${id}`, callback_registered: '1', protocol: 'oauth2',
+        client_id: 'portalweave-sso-e2e-client', client_secret: 'local-only-draft-secret+with&opaque=bytes', credential_method: 'body',
+        authorize_url: 'https://example.org/portalweave-sso-test-authorize', token_url: 'https://example.org/portalweave-sso-test-token',
+        userinfo_url: 'https://example.org/portalweave-sso-test-userinfo', scope: 'profile email', subject_attribute: 'sub',
+    };
+    const params = new URLSearchParams({ action: 'portalweave_sso_save', _wpnonce: nonce, portalweave_sso_complete: '1',
+        portalweave_sso_screen: 'providers', portalweave_sso_provider: '', portalweave_sso_creating: '1' });
+    for (const [key, value] of Object.entries(draft)) params.set(`settings[provider_setup][${key}]`, value);
+    return { params, draft };
+}
+
+async function submitDraft(jar, params, method = 'POST') {
+    return request('/?portalweave_sso_action=test_setup', jar, {
+        method,
+        ...(method === 'POST' ? { body: params.toString(), headers: { 'Content-Type': 'application/x-www-form-urlencoded' } } : {}),
+    });
+}
+
+async function startDraft(jar, form) {
+    const response = await submitDraft(jar, form.params);
+    assert.equal(response.status, 302, `Draft test start failed: ${response.body.slice(0, 1200)}`);
+    const authorize = new URL(response.headers.location);
+    assert.equal(authorize.origin + authorize.pathname, form.draft.authorize_url);
+    assert.equal(authorize.searchParams.get('client_id'), form.draft.client_id);
+    assert.equal(authorize.searchParams.get('scope'), 'profile email');
+    assert.equal(authorize.searchParams.get('response_type'), 'code');
+    assert.equal(authorize.searchParams.get('code_challenge_method'), 'S256');
+    assert.ok(authorize.searchParams.get('code_challenge')?.length >= 43);
+    assert.ok(authorize.searchParams.get('state')?.length >= 43);
+    assert.equal(authorize.searchParams.get('redirect_uri'), `${origin}/?portalweave_sso_action=callback`);
+    assert.equal(authorize.searchParams.has('nonce'), false, 'OAuth2 unexpectedly used an OIDC nonce parameter');
+    assert.ok(!authorize.href.includes(form.draft.client_secret), 'Draft credentials entered the authorization URL');
+    const stateCookie = response.headers['set-cookie']?.find(value => value.startsWith('__Host-portalweave_sso_'));
+    assert.ok(stateCookie && /; secure/i.test(stateCookie) && /; HttpOnly/i.test(stateCookie) && /SameSite=Lax/i.test(stateCookie), 'Draft test lost browser-bound state');
+    noAuthCookies(response);
+    return authorize;
+}
+
+async function providerIds(jar) {
+    const response = await request('/wp-admin/options-general.php?page=portalweave-sso&tab=providers', jar);
+    assert.equal(response.status, 200, response.body.slice(0, 1000));
+    assert.ok(response.body.includes('portalweave-sso-provider-list'), 'Saved provider list is missing');
+    const ids = new Set();
+    for (const match of response.body.matchAll(/<a\b[^>]*\bhref="([^"]+)"/gi)) {
+        const url = new URL(match[1].replace(/&amp;|&#0*38;|&#x0*26;/gi, '&'), origin);
+        if (url.origin === origin && url.searchParams.get('tab') === 'providers' && url.searchParams.has('provider')) ids.add(url.searchParams.get('provider'));
+    }
+    assert.ok(ids.has('e2e'), 'The previously saved fixture provider disappeared');
+    return [...ids].sort();
+}
+
+async function assertDraftUnchanged(jar, before, cookies, saved, subject) {
+    const after = await inspect(jar);
+    assert.deepEqual({ id: after.id, login: after.login, roles: after.roles }, { id: before.id, login: before.login, roles: before.roles }, 'Draft testing changed the administrator account');
+    assert.deepEqual(authenticationCookies(jar), cookies, 'Draft testing replaced the original administrator session');
+    assert.deepEqual(await providerIds(jar), saved, 'Draft testing persisted or removed a provider');
+    if (subject) {
+        const users = await request(`/wp-admin/users.php?${new URLSearchParams({ s: subject })}`, jar);
+        assert.equal(users.status, 200, users.body.slice(0, 1000));
+        assert.match(users.body, /<table\b[^>]*\bclass=["'][^"']*\busers\b/, 'Unable to inspect the real administrator users table');
+        assert.ok(users.body.includes(`value="${subject}"`), 'The administrator user search did not use the tested provider subject');
+        assert.doesNotMatch(users.body, /\bid=["']user-\d+["']/, 'Connection testing created a provider user account');
+    }
+}
+
 await test('HTTPS authorization-code PKCE login preserves initiator and creates subscriber session', async () => {
     const jar = new Cookies();
     const authorize = await start(jar);
@@ -173,6 +268,106 @@ await test('Administrator Test SSO Config displays attributes and preserves the 
     const after = JSON.parse((await request('/?portalweave_sso_test_inspect=1', jar)).body);
     assert.equal(after.id, before.id, 'Test configuration impersonated the provider user');
     assert.equal(after.login, 'portalweave_sso_e2e_admin');
+});
+
+await test('Unsaved guided provider test completes real HTTPS PKCE without saving or signing in an account', async () => {
+    const { jar, identity } = await administrator();
+    const saved = await providerIds(jar);
+    const cookies = authenticationCookies(jar);
+    const form = await draftForm(jar);
+    assert.ok(!saved.includes(form.draft.id));
+    const authorize = await startDraft(jar, form);
+    const subject = `draft-test-${randomBytes(8).toString('hex')}`;
+    const result = await request(callback(authorize, { oauth2: true, nonce: '', sub: subject }), jar);
+    assert.equal(result.status, 200, result.body);
+    assert.match(result.body, /Connection test succeeded/);
+    assert.match(result.body, /These details have not been saved/);
+    assert.ok(result.body.includes(subject) && result.body.includes('email_verified'), 'Draft test did not display actual profile attributes');
+    assert.ok(!result.body.includes(form.draft.client_secret), 'Draft test displayed the client secret');
+    noAuthCookies(result);
+    await assertDraftUnchanged(jar, identity, cookies, saved, subject);
+});
+
+await test('Unsaved provider callbacks reject a wrong browser and replay while preserving the original session', async () => {
+    const { jar, identity } = await administrator();
+    const saved = await providerIds(jar);
+    const cookies = authenticationCookies(jar);
+    const form = await draftForm(jar);
+    const authorize = await startDraft(jar, form);
+    const subject = `draft-replay-${randomBytes(8).toString('hex')}`;
+    const url = callback(authorize, { oauth2: true, nonce: '', sub: subject });
+    const wrong = await request(url, new Cookies());
+    assert.equal(wrong.status, 403);
+    assert.match(wrong.body, /portalweave_sso_state/);
+    noAuthCookies(wrong);
+    const before = new Cookies(jar);
+    const result = await request(url, jar);
+    assert.equal(result.status, 200, result.body);
+    assert.ok(result.body.includes(subject));
+    noAuthCookies(result);
+    const replay = await request(url, before);
+    assert.equal(replay.status, 403);
+    assert.match(replay.body, /portalweave_sso_state/);
+    noAuthCookies(replay);
+    await assertDraftUnchanged(jar, identity, cookies, saved, subject);
+});
+
+await test('Unsaved test results require the initiating administrator session even with its state cookie', async () => {
+    const first = await administrator();
+    const second = await administrator();
+    const saved = await providerIds(first.jar);
+    const firstCookies = authenticationCookies(first.jar);
+    const secondCookies = authenticationCookies(second.jar);
+    assert.notDeepEqual(firstCookies, secondCookies, 'Fixture did not create independent administrator sessions');
+    const form = await draftForm(first.jar);
+    const authorize = await startDraft(first.jar, form);
+    for (const [name, value] of first.jar.values) if (name.startsWith('__Host-portalweave_sso_')) second.jar.values.set(name, value);
+    const subject = `draft-session-${randomBytes(8).toString('hex')}`;
+    const response = await request(callback(authorize, { oauth2: true, nonce: '', sub: subject }), second.jar);
+    assert.equal(response.status, 403);
+    assert.match(response.body, /portalweave_sso_test_permission/);
+    noAuthCookies(response);
+    await assertDraftUnchanged(first.jar, first.identity, firstCookies, saved, subject);
+    await assertDraftUnchanged(second.jar, second.identity, secondCookies, saved);
+});
+
+await test('Unsaved provider test rejects a mismatched PKCE verifier without changing accounts or settings', async () => {
+    const { jar, identity } = await administrator();
+    const saved = await providerIds(jar);
+    const cookies = authenticationCookies(jar);
+    const form = await draftForm(jar);
+    const authorize = await startDraft(jar, form);
+    const subject = `draft-pkce-${randomBytes(8).toString('hex')}`;
+    const response = await request(callback(authorize, { oauth2: true, nonce: '', sub: subject, challenge: 'mismatched' }), jar);
+    assert.equal(response.status, 403);
+    assert.match(response.body, /portalweave_sso_http_status/);
+    noAuthCookies(response);
+    await assertDraftUnchanged(jar, identity, cookies, saved, subject);
+});
+
+await test('Unsaved test starts reject malformed nonce, incomplete forms and schema without persistence', async () => {
+    const { jar, identity } = await administrator();
+    const saved = await providerIds(jar);
+    const cookies = authenticationCookies(jar);
+    const cases = [
+        ['GET', params => params, 'portalweave_sso_test_permission'],
+        ['POST', params => { params.set('_wpnonce', 'forged'); }, 'portalweave_sso_test_permission'],
+        ['POST', params => { params.delete('_wpnonce'); params.set('_wpnonce[nested]', 'forged'); }, 'portalweave_sso_test_permission'],
+        ['POST', params => { params.delete('portalweave_sso_complete'); }, 'portalweave_sso_form_incomplete'],
+        ['POST', params => { params.delete('settings[provider_setup][client_secret]'); params.set('settings[provider_setup][client_secret][nested]', 'fixture'); }, 'portalweave_sso_provider_setup'],
+        ['POST', params => { params.set('settings[force_auth]', '1'); }, 'portalweave_sso_settings_scope'],
+        ['POST', params => { params.set('settings[provider_setup][id]', 'e2e'); }, 'portalweave_sso_app_exists'],
+    ];
+    for (const [method, mutate, code] of cases) {
+        const { params } = await draftForm(jar);
+        mutate(params);
+        const response = await submitDraft(jar, params, method);
+        assert.equal(response.status, 403, `${code}: ${response.body.slice(0, 1000)}`);
+        assert.ok(response.body.includes(code), `Expected ${code}: ${response.body.slice(0, 1000)}`);
+        noAuthCookies(response);
+        assert.ok(!(response.headers['set-cookie'] ?? []).some(value => value.startsWith('__Host-portalweave_sso_')), 'Rejected draft created OAuth state');
+        await assertDraftUnchanged(jar, identity, cookies, saved);
+    }
 });
 
 console.log(`${tests} HTTPS protocol tests, ${failures} failures`);
