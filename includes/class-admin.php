@@ -49,6 +49,21 @@ final class Admin {
             wp_enqueue_style('portalweave-sso-setup', plugins_url('../assets/provider-setup.css', __FILE__), ['portalweave-sso-admin'], $version . '-' . (string) filemtime($setup_style));
             wp_enqueue_script('portalweave-sso-setup', plugins_url('../assets/provider-setup.js', __FILE__), [], $version . '-' . (string) filemtime($setup_script), ['in_footer' => true, 'strategy' => 'defer']);
         }
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only Appearance navigation loads local preview controls; form saves retain capability and nonce checks.
+        if (self::request_key($_GET, 'tab') === 'appearance' && current_user_can(is_network_admin() ? 'manage_network_options' : 'manage_options')) {
+            $settings = self::settings(is_network_admin());
+            $button = $settings['button'];
+            wp_enqueue_style('portalweave-sso-buttons', plugins_url('../assets/login.css', __FILE__), [], $version . '-' . (string) filemtime(dirname(__DIR__) . '/assets/login.css'));
+            $css = sprintf('#portalweave-sso-appearance-preview .portalweave-sso-login{--portalweave-sso-size:%dpx;--portalweave-sso-radius:%dpx;--portalweave-sso-spacing:%dpx}', $button['size'], $button['radius'], $button['spacing']);
+            wp_add_inline_style('portalweave-sso-buttons', $css . "\n" . Display::wp_login_css($settings['wp_login_button']));
+            $dependencies = [];
+            if (current_user_can('upload_files')) {
+                wp_enqueue_media();
+                $dependencies[] = 'media-editor';
+            }
+            wp_enqueue_style('portalweave-sso-appearance', plugins_url('../assets/appearance.css', __FILE__), ['portalweave-sso-admin', 'portalweave-sso-buttons'], $version . '-' . (string) filemtime(dirname(__DIR__) . '/assets/appearance.css'));
+            wp_enqueue_script('portalweave-sso-appearance', plugins_url('../assets/appearance.js', __FILE__), $dependencies, $version . '-' . (string) filemtime(dirname(__DIR__) . '/assets/appearance.js'), ['in_footer' => true, 'strategy' => 'defer']);
+        }
     }
 
     private static function is_network_request(): bool {
@@ -112,6 +127,10 @@ final class Admin {
             // phpcs:ignore WordPress.Security.NonceVerification.Missing -- The period is a bounded navigation value, never a settings mutation.
             $args['activity_days'] = self::activity_days($_POST, 'portalweave_sso_activity_days');
         }
+        if ($screen === 'appearance') {
+            // phpcs:ignore WordPress.Security.NonceVerification.Missing -- An allowlisted presentation tab is retained only after the action's nonce checks.
+            $args['appearance_section'] = self::appearance_section($_POST, 'portalweave_sso_appearance_section');
+        }
         $url = self::screen_url($screen ?: 'overview', $network, $args);
         return $notice === '' ? $url : add_query_arg('portalweave_sso_notice', $notice, $url);
     }
@@ -148,6 +167,11 @@ final class Admin {
     private static function provider_section(array $values, string $key): string {
         $section = self::request_key($values, $key);
         return isset(self::provider_sections()[$section]) ? $section : 'connection';
+    }
+
+    private static function appearance_section(array $values, string $key): string {
+        $section = self::request_key($values, $key);
+        return in_array($section, ['shared', 'wordpress'], true) ? $section : 'shared';
     }
 
     private static function activity_view(array $values, string $key, string $default = 'overview'): string {
@@ -188,7 +212,7 @@ final class Admin {
         if (!$input) {
             self::fail(__('No settings were submitted. Check the server POST size limit.', 'portalweave-sso'), $network);
         }
-        foreach (['portalweave_sso_screen', 'portalweave_sso_provider', 'portalweave_sso_creating', 'portalweave_sso_provider_section', 'portalweave_sso_activity_view', 'portalweave_sso_activity_days'] as $key) {
+        foreach (['portalweave_sso_screen', 'portalweave_sso_provider', 'portalweave_sso_creating', 'portalweave_sso_provider_section', 'portalweave_sso_activity_view', 'portalweave_sso_activity_days', 'portalweave_sso_appearance_section'] as $key) {
             if (isset($_POST[$key]) && !is_string($_POST[$key])) {
                 self::fail(__('The settings screen is invalid. Reload the page and try again.', 'portalweave-sso'), $network);
             }
@@ -299,7 +323,7 @@ final class Admin {
                 }
                 unset($provider);
                 $value = $key === 'new_app' ? $providers['new'] : $providers;
-            } elseif (in_array($key, ['button', 'support', 'modules'], true)) {
+            } elseif (in_array($key, ['button', 'wp_login_button', 'support', 'modules'], true)) {
                 if (!is_array($value)) {
                     return new \WP_Error('portalweave_sso_form_type', __('Invalid settings form fields.', 'portalweave-sso'));
                 }
@@ -382,6 +406,9 @@ final class Admin {
         }
         if (isset($settings['button']['custom_css'])) {
             $settings['button']['custom_css'] = '';
+        }
+        if (isset($settings['wp_login_button']['icon_url'])) {
+            $settings['wp_login_button']['icon_url'] = preg_replace('/[?#].*$/', '', (string) $settings['wp_login_button']['icon_url']);
         }
         return $settings;
     }
@@ -738,23 +765,8 @@ final class Admin {
         $media_help = sprintf(__('Protecting an attachment relocates its original and derivatives outside the web document root. WordPress URLs then use the authenticated delivery endpoint. Configure a writable %s in wp-config.php; the default is a private sibling directory of ABSPATH. Purge previously cached files from web-server and CDN caches. Restoring public access moves files back to their original upload paths.', 'portalweave-sso'), '<code>PORTALWEAVE_SSO_PRIVATE_MEDIA_DIR</code>');
         echo '<div class="portalweave-sso-callout"><strong>' . esc_html__('Protected media delivery', 'portalweave-sso') . '</strong><p>' . wp_kses($media_help, ['code' => []]) . '</p></div>';
         } elseif ($screen === 'appearance') {
-        /* translators: %s: login button shortcode, displayed as code. */
-        $placement = sprintf(__('Use %s, the PortalWeave SSO widget, or the WooCommerce login form.', 'portalweave-sso'), '<code>[sso_oauth_login]</code>');
-        echo '<section id="portalweave-sso-appearance" class="portalweave-sso-section"><h3>' . esc_html__('Login button and widget', 'portalweave-sso') . '</h3><p>' . wp_kses($placement, ['code' => []]) . '</p>';
-        $button = $settings['button'];
-        self::select('settings[button][theme]', $button['theme'], __('Button theme', 'portalweave-sso'), ['default' => __('Default', 'portalweave-sso'), 'white' => __('White', 'portalweave-sso'), 'hover' => __('Hover', 'portalweave-sso'), 'custom' => __('Custom', 'portalweave-sso'), 'smart' => __('Smart', 'portalweave-sso')]);
-        self::select('settings[button][shape]', $button['shape'], __('Button shape', 'portalweave-sso'), ['round' => __('Round', 'portalweave-sso'), 'round-edge' => __('Round edge', 'portalweave-sso'), 'square' => __('Square', 'portalweave-sso'), 'long' => __('Long', 'portalweave-sso')]);
-        self::field('settings[button][text]', $button['text'], __('Default button text', 'portalweave-sso'), 'text', __('Use {app} for the provider name. Each app can override this text.', 'portalweave-sso'));
-        self::field('settings[button][above_text]', $button['above_text'], __('Text above the widget', 'portalweave-sso'));
-        foreach (['size' => __('Font size (px)', 'portalweave-sso'), 'radius' => __('Corner curve (px)', 'portalweave-sso'), 'spacing' => __('Button spacing (px)', 'portalweave-sso')] as $key => $label) {
-            self::field('settings[button][' . $key . ']', $button[$key], $label, 'number');
-        }
-        self::check('settings[button][shadow]', $button['shadow'], __('Show button shadows', 'portalweave-sso'));
-        self::check('settings[button][transform]', $button['transform'], __('Animate buttons on hover', 'portalweave-sso'));
-        self::check('settings[button][admin_style]', $button['admin_style'], __('Apply styling on the WordPress login screen', 'portalweave-sso'));
-        self::field('settings[button][custom_css]', $button['custom_css'], __('Custom button CSS', 'portalweave-sso'), 'textarea', __('Scope rules to .portalweave-sso-login to avoid affecting unrelated site elements. Only trusted administrators can configure CSS.', 'portalweave-sso'));
-        self::field('settings[button][logout_message]', $button['logout_message'], __('Logged-in message', 'portalweave-sso'), 'textarea', __('Placeholders: ##user## for the display name and ##Sign Out## for the logout link.', 'portalweave-sso'));
-        self::check('settings[button][logout_link]', $button['logout_link'], __('Show a logout link', 'portalweave-sso'));
+            self::appearance($settings);
+            return;
         } elseif ($screen === 'modules') {
         echo '<section id="portalweave-sso-modules" class="portalweave-sso-section"><h3>' . esc_html__('Provisioning and add-on modules', 'portalweave-sso') . '</h3><p>' . esc_html__('Modules are bundled and opt in. Each endpoint enforces the corresponding toggle and its own authentication.', 'portalweave-sso') . '</p>';
         foreach (['scim' => __('SCIM user provisioning', 'portalweave-sso'), 'jwt_sso' => __('JWT Single Sign-On', 'portalweave-sso'), 'shared_sso' => __('SSO into multiple subdomain apps', 'portalweave-sso'), 'guest' => __('Guest User Login', 'portalweave-sso'), 'moderation' => __('User Moderation', 'portalweave-sso'), 'avatar' => __('Profile Picture / Gravatar mapping', 'portalweave-sso'), 'attribute_redirect' => __('Attribute Based Redirection', 'portalweave-sso')] as $key => $label) {
@@ -786,13 +798,134 @@ final class Admin {
         echo '</section>';
     }
 
-    private static function field(string $name, $value, string $label, string $type = 'text', string $help = ''): void {
+    private static function appearance(array $settings): void {
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- An allowlisted Appearance tab selects presentation only; both panels use the same protected scoped save.
+        $section = self::appearance_section($_GET, 'appearance_section');
+        $button = $settings['button'];
+        $style = array_replace(Config::wp_login_button_defaults(), $settings['wp_login_button']);
+        echo '<input type="hidden" name="portalweave_sso_appearance_section" value="' . esc_attr($section) . '"><section id="portalweave-sso-appearance" class="portalweave-sso-section portalweave-sso-appearance-editor" data-appearance-editor data-appearance-section="' . esc_attr($section) . '" data-icon-invalid="' . esc_attr__('Use an HTTPS image URL without embedded credentials or a fragment.', 'portalweave-sso') . '" data-icon-error="' . esc_attr__('The preview image could not be loaded. Check the image URL.', 'portalweave-sso') . '"><nav class="portalweave-sso-appearance-tabs" data-appearance-tabs aria-label="' . esc_attr__('Appearance sections', 'portalweave-sso') . '">';
+        foreach (['shared' => __('Shared buttons', 'portalweave-sso'), 'wordpress' => __('WordPress sign-in', 'portalweave-sso')] as $key => $label) {
+            echo '<a href="#portalweave-sso-appearance-panel-' . esc_attr($key) . '" id="portalweave-sso-appearance-tab-' . esc_attr($key) . '" data-appearance-tab="' . esc_attr($key) . '"' . ($section === $key ? ' class="is-active"' : '') . '>' . esc_html($label) . '</a>';
+        }
+        echo '</nav><div class="portalweave-sso-appearance-layout"><div class="portalweave-sso-appearance-controls"><section id="portalweave-sso-appearance-panel-shared" data-appearance-panel="shared"><h3>' . esc_html__('Shared buttons', 'portalweave-sso') . '</h3>';
+        /* translators: %s: login button shortcode, displayed as code. */
+        $placement = sprintf(__('Use %s, the PortalWeave SSO widget, or the WooCommerce login form.', 'portalweave-sso'), '<code>[sso_oauth_login]</code>');
+        echo '<p>' . wp_kses($placement, ['code' => []]) . '</p>';
+        self::select('settings[button][theme]', $button['theme'], __('Button theme', 'portalweave-sso'), ['default' => __('Default', 'portalweave-sso'), 'white' => __('White', 'portalweave-sso'), 'hover' => __('Hover', 'portalweave-sso'), 'custom' => __('Custom', 'portalweave-sso'), 'smart' => __('Smart', 'portalweave-sso')]);
+        self::select('settings[button][shape]', $button['shape'], __('Button shape', 'portalweave-sso'), ['round' => __('Round', 'portalweave-sso'), 'round-edge' => __('Round edge', 'portalweave-sso'), 'square' => __('Square', 'portalweave-sso'), 'long' => __('Long', 'portalweave-sso')]);
+        self::field('settings[button][text]', $button['text'], __('Default button text', 'portalweave-sso'), 'text', __('Use {app} for the provider name. Each app can override this text.', 'portalweave-sso'));
+        self::field('settings[button][above_text]', $button['above_text'], __('Text above the widget', 'portalweave-sso'));
+        foreach (['size' => __('Font size (px)', 'portalweave-sso'), 'radius' => __('Corner curve (px)', 'portalweave-sso'), 'spacing' => __('Button spacing (px)', 'portalweave-sso')] as $key => $label) {
+            self::field('settings[button][' . $key . ']', $button[$key], $label, 'number');
+        }
+        self::check('settings[button][shadow]', $button['shadow'], __('Show button shadows', 'portalweave-sso'));
+        self::check('settings[button][transform]', $button['transform'], __('Animate buttons on hover', 'portalweave-sso'));
+        self::check('settings[button][admin_style]', $button['admin_style'], __('Apply shared styling on the WordPress login screen', 'portalweave-sso'), __('This choice is retained when custom WordPress sign-in styling is off.', 'portalweave-sso'));
+        self::field('settings[button][custom_css]', $button['custom_css'], __('Custom button CSS', 'portalweave-sso'), 'textarea', __('Scope rules to .portalweave-sso-login to avoid affecting unrelated site elements. Only trusted administrators can configure CSS.', 'portalweave-sso'));
+        self::field('settings[button][logout_message]', $button['logout_message'], __('Logged-in message', 'portalweave-sso'), 'textarea', __('Placeholders: ##user## for the display name and ##Sign Out## for the logout link.', 'portalweave-sso'));
+        self::check('settings[button][logout_link]', $button['logout_link'], __('Show a logout link', 'portalweave-sso'));
+        echo '</section><section id="portalweave-sso-appearance-panel-wordpress" data-appearance-panel="wordpress"><h3>' . esc_html__('WordPress sign-in', 'portalweave-sso') . '</h3><p>' . esc_html__('Customize provider buttons on the WordPress sign-in page. Shortcode, widget and WooCommerce buttons keep the shared appearance.', 'portalweave-sso') . '</p>';
+        self::check('settings[wp_login_button][enabled]', $style['enabled'], __('Customize WordPress sign-in buttons', 'portalweave-sso'), __('Turn this off to inherit the shared settings, including the choice to leave WordPress login styling off. Your custom values are retained. Shared custom CSS is not applied while this customization is on.', 'portalweave-sso'));
+        echo '<fieldset class="portalweave-sso-appearance-group"><legend>' . esc_html__('Button text', 'portalweave-sso') . '</legend>';
+        self::field('settings[wp_login_button][text]', $style['text'], __('WordPress button text', 'portalweave-sso'), 'text', __('Use {app} for the provider name. Leave blank to inherit the provider label or shared template. Maximum 200 characters.', 'portalweave-sso'), ['maxlength' => 200]);
+        echo '</fieldset><fieldset class="portalweave-sso-appearance-group"><legend>' . esc_html__('Colors', 'portalweave-sso') . '</legend><div class="portalweave-sso-appearance-presets" data-appearance-presets>';
+        foreach (['light' => [__('Light', 'portalweave-sso'), __('Light preset applied. Custom WordPress styling is on. Save changes to keep it.', 'portalweave-sso')], 'blue' => [__('Blue', 'portalweave-sso'), __('Blue preset applied. Custom WordPress styling is on. Save changes to keep it.', 'portalweave-sso')], 'dark' => [__('Dark', 'portalweave-sso'), __('Dark preset applied. Custom WordPress styling is on. Save changes to keep it.', 'portalweave-sso')]] as $key => [$label, $message]) {
+            echo '<button type="button" class="button button-secondary" data-appearance-preset="' . esc_attr($key) . '" data-preset-message="' . esc_attr($message) . '" hidden>' . esc_html($label) . '</button>';
+        }
+        echo '</div><div class="portalweave-sso-color-fields">';
+        foreach (['background' => __('Background', 'portalweave-sso'), 'text_color' => __('Text color', 'portalweave-sso'), 'border_color' => __('Border color', 'portalweave-sso'), 'hover_background' => __('Hover background', 'portalweave-sso'), 'hover_text_color' => __('Hover text color', 'portalweave-sso')] as $key => $label) {
+            self::appearance_color($key, $style[$key], $label);
+        }
+        echo '</div></fieldset><fieldset class="portalweave-sso-appearance-group"><legend>' . esc_html__('Size and spacing', 'portalweave-sso') . '</legend><div class="portalweave-sso-dimension-fields">';
+        foreach (['radius' => [__('Corner radius (px)', 'portalweave-sso'), 0, 50], 'font_size' => [__('Font size (px)', 'portalweave-sso'), 10, 32], 'padding_y' => [__('Vertical padding (px)', 'portalweave-sso'), 8, 24], 'padding_x' => [__('Horizontal padding (px)', 'portalweave-sso'), 8, 40]] as $key => [$label, $min, $max]) {
+            self::field('settings[wp_login_button][' . $key . ']', $style[$key], $label, 'number', '', ['min' => $min, 'max' => $max]);
+        }
+        echo '</div>';
+        self::check('settings[wp_login_button][full_width]', $style['full_width'], __('Use the full sign-in form width', 'portalweave-sso'));
+        self::check('settings[wp_login_button][shadow]', $style['shadow'], __('Show a button shadow', 'portalweave-sso'));
+        echo '</fieldset><fieldset class="portalweave-sso-appearance-group"><legend>' . esc_html__('Icon', 'portalweave-sso') . '</legend>';
+        self::select('settings[wp_login_button][icon_source]', $style['icon_source'], __('Icon source', 'portalweave-sso'), ['provider' => __('Provider icon', 'portalweave-sso'), 'custom' => __('Custom image', 'portalweave-sso'), 'none' => __('No icon', 'portalweave-sso')], __('Provider icons use the provider image when available and a generic icon otherwise.', 'portalweave-sso'));
+        echo '<div data-appearance-custom-icon>';
+        self::field('settings[wp_login_button][icon_url]', $style['icon_url'], __('Custom icon URL', 'portalweave-sso'), 'url', __('Use an HTTPS image URL without embedded credentials or a fragment. You can paste a URL without using the media library.', 'portalweave-sso'), ['maxlength' => 2048, 'pattern' => 'https://.+']);
+        echo '<div class="portalweave-sso-appearance-media-actions">';
+        if (current_user_can('upload_files')) {
+            echo '<button type="button" class="button button-secondary" data-appearance-media data-media-title="' . esc_attr__('Choose a sign-in button icon', 'portalweave-sso') . '" data-media-button="' . esc_attr__('Use this image', 'portalweave-sso') . '" data-media-message="' . esc_attr__('Custom image selected. Save changes to keep it.', 'portalweave-sso') . '" hidden>' . esc_html__('Choose image', 'portalweave-sso') . '</button>';
+        }
+        echo '<button type="button" class="button button-secondary" data-appearance-remove data-remove-message="' . esc_attr__('Custom image cleared. Choose another image, provider icons or no icon before saving.', 'portalweave-sso') . '" hidden>' . esc_html__('Remove image', 'portalweave-sso') . '</button></div></div><div class="portalweave-sso-dimension-fields">';
+        self::field('settings[wp_login_button][icon_size]', $style['icon_size'], __('Icon size (px)', 'portalweave-sso'), 'number', '', ['min' => 12, 'max' => 48]);
+        self::select('settings[wp_login_button][icon_position]', $style['icon_position'], __('Icon position', 'portalweave-sso'), ['left' => __('Left of text', 'portalweave-sso'), 'right' => __('Right of text', 'portalweave-sso')]);
+        echo '</div></fieldset></section></div>';
+        self::appearance_preview($settings, $style, $section);
+        echo '</div></section>';
+    }
+
+    private static function appearance_color(string $key, string $value, string $label): void {
+        $id = 'portalweave-sso-wp-color-' . $key;
+        $color = sanitize_hex_color($value) ?: '#ffffff';
+        if (strlen($color) === 4) {
+            $color = '#' . $color[1] . $color[1] . $color[2] . $color[2] . $color[3] . $color[3];
+        }
+        echo '<div class="portalweave-sso-appearance-color"><label for="' . esc_attr($id) . '">' . esc_html($label) . '</label><input type="text" id="' . esc_attr($id) . '" name="settings[wp_login_button][' . esc_attr($key) . ']" value="' . esc_attr($value) . '" pattern="#[a-fA-F0-9]{3}([a-fA-F0-9]{3})?" maxlength="7" required spellcheck="false" data-appearance-color="' . esc_attr($key) . '" aria-describedby="' . esc_attr($id . '-help') . '"><input type="color" value="' . esc_attr($color) . '" data-appearance-swatch="' . esc_attr($key) . '" aria-label="' . esc_attr($label) . '" hidden><p class="description" id="' . esc_attr($id . '-help') . '">' . esc_html__('Hex color, for example #ffffff.', 'portalweave-sso') . '</p></div>';
+    }
+
+    private static function appearance_preview(array $settings, array $style, string $section): void {
+        $apps = [];
+        foreach ($settings['apps'] as $id => $app) {
+            $apps[$id] = ['name' => $app['name'] ?: (string) $id, 'text' => $app['button_text'] ?? '', 'icon' => Display::provider_icon($app), 'shared_icon' => !empty($app['icon_url']) && Config::https_url($app['icon_url']) ? $app['icon_url'] : ''];
+        }
+        uksort($apps, static fn($first, $second) => strcasecmp($apps[$first]['name'], $apps[$second]['name']) ?: strcmp((string) $first, (string) $second));
+        $sample = !$apps;
+        if ($sample) {
+            $apps['example'] = ['name' => __('Example provider', 'portalweave-sso'), 'text' => '', 'icon' => Display::provider_icon(['provider' => 'custom']), 'shared_icon' => ''];
+        }
+        $selected = isset($apps[$settings['default_app']]) ? $settings['default_app'] : array_key_first($apps);
+        $app = $apps[$selected];
+        $custom = $section === 'wordpress' && !empty($style['enabled']);
+        $shared = $settings['button'];
+        $styled = $section === 'shared' || $custom || !empty($shared['admin_style']);
+        $label = $app['text'] ?: str_replace('{app}', $app['name'], $shared['text']);
+        if ($custom) {
+            $label = $style['text'] !== '' ? str_replace('{app}', $app['name'], $style['text']) : $label;
+            if ($label === '') {
+            /* translators: %s: provider name. */
+                $label = sprintf(__('Sign in with %s', 'portalweave-sso'), $app['name']);
+            }
+        }
+        $theme = $custom ? 'custom' : (in_array($shared['theme'], ['default', 'white', 'hover', 'custom', 'smart'], true) ? $shared['theme'] : 'default');
+        $shape = $custom ? 'round-edge' : str_replace('_', '-', $shared['shape']);
+        $classes = $styled ? 'portalweave-sso-button portalweave-sso-theme-' . $theme . ' portalweave-sso-shape-' . $shape : 'portalweave-sso-preview-unstyled';
+        $classes .= ($custom ? $style['shadow'] : $shared['shadow']) && $styled ? ' portalweave-sso-shadow' : '';
+        $classes .= !$custom && $shared['transform'] && $styled ? ' portalweave-sso-transform' : '';
+        $classes .= $custom && $style['icon_position'] === 'right' ? ' portalweave-sso-icon-right' : '';
+        $icon = $custom ? ($style['icon_source'] === 'custom' ? $style['icon_url'] : ($style['icon_source'] === 'provider' ? $app['icon'] : '')) : $app['shared_icon'];
+        $icon = $icon !== '' && Config::https_url($icon) ? $icon : '';
+        $custom_note = __('Custom WordPress sign-in styling is on. Save changes to apply it.', 'portalweave-sso');
+        $shared_note = __('Shared button preview. WordPress sign-in can use its own appearance.', 'portalweave-sso');
+        $inherit_note = __('WordPress sign-in inherits the shared button settings. Custom CSS and theme styles can affect the final appearance.', 'portalweave-sso');
+        $unstyled_note = __('Shared WordPress login styling is off. Your theme controls the provider links until you enable styling.', 'portalweave-sso');
+        echo '<aside class="portalweave-sso-appearance-preview" id="portalweave-sso-appearance-preview" aria-label="' . esc_attr__('Button appearance preview', 'portalweave-sso') . '"><h3>' . esc_html__('Preview', 'portalweave-sso') . '</h3><label for="portalweave-sso-preview-provider">' . esc_html__('Preview provider', 'portalweave-sso') . '</label><select id="portalweave-sso-preview-provider" data-appearance-provider>';
+        foreach ($apps as $id => $provider) {
+            echo '<option value="' . esc_attr((string) $id) . '" data-provider-name="' . esc_attr($provider['name']) . '" data-provider-text="' . esc_attr($provider['text']) . '" data-provider-icon="' . esc_url($provider['icon']) . '" data-shared-icon="' . esc_url($provider['shared_icon']) . '"' . selected($selected, $id, false) . '>' . esc_html($provider['name']) . '</option>';
+        }
+        echo '</select><div class="portalweave-sso-preview-canvas"><div class="portalweave-sso-login' . ($custom ? ' portalweave-sso-login-screen' : '') . '" data-appearance-preview-root><p class="portalweave-sso-label" data-appearance-preview-above' . ($shared['above_text'] === '' ? ' hidden' : '') . '>' . esc_html($shared['above_text']) . '</p><button type="button" class="' . esc_attr($classes) . '" data-appearance-preview-button><img class="portalweave-sso-icon" data-appearance-preview-icon alt="" referrerpolicy="no-referrer"' . ($icon !== '' ? ' src="' . esc_url($icon) . '"' : ' hidden') . '><span class="portalweave-sso-mark" data-appearance-preview-mark aria-hidden="true"' . ($custom || $icon !== '' ? ' hidden' : '') . '>' . esc_html(strtoupper(mb_substr($app['name'], 0, 1))) . '</span><span data-appearance-preview-label>' . esc_html($label) . '</span></button></div></div><p class="portalweave-sso-preview-note" data-appearance-note data-note-shared="' . esc_attr($shared_note) . '" data-note-custom="' . esc_attr($custom_note) . '" data-note-inherit="' . esc_attr($inherit_note) . '" data-note-unstyled="' . esc_attr($unstyled_note) . '" data-default-template="' . esc_attr__('Sign in with {app}', 'portalweave-sso') . '">' . esc_html($section === 'shared' ? $shared_note : ($custom ? $custom_note : ($styled ? $inherit_note : $unstyled_note))) . '</p><p class="portalweave-sso-preview-note">' . esc_html__('Preview only. This button does not start sign-in.', 'portalweave-sso') . '</p>';
+        if ($sample) {
+            echo '<p class="portalweave-sso-preview-note">' . esc_html__('No providers are configured. This preview uses a fictional provider.', 'portalweave-sso') . '</p>';
+        }
+        echo '<p class="portalweave-sso-appearance-status" data-appearance-status role="status" aria-live="polite" aria-atomic="true"></p></aside>';
+    }
+
+    private static function field(string $name, $value, string $label, string $type = 'text', string $help = '', array $attributes = []): void {
         $id = 'portalweave-sso-' . substr(md5($name), 0, 12);
         echo '<div class="portalweave-sso-field"><label for="' . esc_attr($id) . '">' . esc_html($label) . '</label>';
         if ($type === 'textarea') {
             echo '<textarea id="' . esc_attr($id) . '" name="' . esc_attr($name) . '" rows="4" spellcheck="false"' . ($help !== '' ? ' aria-describedby="' . esc_attr($id . '-help') . '"' : '') . '>' . esc_textarea((string) $value) . '</textarea>';
         } else {
-            echo '<input id="' . esc_attr($id) . '" name="' . esc_attr($name) . '" type="' . esc_attr($type) . '" value="' . esc_attr((string) $value) . '"' . ($type === 'number' ? ' min="0" step="1"' : '') . ($help !== '' ? ' aria-describedby="' . esc_attr($id . '-help') . '"' : '') . ' autocomplete="off">';
+            echo '<input id="' . esc_attr($id) . '" name="' . esc_attr($name) . '" type="' . esc_attr($type) . '" value="' . esc_attr((string) $value) . '"' . ($help !== '' ? ' aria-describedby="' . esc_attr($id . '-help') . '"' : '') . ' autocomplete="off"';
+            $attributes = $type === 'number' ? array_replace(['min' => 0, 'step' => 1], $attributes) : $attributes;
+            foreach (array_intersect_key($attributes, array_fill_keys(['min', 'max', 'step', 'maxlength', 'pattern'], true)) as $attribute => $setting) {
+                echo ' ' . esc_attr($attribute) . '="' . esc_attr((string) $setting) . '"';
+            }
+            echo '>';
         }
         if ($help !== '') {
             echo '<p class="description" id="' . esc_attr($id . '-help') . '">' . esc_html($help) . '</p>';
