@@ -22,7 +22,7 @@ wpsso_test('Administrator settings render all panels without revealing stored cr
             ob_start();
             \WPSSO\Admin::page();
             $html = ob_get_clean();
-            wpsso_assert(str_contains($html, 'WordPress SSO'), 'Admin page missing title');
+            wpsso_assert(str_contains($html, 'STSA Identity SSO'), 'Admin page missing title');
             wpsso_assert(!str_contains($html, $app['client_secret']), 'Stored secret rendered');
         }
     } finally { $_GET = $original_get; }
