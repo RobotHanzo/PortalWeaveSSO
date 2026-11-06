@@ -333,7 +333,9 @@ final class Auth {
         if (!is_string($encrypted) || $encrypted === '') {
             return new \WP_Error('wpsso_token_storage', __('Encrypted token storage is unavailable.', 'wpsso'));
         }
-        update_user_meta($user_id, '_wpsso_tokens_' . sanitize_key($app_id), $encrypted);
+        if (update_user_meta($user_id, '_wpsso_tokens_' . sanitize_key($app_id), $encrypted) === false) {
+            return new \WP_Error('wpsso_token_storage', __('The encrypted session tokens could not be saved.', 'wpsso'));
+        }
         return true;
     }
 
