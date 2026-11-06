@@ -155,6 +155,10 @@ final class Admin {
             $args['activity_view'] = self::activity_view($_POST, 'portalweave_sso_activity_view', 'audit');
             // phpcs:ignore WordPress.Security.NonceVerification.Missing -- The period is a bounded navigation value, never a settings mutation.
             $args['activity_days'] = self::activity_days($_POST, 'portalweave_sso_activity_days');
+            // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Bounded audit navigation is retained only after the action's nonce checks and is never stored.
+            $args['audit_page'] = self::audit_number($_POST, 'portalweave_sso_audit_page', 1);
+            // phpcs:ignore WordPress.Security.NonceVerification.Missing -- This integer ceiling chooses only a local retained-history view.
+            $args['audit_snapshot'] = self::audit_number($_POST, 'portalweave_sso_audit_snapshot');
         }
         if ($screen === 'appearance') {
             // phpcs:ignore WordPress.Security.NonceVerification.Missing -- An allowlisted presentation tab is retained only after the action's nonce checks.
@@ -222,6 +226,11 @@ final class Admin {
         return in_array($days, ['7', '30', '90'], true) ? (int) $days : 30;
     }
 
+    private static function audit_number(array $values, string $key, int $fallback = 0): int {
+        $value = $values[$key] ?? null;
+        return is_string($value) && strlen($value) <= 20 && ctype_digit($value) && (int) $value > 0 ? (int) $value : $fallback;
+    }
+
     private static function screen_url(string $screen, bool $network, array $args = []): string {
         $screen = isset(self::screens()[$screen]) ? $screen : 'overview';
         $base = $network ? network_admin_url('admin.php') : admin_url('admin.php');
@@ -250,7 +259,7 @@ final class Admin {
         if (!$input) {
             self::fail(__('No settings were submitted. Check the server POST size limit.', 'portalweave-sso'), $network);
         }
-        foreach (['portalweave_sso_screen', 'portalweave_sso_provider', 'portalweave_sso_creating', 'portalweave_sso_provider_section', 'portalweave_sso_activity_view', 'portalweave_sso_activity_days', 'portalweave_sso_appearance_section', 'portalweave_sso_integration_section'] as $key) {
+        foreach (['portalweave_sso_screen', 'portalweave_sso_provider', 'portalweave_sso_creating', 'portalweave_sso_provider_section', 'portalweave_sso_activity_view', 'portalweave_sso_activity_days', 'portalweave_sso_appearance_section', 'portalweave_sso_integration_section', 'portalweave_sso_audit_page', 'portalweave_sso_audit_snapshot'] as $key) {
             if (isset($_POST[$key]) && !is_string($_POST[$key])) {
                 self::fail(__('The settings screen is invalid. Reload the page and try again.', 'portalweave-sso'), $network);
             }
@@ -582,6 +591,7 @@ final class Admin {
         } else {
             $activity_view = '';
             $activity_days = 30;
+            $audit_context = ['page' => 1, 'snapshot' => 0];
             if ($screen === 'reports') {
                 // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation is restricted to the two Activity views.
                 $activity_view = self::activity_view($_GET, 'activity_view');
@@ -591,13 +601,14 @@ final class Admin {
                 if ($activity_view === 'overview') {
                     self::activity_overview($activity_days, $network);
                 } else {
-                    self::reports($settings, $network);
+                    $audit_context = self::reports($settings, $network, $activity_days);
                 }
             }
             if ($screen !== 'reports' || $activity_view === 'audit') {
             echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" class="portalweave-sso-settings-form" data-pending-label="' . esc_attr__('Saving…', 'portalweave-sso') . '" data-pending-message="' . esc_attr__('Saving your changes…', 'portalweave-sso') . '"><input type="hidden" name="action" value="portalweave_sso_save"><input type="hidden" name="portalweave_sso_screen" value="' . esc_attr($screen) . '">';
             if ($screen === 'reports') {
                 echo '<input type="hidden" name="portalweave_sso_activity_view" value="audit"><input type="hidden" name="portalweave_sso_activity_days" value="' . esc_attr((string) $activity_days) . '">';
+                echo '<input type="hidden" name="portalweave_sso_audit_page" value="' . esc_attr((string) $audit_context['page']) . '"><input type="hidden" name="portalweave_sso_audit_snapshot" value="' . esc_attr((string) $audit_context['snapshot']) . '">';
             }
             wp_nonce_field('portalweave_sso_save');
             self::hidden_scope($network);
@@ -1132,25 +1143,75 @@ final class Admin {
         ActivityView::render(Audit::summary($days), $provider_names, $period_urls, $days, (bool) Config::get('audit_enabled', true));
     }
 
-    private static function reports(array $settings, bool $network): void {
+    private static function reports(array $settings, bool $network, int $days = 30): array {
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- These bounded integers select read-only history; the page capability check gates all audit output.
+        $page = self::audit_number($_GET, 'audit_page', 1);
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- An integer row ceiling only stabilizes navigation through this site's retained audit events.
+        $snapshot = self::audit_number($_GET, 'audit_snapshot');
+        $history = Audit::page($page, 50, $snapshot);
         $url = wp_nonce_url(add_query_arg(['action' => 'portalweave_sso_export', 'kind' => 'audit', 'network' => $network ? 1 : 0], admin_url('admin-post.php')), 'portalweave_sso_export');
-        echo '<section id="portalweave-sso-reports" class="portalweave-sso-section"><div class="portalweave-sso-section-title"><h2>' . esc_html__('SSO transaction and login audit', 'portalweave-sso') . '</h2><a class="button" href="' . esc_url($url) . '">' . esc_html__('Export audit CSV', 'portalweave-sso') . '</a></div><p>' . esc_html__('Most recent 100 transactions for this site. Timestamps are UTC. Export contains up to 5,000 rows.', 'portalweave-sso') . '</p><div class="portalweave-sso-table-scroll"><table class="widefat striped"><thead><tr>';
+        echo '<section id="portalweave-sso-reports" class="portalweave-sso-section"><div class="portalweave-sso-section-title"><h2>' . esc_html__('SSO transaction and login audit', 'portalweave-sso') . '</h2><a class="button" href="' . esc_url($url) . '">' . esc_html__('Export audit CSV', 'portalweave-sso') . '</a></div><p>' . esc_html__('Retained events for this site, newest first, 50 per page. Timestamps are UTC. CSV exports the latest 5,000 rows independently of this page.', 'portalweave-sso') . '</p>';
+        if (is_wp_error($history)) {
+            echo '<div class="notice notice-error inline"><p>' . esc_html($history->get_error_message()) . '</p></div></section>';
+            return ['page' => $page, 'snapshot' => $snapshot];
+        }
+        self::audit_pagination($history, $network, $days, 'top');
+        echo '<div class="portalweave-sso-table-scroll" tabindex="0" role="region" aria-label="' . esc_attr__('Audit events', 'portalweave-sso') . '"><table class="widefat striped"><thead><tr>';
         foreach ([__('User', 'portalweave-sso'), __('Status', 'portalweave-sso'), __('App', 'portalweave-sso'), __('Date (UTC)', 'portalweave-sso'), __('Email', 'portalweave-sso'), __('Client IP', 'portalweave-sso'), __('Navigation URL', 'portalweave-sso'), __('Error code', 'portalweave-sso')] as $label) {
             echo '<th scope="col">' . esc_html($label) . '</th>';
         }
         echo '</tr></thead><tbody>';
-        $rows = Audit::recent(['limit' => 100]);
+        $rows = $history['rows'];
         foreach ($rows as $row) {
-            echo '<tr>';
+            echo '<tr data-audit-id="' . esc_attr((string) $row['id']) . '">';
             foreach (['username', 'status', 'app', 'created_at', 'email', 'client_ip', 'navigation', 'error_code'] as $key) {
                 echo '<td>' . esc_html((string) ($row[$key] ?? '')) . '</td>';
             }
             echo '</tr>';
         }
         if (!$rows) {
-            echo '<tr><td colspan="8">' . esc_html__('No SSO transactions recorded yet.', 'portalweave-sso') . '</td></tr>';
+            echo '<tr><td colspan="8">' . esc_html__('No retained events in this view. Refresh latest to check for new events.', 'portalweave-sso') . '</td></tr>';
         }
-        echo '</tbody></table></div></section>';
+        echo '</tbody></table></div>';
+        self::audit_pagination($history, $network, $days, 'bottom');
+        echo '</section>';
+        return ['page' => $history['page'], 'snapshot' => $history['snapshot']];
+    }
+
+    private static function audit_pagination(array $history, bool $network, int $days, string $position): void {
+        $page = $history['page'];
+        $pages = $history['pages'];
+        $total = $history['total'];
+        $first = $history['rows'] ? ($page - 1) * $history['per_page'] + 1 : 0;
+        $last = $first ? $first + count($history['rows']) - 1 : 0;
+        $args = ['activity_view' => 'audit', 'activity_days' => $days, 'audit_snapshot' => $history['snapshot']];
+        echo '<nav class="portalweave-sso-audit-pagination" data-audit-pagination="' . esc_attr($position) . '" data-audit-page="' . esc_attr((string) $page) . '" data-audit-pages="' . esc_attr((string) $pages) . '" aria-label="' . esc_attr($position === 'top' ? __('Audit pagination above events', 'portalweave-sso') : __('Audit pagination below events', 'portalweave-sso')) . '"><span class="portalweave-sso-audit-count">';
+        /* translators: 1: first event number, 2: last event number, 3: total retained events. */
+        echo esc_html(sprintf(__('%1$s–%2$s of %3$s events', 'portalweave-sso'), number_format_i18n($first), number_format_i18n($last), number_format_i18n($total)));
+        echo '</span><div class="portalweave-sso-audit-page-actions">';
+        foreach ([
+            ['first', 1, __('First', 'portalweave-sso'), $page > 1],
+            ['previous', $page - 1, __('Previous', 'portalweave-sso'), $page > 1],
+        ] as [$key, $target, $label, $enabled]) {
+            self::audit_page_link($key, $target, $label, $enabled, $network, $args);
+        }
+        /* translators: 1: current page, 2: total pages. */
+        echo '<span class="portalweave-sso-audit-page-number">' . esc_html(sprintf(__('Page %1$s of %2$s', 'portalweave-sso'), number_format_i18n($page), number_format_i18n($pages))) . '</span>';
+        foreach ([
+            ['next', $page + 1, __('Next', 'portalweave-sso'), $page < $pages],
+            ['last', $pages, __('Last', 'portalweave-sso'), $page < $pages],
+        ] as [$key, $target, $label, $enabled]) {
+            self::audit_page_link($key, $target, $label, $enabled, $network, $args);
+        }
+        echo '</div><a class="portalweave-sso-audit-refresh" href="' . esc_url(self::screen_url('reports', $network, ['activity_view' => 'audit', 'activity_days' => $days])) . '">' . esc_html__('Refresh latest', 'portalweave-sso') . '</a></nav>';
+    }
+
+    private static function audit_page_link(string $key, int $target, string $label, bool $enabled, bool $network, array $args): void {
+        if ($enabled) {
+            echo '<a class="button" data-audit-link="' . esc_attr($key) . '" href="' . esc_url(self::screen_url('reports', $network, $args + ['audit_page' => $target])) . '">' . esc_html($label) . '</a>';
+        } else {
+            echo '<span class="button disabled" aria-disabled="true">' . esc_html($label) . '</span>';
+        }
     }
 
     private static function tools(array $settings, bool $network, bool $enforced): void {

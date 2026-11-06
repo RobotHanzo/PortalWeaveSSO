@@ -203,3 +203,123 @@ portalweave_sso_test('Activity distinguishes empty history from its aggregate st
     $restored = \PortalWeaveSSO\Audit::summary(7, $now);
     portalweave_sso_assert(is_array($restored) && $restored['total'] === 0, 'Query failure was cached as an error or empty data.');
 });
+
+portalweave_sso_test('Audit pages reach all retained events without overlap and stay stable when new events arrive', function (): void {
+    portalweave_sso_activity_fixture(function ($insert): void {
+        $baseline = \PortalWeaveSSO\Audit::page();
+        portalweave_sso_assert(is_array($baseline), 'Unable to read baseline audit history');
+        $ids = [];
+        for ($index = 0; $index < 137; $index++) {
+            $ids[] = $insert(['app' => 'paged-history', 'username' => 'paged-user-' . $index]);
+        }
+        $first = \PortalWeaveSSO\Audit::page();
+        portalweave_sso_assert(is_array($first) && $first['total'] === $baseline['total'] + 137
+            && $first['per_page'] === 50 && count($first['rows']) === 50 && $first['page'] === 1, 'First audit page still samples only the latest hundred rows');
+        $expected = array_reverse($ids);
+        portalweave_sso_assert(array_map('intval', array_column($first['rows'], 'id')) === array_slice($expected, 0, 50), 'Audit page is not ordered by descending unique ID');
+        $new_id = $insert(['app' => 'appended-after-first-page']);
+        $seen = [];
+        for ($page = 1; $page <= $first['pages']; $page++) {
+            $result = \PortalWeaveSSO\Audit::page($page, 50, $first['snapshot']);
+            portalweave_sso_assert(is_array($result) && $result['total'] === $first['total'] && $result['snapshot'] === $first['snapshot']
+                && $result['page'] === $page && count($result['rows']) <= 50, 'Pagination lost its bounded snapshot metadata');
+            foreach ($result['rows'] as $row) {
+                $id = (int) $row['id'];
+                portalweave_sso_assert(!isset($seen[$id]) && $id !== $new_id, 'Adjacent audit pages overlap after a new event');
+                $seen[$id] = true;
+            }
+        }
+        portalweave_sso_assert(count($seen) === $first['total'], 'Pagination omitted retained audit events');
+        foreach ($ids as $id) { portalweave_sso_assert(isset($seen[$id]), 'An event older than the first hundred rows is unreachable'); }
+        $fresh = \PortalWeaveSSO\Audit::page();
+        portalweave_sso_assert(is_array($fresh) && $fresh['total'] === $first['total'] + 1 && (int) $fresh['rows'][0]['id'] === $new_id, 'Refreshing latest did not include the newly appended event');
+        $last = \PortalWeaveSSO\Audit::page(PHP_INT_MAX, 50, $first['snapshot']);
+        portalweave_sso_assert(is_array($last) && $last['page'] === $first['pages'] && $last['rows'], 'An out-of-range page did not clamp to available history');
+        $bounded = \PortalWeaveSSO\Audit::page(-10, 10000, -1);
+        portalweave_sso_assert(is_array($bounded) && $bounded['page'] === 1 && $bounded['per_page'] === 100 && count($bounded['rows']) <= 100, 'Audit page size or lower page bound is unbounded');
+    });
+});
+
+portalweave_sso_test('Audit pagination distinguishes unavailable queries from empty views without leaking SQL details', function (): void {
+    portalweave_sso_activity_fixture(function ($insert, $email, $table): void {
+        global $wpdb;
+        $insert();
+        foreach (['COUNT(*)', 'SELECT id, username'] as $statement) {
+            $calls = 0;
+            $fail = static function ($query) use ($wpdb, $table, $statement, &$calls) {
+                if (str_contains($query, $table) && str_contains($query, $statement)) {
+                    $calls++;
+                    return $wpdb->prepare('SELECT portalweave_sso_pagination_missing_column FROM %i', $table);
+                }
+                return $query;
+            };
+            $old_suppression = $wpdb->suppress_errors(false);
+            add_filter('query', $fail);
+            ob_start();
+            try {
+                $result = \PortalWeaveSSO\Audit::page();
+            } finally {
+                $noise = ob_get_clean();
+                remove_filter('query', $fail);
+                $restored = $wpdb->suppress_errors;
+                $wpdb->suppress_errors($old_suppression);
+            }
+            portalweave_sso_error($result, 'portalweave_sso_audit_page');
+            portalweave_sso_assert($calls === 1 && $noise === '' && $restored === false, 'Pagination printed database errors or changed the caller error policy');
+            portalweave_sso_assert(!str_contains($result->get_error_message(), $table)
+                && !str_contains($result->get_error_message(), 'missing_column'), 'Pagination exposed SQL diagnostics');
+        }
+        // Exercise the empty-result branch against the database without deleting other fixtures' retained history.
+        $empty_query = static function ($query) use ($table) {
+            return str_contains($query, $table) && str_contains($query, 'COUNT(*) AS total') ? str_replace('WHERE (', 'WHERE 1 = 0 AND (', $query) : $query;
+        };
+        add_filter('query', $empty_query);
+        try { $empty = \PortalWeaveSSO\Audit::page(PHP_INT_MAX); }
+        finally { remove_filter('query', $empty_query); }
+        portalweave_sso_assert(is_array($empty) && $empty['rows'] === [] && $empty['total'] === 0
+            && $empty['page'] === 1 && $empty['pages'] === 1 && $empty['snapshot'] === 0, 'Empty history was confused with a query failure or invalid page');
+        wp_set_current_user(get_user_by('login', 'portalweave_sso_test_admin')->ID);
+        $fail_view = static function ($query) use ($wpdb, $table) {
+            return str_contains($query, $table) && str_contains($query, 'COUNT(*) AS total')
+                ? $wpdb->prepare('SELECT portalweave_sso_pagination_missing_column FROM %i', $table) : $query;
+        };
+        add_filter('query', $fail_view);
+        try { $html = portalweave_sso_admin_activity_page(['activity_view' => 'audit']); }
+        finally { remove_filter('query', $fail_view); }
+        portalweave_sso_assert(str_contains($html, 'Audit events could not be loaded.')
+            && !str_contains($html, 'No retained events in this view.') && !str_contains($html, 'missing_column')
+            && str_contains($html, 'name="settings[audit_enabled]"'), 'Audit viewer confused a database failure with empty history or hid collection controls');
+    });
+});
+
+portalweave_sso_test('Audit viewer renders page links and safely preserves pagination through preference saves', function (): void {
+    portalweave_sso_activity_fixture(function ($insert): void {
+        wp_set_current_user(get_user_by('login', 'portalweave_sso_test_admin')->ID);
+        for ($index = 0; $index < 120; $index++) { $insert(['username' => 'audit-pagination-view-' . $index]); }
+        $history = \PortalWeaveSSO\Audit::page(2);
+        portalweave_sso_assert(is_array($history), 'Unable to load viewer fixture');
+        foreach (['2', '-1', '2junk', ['2'], str_repeat('9', 30)] as $requested) {
+            $selected = $requested === '2' ? 2 : 1;
+            $html = portalweave_sso_admin_activity_page(['activity_view' => 'audit', 'activity_days' => '90', 'audit_page' => $requested, 'audit_snapshot' => (string) $history['snapshot']]);
+            portalweave_sso_assert(substr_count($html, 'data-audit-pagination=') === 2
+                && str_contains($html, 'data-audit-page="' . $selected . '"'), 'Viewer lost pagination or reflected an invalid page');
+            portalweave_sso_assert(substr_count($html, '<tr data-audit-id=') === 50, 'Viewer did not enforce fifty rows per page');
+            portalweave_sso_assert(preg_match('/<a\b[^>]*data-audit-link="next"[^>]*href="([^"]+)"/', $html, $matches) === 1, 'Viewer has no next-page link');
+            parse_str((string) wp_parse_url(html_entity_decode($matches[1], ENT_QUOTES, 'UTF-8'), PHP_URL_QUERY), $query);
+            portalweave_sso_assert(($query['activity_view'] ?? '') === 'audit' && ($query['activity_days'] ?? '') === '90'
+                && (int) ($query['audit_page'] ?? 0) === $selected + 1 && (int) ($query['audit_snapshot'] ?? 0) === $history['snapshot'], 'Viewer pagination lost view, range or stable ceiling');
+        }
+        $context = ['portalweave_sso_screen' => 'reports', 'portalweave_sso_activity_view' => 'audit', 'portalweave_sso_activity_days' => '90',
+            'portalweave_sso_audit_page' => '2', 'portalweave_sso_audit_snapshot' => (string) $history['snapshot']];
+        $destination = portalweave_sso_admin_form_submit(['audit_enabled' => '0'], $context);
+        parse_str((string) wp_parse_url($destination, PHP_URL_QUERY), $query);
+        portalweave_sso_assert(($query['portalweave_sso_notice'] ?? '') === 'saved' && ($query['audit_page'] ?? '') === '2'
+            && (int) ($query['audit_snapshot'] ?? 0) === $history['snapshot'], 'Preference save lost its selected audit page');
+        $stored = get_option('portalweave_sso_settings');
+        portalweave_sso_assert(!isset($stored['audit_page']) && !isset($stored['audit_snapshot']), 'Pagination context entered settings');
+        $destination = portalweave_sso_admin_form_submit(['audit_enabled' => '1'], array_replace($context, ['portalweave_sso_audit_page' => ['2']]));
+        parse_str((string) wp_parse_url($destination, PHP_URL_QUERY), $query);
+        portalweave_sso_assert(($query['portalweave_sso_notice'] ?? '') === 'error' && get_option('portalweave_sso_settings') === $stored, 'Structured pagination mutated settings');
+        delete_transient('portalweave_sso_admin_error_' . get_current_user_id());
+    });
+});
