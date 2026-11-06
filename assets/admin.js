@@ -15,11 +15,11 @@
     authentik: { base: 'https://YOUR_HOST/application/o/YOUR_APPLICATION/', authorize_url: 'https://YOUR_HOST/application/o/authorize/', token_url: 'https://YOUR_HOST/application/o/token/', userinfo_url: 'https://YOUR_HOST/application/o/userinfo/', jwks_url: 'https://YOUR_HOST/application/o/YOUR_APPLICATION/jwks/', logout_url: 'https://YOUR_HOST/application/o/YOUR_APPLICATION/end-session/' }
   };
   presets.office365 = presets.entra;
-  document.querySelectorAll('.wpsso-preset').forEach(select => {
+  document.querySelectorAll('.portalweave-sso-preset').forEach(select => {
     select.addEventListener('change', () => {
       const preset = presets[select.value];
       if (!preset) return;
-      const provider = select.closest('.wpsso-provider');
+      const provider = select.closest('.portalweave-sso-provider');
       if (!provider) return;
       const defaults = { protocol: 'oidc', scope: 'openid profile email', issuer: preset.base || '', ...preset };
       Object.entries(defaults).forEach(([key, value]) => {

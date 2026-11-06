@@ -9,7 +9,7 @@ import { summarizeTooling } from '../scripts/report-tooling.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 function fixture(t) {
-    const directory = mkdtempSync(join(tmpdir(), 'wpsso-tooling-'));
+    const directory = mkdtempSync(join(tmpdir(), 'portalweave-sso-tooling-'));
     t.after(() => rmSync(directory, { recursive: true, force: true }));
     return directory;
 }

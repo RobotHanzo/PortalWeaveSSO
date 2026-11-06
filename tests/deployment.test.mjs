@@ -37,7 +37,7 @@ test('SVN preflight rejects URLs, traversal, invalid versions and missing config
 });
 
 test('Remote tag guard accepts lightweight and annotated tags and rejects moved refs', { skip: process.platform === 'win32' && 'Bash ref verification runs on the Linux CI runner' }, () => {
-  const root = mkdtempSync(path.join(tmpdir(), 'wpsso-release-ref-'));
+  const root = mkdtempSync(path.join(tmpdir(), 'portalweave-sso-release-ref-'));
   const source = path.join(root, 'source');
   const origin = path.join(root, 'origin.git');
   const script = fileURLToPath(new URL('../scripts/check-release-ref.sh', import.meta.url));
@@ -62,7 +62,7 @@ test('Remote tag guard accepts lightweight and annotated tags and rejects moved 
     assert.equal(spawnSync('bash', [script, '--malformed', commit], { cwd: source, encoding: 'utf8' }).status, 1);
   } finally {
     assert.equal(path.dirname(root), path.resolve(tmpdir()));
-    assert.ok(path.basename(root).startsWith('wpsso-release-ref-'));
+    assert.ok(path.basename(root).startsWith('portalweave-sso-release-ref-'));
     rmSync(root, { recursive: true, force: true });
   }
 });
@@ -134,8 +134,8 @@ test('Release and directory defaults use the public PortalWeave package slug', (
   assert.match(ci, /default: portalweave-sso/);
   assert.match(review, /default: portalweave-sso/);
   assert.match(release, /package_slug="\$\{PLUGIN_SLUG:-portalweave-sso\}"/);
-  for (const source of [ci, review, release]) {
-    assert.doesNotMatch(source, /default: wordpress-sso|\|\| 'wordpress-sso'|PLUGIN_SLUG:-wordpress-sso/);
+  for (const fallback of ci.matchAll(/inputs\.package_slug \|\| '([^']+)'/g)) {
+    assert.equal(fallback[1], 'portalweave-sso', 'CI package consumers disagree with the public slug');
   }
   assert.match(ci, /node --check assets\/auth\.js/);
 });

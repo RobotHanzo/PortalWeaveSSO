@@ -28,20 +28,20 @@ if (!function_exists('openssl_encrypt') || !function_exists('openssl_verify')) {
     return;
 }
 
-foreach (['config', 'audit', 'http', 'jwt', 'accounts', 'auth', 'access', 'privacy', 'cleanup', 'display', 'admin-settings', 'admin', 'extensions', 'abilities', 'cli'] as $wpsso_class) {
-    require_once PORTALWEAVE_SSO_DIR . 'includes/class-' . $wpsso_class . '.php';
+foreach (['config', 'audit', 'http', 'jwt', 'accounts', 'auth', 'access', 'privacy', 'cleanup', 'display', 'admin-settings', 'admin', 'extensions', 'abilities', 'cli'] as $portalweave_sso_class) {
+    require_once PORTALWEAVE_SSO_DIR . 'includes/class-' . $portalweave_sso_class . '.php';
 }
-unset($wpsso_class);
+unset($portalweave_sso_class);
 
 register_activation_hook(__FILE__, function ($network_wide) {
     if (is_multisite() && $network_wide) {
         foreach (get_sites(['fields' => 'ids', 'number' => 0, 'network_id' => get_current_network_id()]) as $site_id) {
             switch_to_blog($site_id);
-            \WPSSO\Audit::install();
+            \PortalWeaveSSO\Audit::install();
             restore_current_blog();
         }
     } else {
-        \WPSSO\Audit::install();
+        \PortalWeaveSSO\Audit::install();
     }
 });
 register_deactivation_hook(__FILE__, function ($network_wide) {
@@ -50,10 +50,10 @@ register_deactivation_hook(__FILE__, function ($network_wide) {
         if (is_multisite()) {
             switch_to_blog($site_id);
         }
-        wp_clear_scheduled_hook('wpsso_cleanup');
-        wp_clear_scheduled_hook('wpsso_state_cleanup');
-        wp_clear_scheduled_hook('wpsso_extension_cleanup');
-        wp_unschedule_hook('wpsso_expire_claim');
+        wp_clear_scheduled_hook('portalweave_sso_cleanup');
+        wp_clear_scheduled_hook('portalweave_sso_state_cleanup');
+        wp_clear_scheduled_hook('portalweave_sso_extension_cleanup');
+        wp_unschedule_hook('portalweave_sso_expire_claim');
         if (is_multisite()) {
             restore_current_blog();
         }
@@ -64,15 +64,15 @@ add_action('wp_initialize_site', function ($site) {
         return;
     }
     switch_to_blog($site->blog_id);
-    \WPSSO\Audit::install();
+    \PortalWeaveSSO\Audit::install();
     restore_current_blog();
 }, 200);
 add_action('plugins_loaded', function () {
-    if (get_option('wpsso_db_version') !== PORTALWEAVE_SSO_VERSION) {
-        \WPSSO\Audit::install();
+    if (get_option('portalweave_sso_db_version') !== PORTALWEAVE_SSO_VERSION) {
+        \PortalWeaveSSO\Audit::install();
     }
     foreach (['Auth', 'Access', 'Privacy', 'Display', 'Admin', 'Extensions', 'Abilities', 'Cli'] as $class) {
-        call_user_func(['WPSSO\\' . $class, 'register']);
+        call_user_func(['PortalWeaveSSO\\' . $class, 'register']);
     }
-    add_action('wpsso_cleanup', ['WPSSO\\Audit', 'cleanup']);
+    add_action('portalweave_sso_cleanup', ['PortalWeaveSSO\\Audit', 'cleanup']);
 });

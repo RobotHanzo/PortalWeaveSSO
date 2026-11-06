@@ -15,13 +15,13 @@ function run({ mode = 'relay', fragment = '', opener = null, redirect = 'https:/
     vm.runInNewContext(source, {
         URLSearchParams,
         document: {
-            body: { dataset: { wpssoMode: mode, wpssoRedirect: redirect, wpssoOrigin: 'https://site.example:443', wpssoNoResponse: '<script>missing response</script>' } },
-            getElementById(id) { return id === 'wpsso-relay' ? form : status; },
+            body: { dataset: { portalweaveSsoMode: mode, portalweaveSsoRedirect: redirect, portalweaveSsoOrigin: 'https://site.example:443', portalweaveSsoNoResponse: '<script>missing response</script>' } },
+            getElementById(id) { return id === 'portalweave-sso-relay' ? form : status; },
             createElement(tag) { assert.equal(tag, 'input'); return {}; },
         },
         window: {
             opener: opener ? { postMessage(message, origin) { result.messages.push({ ...message, origin }); } } : null,
-            location: { hash: fragment, pathname: '/', search: '?wpsso_action=callback', replace(url) { result.replacements.push(url); } },
+            location: { hash: fragment, pathname: '/', search: '?portalweave_sso_action=callback', replace(url) { result.replacements.push(url); } },
             history: { replaceState(state, title, url) { result.history = [state, title, url]; } },
             close() { result.closed = true; },
         },
@@ -34,7 +34,7 @@ test('Implicit relay preserves opaque credentials as input values and removes th
     const fragment = '#' + new URLSearchParams({ state: 'browser-state', id_token: token, access_token: 'access', token_type: 'Bearer', arbitrary: 'ignored' });
     const result = run({ fragment });
     assert.equal(result.submitted, true);
-    assert.deepEqual(result.history, [null, '', '/?wpsso_action=callback']);
+    assert.deepEqual(result.history, [null, '', '/?portalweave_sso_action=callback']);
     assert.deepEqual(result.inputs.map(input => input.name), ['state', 'id_token', 'access_token', 'token_type']);
     assert.equal(result.inputs.find(input => input.name === 'id_token').value, token);
     assert.ok(result.inputs.every(input => input.type === 'hidden' && !('innerHTML' in input)));
@@ -49,7 +49,7 @@ test('Implicit relay reports missing state as text without submitting', () => {
 
 test('Popup completion posts only to the explicit WordPress origin then closes', () => {
     const result = run({ mode: 'popup', opener: true });
-    assert.deepEqual(result.messages, [{ type: 'wpsso-complete', redirect: 'https://site.example/members/?q=%3Cscript%3E', origin: 'https://site.example:443' }]);
+    assert.deepEqual(result.messages, [{ type: 'portalweave-sso-complete', redirect: 'https://site.example/members/?q=%3Cscript%3E', origin: 'https://site.example:443' }]);
     assert.equal(result.closed, true);
     assert.deepEqual(result.replacements, []);
 });

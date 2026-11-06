@@ -1,5 +1,5 @@
 <?php
-namespace WPSSO;
+namespace PortalWeaveSSO;
 
 defined('ABSPATH') || exit;
 
@@ -8,7 +8,7 @@ final class Cleanup
 {
     public static function site(array $local, array $network = []): void
     {
-        foreach (['wpsso_cleanup', 'wpsso_state_cleanup', 'wpsso_extension_cleanup', 'wpsso_expire_claim'] as $hook) {
+        foreach (['portalweave_sso_cleanup', 'portalweave_sso_state_cleanup', 'portalweave_sso_extension_cleanup', 'portalweave_sso_expire_claim'] as $hook) {
             wp_unschedule_hook($hook);
         }
         if (empty($local['delete_data_on_uninstall']) && empty($network['delete_data_on_uninstall'])) {
@@ -16,13 +16,13 @@ final class Cleanup
         }
         global $wpdb;
         $suffix = is_multisite() ? '_' . get_current_blog_id() : '';
-        $index_key = '_wpsso_identity_keys' . $suffix;
-        $keys = [$index_key, '_wpsso_mapped_keys' . $suffix, '_wpsso_groups' . $suffix, '_wpsso_app' . $suffix, '_wpsso_avatar' . $suffix, '_wpsso_moderation' . $suffix];
+        $index_key = '_portalweave_sso_identity_keys' . $suffix;
+        $keys = [$index_key, '_portalweave_sso_mapped_keys' . $suffix, '_portalweave_sso_groups' . $suffix, '_portalweave_sso_app' . $suffix, '_portalweave_sso_avatar' . $suffix, '_portalweave_sso_moderation' . $suffix];
         foreach (['managed', 'active', 'external', 'groups', 'group_names', 'modified'] as $field) {
-            $keys[] = '_wpsso_scim_' . $field . $suffix;
+            $keys[] = '_portalweave_sso_scim_' . $field . $suffix;
         }
         if (!is_multisite()) {
-            $keys[] = '_wpsso_guest_expires';
+            $keys[] = '_portalweave_sso_guest_expires';
         }
         foreach ([$local['apps'] ?? [], $network['apps'] ?? []] as $apps) {
             foreach (is_array($apps) ? $apps : [] as $id => $app) {
@@ -30,8 +30,8 @@ final class Cleanup
                     continue;
                 }
                 $scope = get_current_blog_id() . '|' . $id . '|' . $app['issuer'] . '|' . $app['client_id'];
-                $keys[] = '_wpsso_identity_' . hash('sha256', $scope);
-                $keys[] = '_wpsso_sid_' . hash('sha256', $scope);
+                $keys[] = '_portalweave_sso_identity_' . hash('sha256', $scope);
+                $keys[] = '_portalweave_sso_sid_' . hash('sha256', $scope);
             }
         }
         // Read the provenance index so links from deleted provider configurations can be removed as well.
@@ -39,23 +39,23 @@ final class Cleanup
         $indexes = $wpdb->get_col($wpdb->prepare('SELECT DISTINCT meta_value FROM %i WHERE meta_key = %s', $wpdb->usermeta, $index_key));
         foreach ($indexes as $index) {
             foreach ((array) maybe_unserialize($index) as $key) {
-                if (is_string($key) && preg_match('/^_wpsso_(?:identity|sid)_[a-f0-9]{64}$/D', $key)) {
+                if (is_string($key) && preg_match('/^_portalweave_sso_(?:identity|sid)_[a-f0-9]{64}$/D', $key)) {
                     $keys[] = $key;
                 }
             }
         }
-        $token_prefix = '_wpsso_tokens_' . (is_multisite() ? get_current_blog_id() . '_' : '');
+        $token_prefix = '_portalweave_sso_tokens_' . (is_multisite() ? get_current_blog_id() . '_' : '');
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Remove encrypted tokens even when their provider was deleted from configuration.
         $tokens = $wpdb->get_col($wpdb->prepare('SELECT DISTINCT meta_key FROM %i WHERE meta_key LIKE %s', $wpdb->usermeta, $wpdb->esc_like($token_prefix) . '%'));
         foreach (array_unique(array_merge($keys, $tokens)) as $key) {
             delete_metadata('user', 0, $key, '', true);
         }
-        delete_metadata('post', 0, '_wpsso_rule', '', true);
-        delete_metadata('term', 0, '_wpsso_rule', '', true);
-        foreach (['wpsso_settings', 'wpsso_db_version', 'wpsso_debug_log', 'wpsso_scim_groups', 'wpsso_scim_write_lock'] as $option) {
+        delete_metadata('post', 0, '_portalweave_sso_rule', '', true);
+        delete_metadata('term', 0, '_portalweave_sso_rule', '', true);
+        foreach (['portalweave_sso_settings', 'portalweave_sso_db_version', 'portalweave_sso_debug_log', 'portalweave_sso_scim_groups', 'portalweave_sso_scim_write_lock'] as $option) {
             delete_option($option);
         }
-        foreach (['wpsso_state_', 'wpsso_refresh_', 'wpsso_logout_', 'wpsso_claim_', '_wpsso_lock_', '_transient_wpsso_', '_transient_timeout_wpsso_'] as $prefix) {
+        foreach (['portalweave_sso_state_', 'portalweave_sso_refresh_', 'portalweave_sso_logout_', 'portalweave_sso_claim_', '_portalweave_sso_lock_', '_transient_portalweave_sso_', '_transient_timeout_portalweave_sso_'] as $prefix) {
             do {
                 // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Bounded uninstall discovery; delete_option performs the corresponding cache invalidation.
                 $options = $wpdb->get_col($wpdb->prepare('SELECT option_name FROM %i WHERE option_name LIKE %s LIMIT 200', $wpdb->options, $wpdb->esc_like($prefix) . '%'));
@@ -66,8 +66,8 @@ final class Cleanup
             } while (count($options) === 200 && $progress);
         }
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- The table identifier is prepared; DDL has no object-cache representation.
-        $wpdb->query($wpdb->prepare('DROP TABLE IF EXISTS %i', $wpdb->prefix . 'wpsso_audit'));
-        // _wpsso_private_files/_wpsso_public_files/_wpsso_protected remain available for safe vault recovery.
+        $wpdb->query($wpdb->prepare('DROP TABLE IF EXISTS %i', $wpdb->prefix . 'portalweave_sso_audit'));
+        // _portalweave_sso_private_files/_portalweave_sso_public_files/_portalweave_sso_protected remain available for safe vault recovery.
     }
 
     public static function run(): void
@@ -80,9 +80,9 @@ final class Cleanup
                 if (is_multisite()) {
                     switch_to_blog($site_id);
                 }
-                $local = get_option('wpsso_settings', []);
+                $local = get_option('portalweave_sso_settings', []);
                 $network_id = is_multisite() ? (int) get_site($site_id)->site_id : 0;
-                $network = $network_id ? get_network_option($network_id, 'wpsso_settings', []) : [];
+                $network = $network_id ? get_network_option($network_id, 'portalweave_sso_settings', []) : [];
                 self::site(is_array($local) ? $local : [], is_array($network) ? $network : []);
                 if (!empty($network['delete_data_on_uninstall'])) {
                     $networks[$network_id] = true;
@@ -94,7 +94,7 @@ final class Cleanup
             $offset += 100;
         } while (is_multisite() && count($sites) === 100);
         foreach (array_keys($networks) as $network_id) {
-            delete_network_option($network_id, 'wpsso_settings');
+            delete_network_option($network_id, 'portalweave_sso_settings');
         }
     }
 }

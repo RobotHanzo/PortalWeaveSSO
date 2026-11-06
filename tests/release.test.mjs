@@ -31,7 +31,7 @@ Fixture release.
 `;
 
 function fixture(work) {
-  const root = mkdtempSync(path.join(os.tmpdir(), 'wpsso-release-'));
+  const root = mkdtempSync(path.join(os.tmpdir(), 'portalweave-sso-release-'));
   try {
     for (const dir of ['includes', 'assets', 'docs', 'languages']) mkdirSync(path.join(root, dir));
     for (const [name, value] of Object.entries({

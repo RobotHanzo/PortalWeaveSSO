@@ -18,7 +18,7 @@ Plugin Check 2.1.0 was initially run on WordPress 7.1.4 against the source tree 
 
 | Initial error category | Count | Review performed or required |
 | --- | ---: | --- |
-| Text domain mismatch | 71 | Baseline used folder `wordpress-sso` and domain `wpsso`. The candidate now uses literal `portalweave-sso` domains and the matching staged directory. Legacy namespace, options, shortcode and CLI names remain compatible. |
+| Text domain mismatch | 71 | The baseline used an earlier folder/domain combination. The candidate uses literal `portalweave-sso` domains and the matching staged directory. Runtime namespace, options, shortcode, CLI and development mounts now use PortalWeave naming throughout. Earlier identifiers are unsupported. |
 | Output escaping | 9 | Review renderers, fragment/popup relay output and widget wrappers at their output boundaries; retain regression tests for hostile markup and protocol behavior. |
 | Direct filesystem operations | 8 | Review private-media delivery/deletion and CLI export. Preserve private-file integrity, failure detection, streaming and exclusive-create behavior instead of replacing them with an unsafe abstraction. |
 | Missing translator comment | 1 | Explain translated placeholders and retain the translation template in the package. |
@@ -37,7 +37,7 @@ Dispatch the [directory review workflow](https://github.com/RobotHanzo/PortalWea
 gh workflow run wordpress-review.yml --ref main -f checkout_ref=CANDIDATE_COMMIT -f slug=portalweave-sso
 ```
 
-The workflow stages only production files and passes that directory to the official Plugin Check action. Functional CI also calls it before building its package artifact. Scan the correctly named stage: a raw-source scan in the legacy Docker `wordpress-sso` bind can give a different expected text domain and can include development files.
+The workflow stages only production files and passes that directory to the official Plugin Check action. Functional CI also calls it before building its package artifact. Scan the correctly named stage: a raw-source scan in the Docker bind can include development files that are excluded from the distribution.
 
 **The Plugin Check CLI has returned exit code zero despite error findings.** Do not treat its exit status alone as a release gate. Its `--format=json --no-color` output can contain repeated `FILE: path` headers followed by finding arrays rather than one JSON document. Each finding contains line, column, severity, code, message and documentation fields. A genuine clean run emits an explicit completion message.
 

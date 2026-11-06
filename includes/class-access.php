@@ -1,5 +1,5 @@
 <?php
-namespace WPSSO;
+namespace PortalWeaveSSO;
 
 defined('ABSPATH') || exit;
 
@@ -49,7 +49,7 @@ final class Access
         if (!$roles && !$groups) {
             return true;
         }
-        $scim_groups = method_exists(Extensions::class, 'scim_groups') ? Extensions::scim_groups($user->ID) : array_merge((array) get_user_meta($user->ID, '_wpsso_scim_groups', true), (array) get_user_meta($user->ID, '_wpsso_scim_group_names', true));
+        $scim_groups = method_exists(Extensions::class, 'scim_groups') ? Extensions::scim_groups($user->ID) : array_merge((array) get_user_meta($user->ID, '_portalweave_sso_scim_groups', true), (array) get_user_meta($user->ID, '_portalweave_sso_scim_group_names', true));
         $user_groups = array_merge((array) get_user_meta($user->ID, Accounts::groups_meta_key(), true), $scim_groups);
         return (bool) array_intersect($roles, $user->roles) || (bool) array_intersect($groups, $user_groups);
     }
@@ -60,7 +60,7 @@ final class Access
             return self::can_post((int) wp_get_post_parent_id($id), $user);
         }
         $rules = Config::get('content_rules', []);
-        $rule = get_post_meta($id, '_wpsso_rule', true);
+        $rule = get_post_meta($id, '_portalweave_sso_rule', true);
         if (!self::allows(is_array($rule) ? $rule : [], $user) || !self::allows((array) ($rules['posts'][$id] ?? []), $user)) {
             return false;
         }
@@ -77,7 +77,7 @@ final class Access
         $terms = wp_get_post_categories($id);
         if (!is_wp_error($terms)) {
             foreach ($terms as $term) {
-                $rule = get_term_meta($term, '_wpsso_rule', true);
+                $rule = get_term_meta($term, '_portalweave_sso_rule', true);
                 if (!self::allows(is_array($rule) ? $rule : [], $user) || !self::allows((array) ($rules['categories'][$term] ?? []), $user)) {
                     return false;
                 }
@@ -114,7 +114,7 @@ final class Access
         }
         if (is_category()) {
             $id = get_queried_object_id();
-            if (!self::allows((array) get_term_meta($id, '_wpsso_rule', true)) || !self::allows((array) (Config::get('content_rules', [])['categories'][$id] ?? []))) {
+            if (!self::allows((array) get_term_meta($id, '_portalweave_sso_rule', true)) || !self::allows((array) (Config::get('content_rules', [])['categories'][$id] ?? []))) {
                 self::deny();
             }
         }
@@ -132,7 +132,7 @@ final class Access
             return;
         }
         // Emergency recovery is a server-configured switch, never a public URL backdoor.
-        if (defined('WPSSO_ALLOW_LOCAL_LOGIN') && WPSSO_ALLOW_LOCAL_LOGIN) {
+        if (defined('PORTALWEAVE_SSO_ALLOW_LOCAL_LOGIN') && PORTALWEAVE_SSO_ALLOW_LOCAL_LOGIN) {
             return;
         }
         if (Config::get('disable_wp_login') || Config::get('single_flow')) {
@@ -145,14 +145,14 @@ final class Access
         global $wpdb;
         // Candidate IDs must reflect metadata writes in the current request. Core has no distinct-meta-ID API.
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Prepared read of restriction candidates; access is evaluated below for the current user.
-        $ids = array_map('intval', $wpdb->get_col($wpdb->prepare('SELECT DISTINCT post_id FROM %i WHERE meta_key IN (%s, %s)', $wpdb->postmeta, '_wpsso_rule', '_wpsso_protected')));
+        $ids = array_map('intval', $wpdb->get_col($wpdb->prepare('SELECT DISTINCT post_id FROM %i WHERE meta_key IN (%s, %s)', $wpdb->postmeta, '_portalweave_sso_rule', '_portalweave_sso_protected')));
         $configured = Config::get('content_rules', []);
         $ids = array_merge($ids, array_map('intval', array_keys($configured['posts'] ?? [])), array_map('intval', Config::get('protected_media', [])));
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Prepared candidate lookup must reflect current-request metadata writes.
-        $term_ids = array_map('intval', $wpdb->get_col($wpdb->prepare('SELECT DISTINCT term_id FROM %i WHERE meta_key = %s', $wpdb->termmeta, '_wpsso_rule')));
+        $term_ids = array_map('intval', $wpdb->get_col($wpdb->prepare('SELECT DISTINCT term_id FROM %i WHERE meta_key = %s', $wpdb->termmeta, '_portalweave_sso_rule')));
         $term_ids = array_merge($term_ids, array_map('intval', array_keys($configured['categories'] ?? [])));
         foreach (array_unique($term_ids) as $term_id) {
-            $rule = (array) get_term_meta($term_id, '_wpsso_rule', true);
+            $rule = (array) get_term_meta($term_id, '_portalweave_sso_rule', true);
             if (!self::allows($rule) || !self::allows((array) ($configured['categories'][$term_id] ?? []))) {
                 $objects = get_objects_in_term($term_id, 'category');
                 if (!is_wp_error($objects)) {
@@ -199,10 +199,10 @@ final class Access
             // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only route selection; the SCIM permission callback requires an independent HTTPS bearer credential.
             $route = isset($_GET['rest_route']) && is_string($_GET['rest_route']) ? sanitize_text_field(wp_unslash($_GET['rest_route'])) : '';
         }
-        if (str_starts_with($route, '/wpsso/v1/scim/')) {
+        if (str_starts_with($route, '/portalweave-sso/v1/scim/')) {
             return $error;
         }
-        return new \WP_Error('wpsso_login_required', 'Authentication is required.', ['status' => 401]);
+        return new \WP_Error('portalweave_sso_login_required', 'Authentication is required.', ['status' => 401]);
     }
 
     public static function rest_content($result, $server, \WP_REST_Request $request)
@@ -214,7 +214,7 @@ final class Access
             $base = $type->rest_base ?: $type->name;
             $namespace = $type->rest_namespace ?: 'wp/v2';
             if (preg_match('~^/' . preg_quote($namespace . '/' . $base, '~') . '/(\d+)(?:/|$)~', $request->get_route(), $match) && !self::can_post((int) $match[1])) {
-                return new \WP_Error('wpsso_content_denied', 'You do not have access to this content.', ['status' => is_user_logged_in() ? 403 : 401]);
+                return new \WP_Error('portalweave_sso_content_denied', 'You do not have access to this content.', ['status' => is_user_logged_in() ? 403 : 401]);
             }
         }
         return $result;
@@ -222,42 +222,42 @@ final class Access
 
     public static function is_protected(int $id): bool
     {
-        return (bool) get_post_meta($id, '_wpsso_protected', true)
-            || (bool) get_post_meta($id, '_wpsso_private_files', true)
+        return (bool) get_post_meta($id, '_portalweave_sso_protected', true)
+            || (bool) get_post_meta($id, '_portalweave_sso_private_files', true)
             || in_array($id, array_map('intval', Config::get('protected_media', [])), true);
     }
 
     private static function vault()
     {
-        $dir = defined('WPSSO_PRIVATE_MEDIA_DIR') ? WPSSO_PRIVATE_MEDIA_DIR : dirname(rtrim(ABSPATH, '/\\')) . '/wpsso-private-' . substr(hash('sha256', wp_salt()), 0, 12);
+        $dir = defined('PORTALWEAVE_SSO_PRIVATE_MEDIA_DIR') ? PORTALWEAVE_SSO_PRIVATE_MEDIA_DIR : dirname(rtrim(ABSPATH, '/\\')) . '/portalweave-sso-private-' . substr(hash('sha256', wp_salt()), 0, 12);
         if (!wp_mkdir_p($dir)) {
-            return new \WP_Error('wpsso_media_vault', 'The private media directory is not writable.');
+            return new \WP_Error('portalweave_sso_media_vault', 'The private media directory is not writable.');
         }
         $resolved = realpath($dir);
         if ($resolved === false) {
-            return new \WP_Error('wpsso_media_vault', 'The private media directory cannot be resolved.');
+            return new \WP_Error('portalweave_sso_media_vault', 'The private media directory cannot be resolved.');
         }
         $real = wp_normalize_path($resolved);
         $document_root = isset($_SERVER['DOCUMENT_ROOT']) && is_string($_SERVER['DOCUMENT_ROOT']) ? sanitize_text_field(wp_unslash($_SERVER['DOCUMENT_ROOT'])) : '';
         $resolved_public = realpath($document_root ?: ABSPATH);
         if ($resolved_public === false) {
-            return new \WP_Error('wpsso_media_public', 'The web document root cannot be resolved safely.');
+            return new \WP_Error('portalweave_sso_media_public', 'The web document root cannot be resolved safely.');
         }
         $public = wp_normalize_path($resolved_public);
         if ($real === $public || str_starts_with($real . '/', rtrim($public, '/') . '/')) {
-            return new \WP_Error('wpsso_media_public', 'Define WPSSO_PRIVATE_MEDIA_DIR outside the web document root.');
+            return new \WP_Error('portalweave_sso_media_public', 'Define PORTALWEAVE_SSO_PRIVATE_MEDIA_DIR outside the web document root.');
         }
         return $real;
     }
 
     public static function protect_media(int $id)
     {
-        $existing = get_post_meta($id, '_wpsso_private_files', true);
+        $existing = get_post_meta($id, '_portalweave_sso_private_files', true);
         if (is_array($existing) && $existing) {
-            $public = get_post_meta($id, '_wpsso_public_files', true);
+            $public = get_post_meta($id, '_portalweave_sso_public_files', true);
             foreach (is_array($public) ? $public : [] as $name => $path) {
                 if (is_file($path) && (!isset($existing[$name]) || !is_file($existing[$name]) || !hash_equals(hash_file('sha256', $path), hash_file('sha256', $existing[$name])) || !self::delete_public_copy($path))) {
-                    return new \WP_Error('wpsso_media_unlink', 'A public copy remains or has changed. Review the attachment files before retrying protection.');
+                    return new \WP_Error('portalweave_sso_media_unlink', 'A public copy remains or has changed. Review the attachment files before retrying protection.');
                 }
             }
             return true;
@@ -268,13 +268,13 @@ final class Access
         }
         $file = get_attached_file($id, true);
         if (!$file || !is_file($file)) {
-            return new \WP_Error('wpsso_media_missing', 'The attachment file does not exist.');
+            return new \WP_Error('portalweave_sso_media_missing', 'The attachment file does not exist.');
         }
         $uploads = wp_get_upload_dir();
         $parent = realpath(dirname($file));
         $upload_root = realpath($uploads['basedir']);
         if (!$parent || !$upload_root || !str_starts_with(wp_normalize_path($parent) . '/', rtrim(wp_normalize_path($upload_root), '/') . '/')) {
-            return new \WP_Error('wpsso_media_path', 'Only files in this site upload directory can be protected.');
+            return new \WP_Error('portalweave_sso_media_path', 'Only files in this site upload directory can be protected.');
         }
         $meta = wp_get_attachment_metadata($id) ?: [];
         $files = [basename($file) => $file];
@@ -291,7 +291,7 @@ final class Access
         }
         $target = $vault . '/' . get_current_blog_id() . '/' . $id;
         if (!wp_mkdir_p($target)) {
-            return new \WP_Error('wpsso_media_vault', 'Unable to create the attachment vault directory.');
+            return new \WP_Error('portalweave_sso_media_vault', 'Unable to create the attachment vault directory.');
         }
         $private = [];
         foreach ($files as $name => $source) {
@@ -299,15 +299,15 @@ final class Access
                 continue;
             }
             if (!copy($source, $target . '/' . $name)) {
-                return new \WP_Error('wpsso_media_copy', 'The private copy failed. No public files were removed.');
+                return new \WP_Error('portalweave_sso_media_copy', 'The private copy failed. No public files were removed.');
             }
             $private[$name] = $target . '/' . $name;
         }
-        update_post_meta($id, '_wpsso_private_files', $private);
-        update_post_meta($id, '_wpsso_public_files', array_intersect_key($files, $private));
+        update_post_meta($id, '_portalweave_sso_private_files', $private);
+        update_post_meta($id, '_portalweave_sso_public_files', array_intersect_key($files, $private));
         foreach ($files as $name => $source) {
             if (isset($private[$name]) && is_file($source) && !self::delete_public_copy($source)) {
-                return new \WP_Error('wpsso_media_unlink', 'A public file could not be removed. Fix filesystem permissions before relying on protection.');
+                return new \WP_Error('portalweave_sso_media_unlink', 'A public file could not be removed. Fix filesystem permissions before relying on protection.');
             }
         }
         clean_post_cache($id);
@@ -324,41 +324,41 @@ final class Access
 
     public static function unprotect_media(int $id)
     {
-        $private = get_post_meta($id, '_wpsso_private_files', true);
-        $public = get_post_meta($id, '_wpsso_public_files', true);
+        $private = get_post_meta($id, '_portalweave_sso_private_files', true);
+        $public = get_post_meta($id, '_portalweave_sso_public_files', true);
         $private = is_array($private) ? $private : [];
         $public = is_array($public) ? $public : [];
         foreach ($private as $name => $source) {
             if (!isset($public[$name]) || (file_exists($public[$name]) && !hash_equals(hash_file('sha256', $source), hash_file('sha256', $public[$name])))) {
-                return new \WP_Error('wpsso_media_restore', 'An existing public file prevents safe restoration.');
+                return new \WP_Error('portalweave_sso_media_restore', 'An existing public file prevents safe restoration.');
             }
             if (!wp_mkdir_p(dirname($public[$name])) || !copy($source, $public[$name])) {
-                return new \WP_Error('wpsso_media_restore', 'Unable to restore the public media file.');
+                return new \WP_Error('portalweave_sso_media_restore', 'Unable to restore the public media file.');
             }
         }
         foreach ($private as $source) {
             wp_delete_file($source);
         }
-        delete_post_meta($id, '_wpsso_private_files');
-        delete_post_meta($id, '_wpsso_public_files');
+        delete_post_meta($id, '_portalweave_sso_private_files');
+        delete_post_meta($id, '_portalweave_sso_public_files');
         clean_post_cache($id);
         return true;
     }
 
     public static function media_flag($meta_id, $id, $key, $value): void
     {
-        if ($key !== '_wpsso_protected' || self::$moving || get_post_type($id) !== 'attachment') {
+        if ($key !== '_portalweave_sso_protected' || self::$moving || get_post_type($id) !== 'attachment') {
             return;
         }
         self::$moving = true;
         $configured = in_array((int) $id, array_map('intval', Config::get('protected_media', [])), true);
         $result = (!$value && $configured)
-            ? new \WP_Error('wpsso_media_policy', 'Remove this attachment from the protected media ID list before removing its individual protection.')
+            ? new \WP_Error('portalweave_sso_media_policy', 'Remove this attachment from the protected media ID list before removing its individual protection.')
             : ($value ? self::protect_media($id) : self::unprotect_media($id));
         if (is_wp_error($result)) {
-            set_transient('wpsso_media_error_' . get_current_user_id(), $result->get_error_message(), 300);
+            set_transient('portalweave_sso_media_error_' . get_current_user_id(), $result->get_error_message(), 300);
             // Keep the restrictive flag when any private copy exists; never report a failed restore as public.
-            update_post_meta($id, '_wpsso_protected', (bool) get_post_meta($id, '_wpsso_private_files', true));
+            update_post_meta($id, '_portalweave_sso_protected', (bool) get_post_meta($id, '_portalweave_sso_private_files', true));
             Audit::record('media_error', '', null, $result->get_error_code());
         }
         self::$moving = false;
@@ -366,9 +366,9 @@ final class Access
 
     public static function media_notice(): void
     {
-        $error = get_transient('wpsso_media_error_' . get_current_user_id());
+        $error = get_transient('portalweave_sso_media_error_' . get_current_user_id());
         if ($error) {
-            delete_transient('wpsso_media_error_' . get_current_user_id());
+            delete_transient('portalweave_sso_media_error_' . get_current_user_id());
             echo '<div class="notice notice-error"><p>' . esc_html($error) . '</p></div>';
         }
     }
@@ -378,12 +378,12 @@ final class Access
         if (!self::is_protected((int) $id)) {
             return $url;
         }
-        return add_query_arg(['wpsso_action' => 'media', 'attachment_id' => (int) $id], home_url('/'));
+        return add_query_arg(['portalweave_sso_action' => 'media', 'attachment_id' => (int) $id], home_url('/'));
     }
 
     public static function attached_file($file, $id)
     {
-        $files = get_post_meta($id, '_wpsso_private_files', true);
+        $files = get_post_meta($id, '_portalweave_sso_private_files', true);
         $files = is_array($files) ? $files : [];
         return $files[basename($file)] ?? $file;
     }
@@ -412,7 +412,7 @@ final class Access
     public static function media_request(): void
     {
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only media delivery uses the current WordPress session and attachment access policy, like a private post.
-        $action = isset($_GET['wpsso_action']) && is_string($_GET['wpsso_action']) ? sanitize_key(wp_unslash($_GET['wpsso_action'])) : '';
+        $action = isset($_GET['portalweave_sso_action']) && is_string($_GET['portalweave_sso_action']) ? sanitize_key(wp_unslash($_GET['portalweave_sso_action'])) : '';
         if ($action !== 'media') {
             return;
         }
@@ -422,7 +422,7 @@ final class Access
         if (!$id || !self::is_protected($id) || !self::can_post($id)) {
             self::deny();
         }
-        $files = get_post_meta($id, '_wpsso_private_files', true);
+        $files = get_post_meta($id, '_portalweave_sso_private_files', true);
         $files = is_array($files) ? $files : [];
         $original = get_attached_file($id, true);
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Validate the exact basename and attachment-map membership below; sanitization must not turn a different requested path into an allowed file.
@@ -443,7 +443,7 @@ final class Access
 
     public static function delete_media(int $id): void
     {
-        $files = get_post_meta($id, '_wpsso_private_files', true);
+        $files = get_post_meta($id, '_portalweave_sso_private_files', true);
         foreach (is_array($files) ? $files : [] as $file) {
             wp_delete_file($file);
         }

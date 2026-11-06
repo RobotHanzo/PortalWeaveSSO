@@ -84,7 +84,7 @@ there are no command-line ignored errors or categories.
 The verified installed package reports zero errors and 17 warnings:
   - Nonce heuristics: public initiation reads a test flag, then checks the
     administrator nonce whenever testing is requested. The logout path reads
-    POST or GET into one request array, then verifies the wpsso_logout nonce
+    POST or GET into one request array, then verifies the portalweave_sso_logout nonce
     before processing a logged-in logout. These are verified at runtime.
   - Usermeta lookups: exact hashed immutable identity/sid lookups are necessary
     for safe account resolution and OIDC logout. Bounded result counts prevent
@@ -106,9 +106,12 @@ the complete binary into memory. Admin-supplied data is escaped at output.
 
 SOURCE, LICENSING AND PACKAGING
 Source and build/test tools: https://github.com/RobotHanzo/PortalWeaveSSO
-PORTALWEAVE_SSO_* bootstrap constants use the new public prefix. The retained
-WPSSO namespace, hooks, shortcode and CLI/settings names are compatibility
-identifiers, not the display name or an affiliation with another plugin.
+PORTALWEAVE_SSO_* constants, the PortalWeaveSSO PHP namespace,
+portalweave_sso_* hooks/settings, [portalweave_sso_oauth_login] and
+wp portalweave-sso commands use the current product name throughout.
+Earlier technical names have no compatibility aliases or automatic stored-data
+conversion. Existing deployments require the controlled replacement procedure
+in docs/provider-setup.md, including access rules and private-media provenance.
 All shipped code/assets are source-readable and covered by the bundled GPL
 license. The plugin has no bundled runtime package dependencies, copied
 provider logos, minified-only assets, advertising or public developer credits.

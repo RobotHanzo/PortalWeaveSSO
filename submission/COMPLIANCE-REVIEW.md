@@ -24,7 +24,7 @@ The numbers below refer to the official [Detailed Plugin Guidelines](https://dev
 | 14 | Git commits track development. SVN deployment is limited to verified, immutable version tags after approval; CI does not mirror every source commit into SVN. |
 | 15 | Release validation binds plugin header, bootstrap version, readme stable tag and changelog to an exact stable version. Release publication requires a matching tag on main and rejects replacing a directory release. |
 | 16 | Installable ZIP includes every runtime module, local assets, translation template, license, readme and four user guides. Build/test fixtures and developer tooling are excluded. |
-| 17 | Renamed to PortalWeave SSO to avoid the existing WPSSO product name. Public bootstrap constants use PORTALWEAVE_SSO_. Provider names describe editable integrations without endorsement. Proposed slug availability is not guaranteed. |
+| 17 | PortalWeave SSO uses its own display name, PortalWeaveSSO PHP namespace, portalweave_sso identifiers and PORTALWEAVE_SSO_ constants. Earlier technical naming has been replaced without compatibility aliases. Provider names describe editable integrations without endorsement. Proposed slug availability is not guaranteed. |
 | 18 | Initial manual review remains required. Deployment is disabled. The maintainer must respond to review requests and maintain an accurate WordPress.org contact account. |
 
 ## Additional engineering checks

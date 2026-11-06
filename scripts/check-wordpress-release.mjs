@@ -7,7 +7,7 @@ export async function checkWordPressRelease({ slug, version, request = fetch }) 
   if (typeof version !== 'string' || !/^(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)\.(?:0|[1-9]\d*)$/.test(version)) {
     throw new Error('WordPress releases require a stable X.Y.Z version.');
   }
-  const options = { redirect: 'error', signal: AbortSignal.timeout(20000), headers: { 'User-Agent': 'WPSSO-release-preflight/1.0' } };
+  const options = { redirect: 'error', signal: AbortSignal.timeout(20000), headers: { 'User-Agent': 'PortalWeave-SSO-release-preflight/1.0' } };
   const base = `https://plugins.svn.wordpress.org/${slug}/`;
   const repository = await request(base, options);
   if (repository.status !== 200) {

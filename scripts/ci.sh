@@ -2,8 +2,8 @@
 # Local and GitHub runners execute the same disposable WordPress checks.
 set -euo pipefail
 cd "$(dirname "${BASH_SOURCE[0]}")/.."
-export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-wpsso-ci}"
-plugin=/var/www/html/wp-content/plugins/wordpress-sso
+export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-portalweave-sso-ci}"
+plugin=/var/www/html/wp-content/plugins/portalweave-sso
 compose=(docker compose -f compose.test.yml)
 task="${1:-integration}"
 
@@ -19,19 +19,21 @@ chmod 0777 reports
 
 if [[ "$task" == multisite ]]; then
   "${compose[@]}" run --rm cli wp core multisite-install \
-    --url=https://network.example.test --title='WPSSO Multisite Integration' \
-    --admin_user=wpsso_network_admin --admin_password=local-test-network-password \
+    --url=https://network.example.test --title='PortalWeave SSO Multisite Integration' \
+    --admin_user=portalweave_sso_network_admin --admin_password=local-test-network-password \
     --admin_email=network@example.org --skip-email
-  "${compose[@]}" run --rm cli wp plugin activate wordpress-sso --network --url=https://network.example.test
+  "${compose[@]}" run --rm cli wp plugin activate portalweave-sso --network --url=https://network.example.test
+  "${compose[@]}" run --rm cli wp portalweave-sso providers --format=json --url=https://network.example.test
   "${compose[@]}" run --rm \
-    -e "WPSSO_REPORT_DIR=$plugin/reports" cli php "$plugin/tests/multisite.php"
+    -e "PORTALWEAVE_SSO_REPORT_DIR=$plugin/reports" cli php "$plugin/tests/multisite.php"
 else
   "${compose[@]}" run --rm cli wp core install \
-    --url=http://localhost:8098 --title='WPSSO Integration' \
-    --admin_user=wpsso_test_admin --admin_password=local-test-password-only \
+    --url=http://localhost:8098 --title='PortalWeave SSO Integration' \
+    --admin_user=portalweave_sso_test_admin --admin_password=local-test-password-only \
     --admin_email=admin@example.org --skip-email
-  "${compose[@]}" run --rm cli wp plugin activate wordpress-sso
-  "${compose[@]}" exec -T -e "WPSSO_REPORT_DIR=$plugin/reports" wordpress php "$plugin/tests/run.php"
+  "${compose[@]}" run --rm cli wp plugin activate portalweave-sso
+  "${compose[@]}" run --rm cli wp portalweave-sso providers --format=json
+  "${compose[@]}" exec -T -e "PORTALWEAVE_SSO_REPORT_DIR=$plugin/reports" wordpress php "$plugin/tests/run.php"
   "${compose[@]}" exec -T wordpress bash "$plugin/tests/setup-tls.sh"
   "${compose[@]}" exec -T wordpress php "$plugin/tests/setup-e2e.php"
   restore_fixture() {
@@ -40,5 +42,5 @@ else
   trap restore_fixture EXIT
   curl --insecure --fail --silent --show-error --retry 10 --retry-connrefused --retry-delay 1 \
     https://localhost:8448/wp-login.php > /dev/null
-  WPSSO_REPORT_DIR=reports node tests/e2e.mjs
+  PORTALWEAVE_SSO_REPORT_DIR=reports node tests/e2e.mjs
 fi
