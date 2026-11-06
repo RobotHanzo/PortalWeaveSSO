@@ -1,6 +1,8 @@
-# Optional integrations and operations
+# PortalWeave SSO optional integrations and operations
 
 Every optional module starts disabled. Enabling a module does not disable the core account rules: provider identities, verified email, administrator protections, domain restrictions and redirect allowlists still apply.
+
+The plugin's proposed directory slug/text domain is `portalweave-sso`. Existing protocol routes, `wpsso/*` abilities, `wp wpsso` commands, `WPSSO` namespace, hooks, option/meta names and documented `WPSSO_*` server configuration constants remain compatible. These technical names do not change when the display name is PortalWeave SSO. See [external-service disclosures](external-services.md) and [privacy/retention behavior](privacy.md) when deciding which integrations to enable.
 
 ## SCIM 2.0 inbound provisioning
 
@@ -38,7 +40,7 @@ ID tokens in query parameters and unsolicited bearer-token login are not accepte
 
 Enable Shared SSO globally and on the corresponding provider at every participating site. Use the same app ID, immutable subject mapping, issuer, a dedicated 32+ character shared signing secret, a parent cookie domain, and an exact list of trusted HTTPS origins on every site. For example: cookie domain `example.org`, origins `https://one.example.org` and `https://two.example.org`.
 
-Successful authentication issues a Secure, HttpOnly, SameSite=Lax parent-domain cookie containing a signed, one-minute identity assertion. It contains mapped identity claims, not OAuth access or refresh tokens. Each participating site consumes the assertion once, resolves its own local account under its own account policy, and creates a normal WordPress session. Consuming an assertion does not issue another one, so trust cannot extend itself indefinitely. This is an SSO handoff: a user must visit another site during the assertion's one-minute lifetime. Later visits use the identity provider's normal SSO flow.
+Successful authentication issues a Secure, HttpOnly, SameSite=Lax parent-domain cookie containing a signed, one-minute identity assertion. It contains mapped identity claims, not OAuth access or refresh tokens. Signing does not encrypt the claims: participating domain applications can read them. Each participating site consumes the assertion once, resolves its own local account under its own account policy, and creates a normal WordPress session. Consuming an assertion does not issue another one, so trust cannot extend itself indefinitely. This is an SSO handoff: a user must visit another site during the assertion's one-minute lifetime. Later visits use the identity provider's normal SSO flow.
 
 Every application on the parent domain must be trusted: a compromised sibling application or leaked shared signing secret can impersonate users. A cookie domain must be a domain you control, not a public suffix. Separate site-local roles are resolved independently. Logging out clears the shared assertion; already-created sessions on other WordPress sites require their own logout or IdP session management. This module does not claim universal cross-site session revocation. Subdirectory installations sharing the same origin already share the cookie namespace and should use WordPress multisite session handling instead.
 
@@ -50,11 +52,15 @@ Moderation marks identities first resolved through a moderated provider as pendi
 
 The avatar module reads the provider's configured avatar attribute (picture by default), accepts only a public HTTPS URL, and maps it to WordPress avatar display. The browser fetches the remote avatar; enabling it may disclose visitor network details to that image host. Attribute redirects evaluate configured claim/equals/url rules in order after login, then apply the global redirect allowlist.
 
+Configure/disclose the actual picture host before enabling the feature. The module replaces the avatar URL when a valid mapped value exists; WordPress core's normal avatar/Gravatar fallback remains a separate site setting. Provider icons are also optional remote images; the plugin bundles its executable JavaScript and styles locally.
+
 ## AI abilities and MCP
 
 On WordPress 6.9 or later, enable **AI / MCP abilities** to register exactly eight namespaced abilities: `wpsso/list-providers`, `wpsso/get-provider`, `wpsso/configure-provider`, `wpsso/diagnose`, `wpsso/fix-common-error`, `wpsso/export-config`, `wpsso/login-audit`, `wpsso/support-query`. All execution paths require manage_options and recheck that the feature is enabled. Outputs exclude credentials and client identifiers; audit output contains personal data and remains administrator-only.
 
 Install and configure the official [WordPress MCP Adapter](https://github.com/WordPress/mcp-adapter) to expose these abilities to Claude Desktop, Cursor, ChatGPT or another compatible MCP client. This plugin provides abilities; the adapter owns MCP transport, authentication and connection instructions. Both current meta.public and the older meta.mcp.public flags are supplied. Use an authenticated administrator identity and the adapter's discovery tools to discover the abilities. Keep application passwords out of source code.
+
+PortalWeave SSO does not call an AI model or send data to a named AI vendor itself. Information returned to your authenticated client may be handled by that client or its configured AI service. Review and disclose those actual destinations, especially for personal audit output.
 
 Safe automatic fixes are deliberately bounded to enabling PKCE, using Authorization Code, adding openid scope and clearing a callback override. Diagnosis does not pretend to test an IdP interactively; use Test SSO Config in the admin. support-query creates a local draft by default, retained for one day. It sends WordPress email only with explicit send=true and a configured support recipient; mail delivery depends on the site's WordPress mail setup.
 
@@ -78,3 +84,5 @@ CLI runs with the authority of the local server operator. Backups contain redact
 ## Protected media deployment
 
 WordPress PHP cannot intercept direct static-file requests, so protecting an attachment relocates its originals and generated sizes outside the document root. Configure a writable `WPSSO_PRIVATE_MEDIA_DIR` (the default is a sibling of ABSPATH) and use the plugin-generated media delivery URLs, which enforce authorization and private cache headers. Protection fails closed if relocation cannot complete. Purge any previously cached web-server or CDN copies and remove externally hosted public duplicates before relying on access control. Verify your deployment's document root and private directory in a browser; protecting an attachment page alone does not protect copies that still exist elsewhere.
+
+Deactivation and uninstall do not publish or delete vault files. The data-removal setting is off by default; even opt-in uninstall cleanup retains vault recovery metadata and WordPress accounts/content/public profile values. Use the [administrator guide](provider-setup.md) and [privacy guide](privacy.md) to plan erasure, removal and recovery.
