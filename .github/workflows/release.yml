@@ -70,7 +70,7 @@ jobs:
             [[ "$REF_TYPE" == tag && "$REF_NAME" == "$REQUESTED_TAG" ]] || { echo '::error::Dispatch publication on the matching tag ref, not on a branch.'; exit 1; }
             publish=true
           fi
-          package_slug="${PLUGIN_SLUG:-wordpress-sso}"
+          package_slug="${PLUGIN_SLUG:-portalweave-sso}"
           [[ "$package_slug" =~ ^[a-z0-9]+(-[a-z0-9]+)*$ ]] || { echo '::error::Invalid plugin slug.'; exit 1; }
           printf 'sha=%s\ntag=%s\npublish=%s\nslug=%s\n' "$(git rev-parse HEAD)" "$REQUESTED_TAG" "$publish" "$package_slug" >> "$GITHUB_OUTPUT"
           printf '### Release intent\n\nWordPress.org publication enabled for this run: **%s**.\n' "$publish" >> "$GITHUB_STEP_SUMMARY"
@@ -124,19 +124,12 @@ jobs:
             printf 'Artifacts are ready for review. No WordPress.org or GitHub release will be published. Directory approval, a clean Plugin Check, repository variables and environment secrets are required for publication.\n' >> "$GITHUB_STEP_SUMMARY"
           fi
 
-  directory-review:
-    name: Required marketplace review
-    if: needs.resolve.outputs.publish == 'true'
-    needs: [resolve, verify, candidate]
-    uses: ./.github/workflows/wordpress-review.yml
-    with:
-      checkout_ref: ${{ needs.resolve.outputs.sha }}
-      slug: ${{ vars.WORDPRESS_PLUGIN_SLUG }}
-
   deploy:
     name: Publish to WordPress.org
     if: needs.resolve.outputs.publish == 'true'
-    needs: [resolve, verify, candidate, directory-review]
+    # The reusable CI already requires the complete directory review, including
+    # native findings and fail-closed JSON/JUnit reporting, for this exact SHA.
+    needs: [resolve, verify, candidate]
     runs-on: ubuntu-latest
     timeout-minutes: 20
     environment:
