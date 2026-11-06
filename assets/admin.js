@@ -33,4 +33,58 @@
       });
     });
   });
+
+  document.querySelectorAll('.portalweave-sso-admin').forEach(root => {
+    const forms = new Map();
+    root.querySelectorAll('form[data-pending-label][data-pending-message]').forEach(form => {
+      const status = document.createElement('p');
+      status.className = 'portalweave-sso-action-status';
+      status.setAttribute('role', 'status');
+      status.setAttribute('aria-live', 'polite');
+      status.setAttribute('aria-atomic', 'true');
+      const actions = form.querySelector('.portalweave-sso-save, [data-setup-navigation]');
+      if (actions) actions.after(status);
+      else form.append(status);
+      forms.set(form, { status, pending: false, buttons: [] });
+    });
+
+    // Bubble after the wizard's form listener has validated every required step.
+    root.addEventListener('submit', event => {
+      const form = event.target;
+      const state = forms.get(form);
+      if (!state) return;
+      if (state.pending) {
+        event.preventDefault();
+        return;
+      }
+      if (event.defaultPrevented) return;
+      state.pending = true;
+      state.buttons = Array.from(form.querySelectorAll('button[type="submit"]')).map(button => ({
+        button, label: button.textContent,
+        busy: button.getAttribute('aria-busy'), disabled: button.getAttribute('aria-disabled'),
+      }));
+      state.buttons.forEach(({ button }) => {
+        // Keep submitters and all settings/credential fields in the POST payload.
+        button.setAttribute('aria-busy', 'true');
+        button.setAttribute('aria-disabled', 'true');
+        button.textContent = form.dataset.pendingLabel;
+      });
+      state.status.textContent = form.dataset.pendingMessage;
+    });
+
+    window.addEventListener('pageshow', () => {
+      forms.forEach(state => {
+        state.pending = false;
+        state.status.textContent = '';
+        state.buttons.forEach(({ button, label, busy, disabled }) => {
+          button.textContent = label;
+          if (busy === null) button.removeAttribute('aria-busy');
+          else button.setAttribute('aria-busy', busy);
+          if (disabled === null) button.removeAttribute('aria-disabled');
+          else button.setAttribute('aria-disabled', disabled);
+        });
+        state.buttons = [];
+      });
+    });
+  });
 })();

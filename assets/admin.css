@@ -15,6 +15,19 @@
     box-sizing: border-box;
 }
 
+.portalweave-sso-admin .button[aria-busy="true"] {
+    cursor: wait;
+}
+
+.portalweave-sso-action-status {
+    margin: 0;
+    color: var(--portalweave-sso-ink);
+}
+
+.portalweave-sso-action-status:not(:empty) {
+    margin: 12px 0;
+}
+
 .portalweave-sso-admin a {
     text-underline-offset: 3px;
 }

@@ -187,11 +187,31 @@
 
     root.querySelectorAll('[data-setup-copy]').forEach(button => {
       const target = document.getElementById(button.getAttribute('aria-controls'));
-      if (!target || !root.contains(target) || !target.readOnly || typeof target.value !== 'string') return;
+      const feedback = document.getElementById(button.dataset.copyStatus);
+      if (!target || !root.contains(target) || !target.readOnly || typeof target.value !== 'string'
+        || !feedback || !root.contains(feedback)) return;
+      const label = button.textContent;
+      let copying = false;
+      let resetLabel;
+      let announcement;
+      function report(message, state) {
+        window.clearTimeout(announcement);
+        feedback.textContent = '';
+        feedback.dataset.state = state;
+        // A separate update also announces repeated copies of the same URI.
+        announcement = window.setTimeout(() => { feedback.textContent = message; }, 0);
+      }
       button.hidden = false;
       button.addEventListener('click', async () => {
+        if (copying) return;
         const input = document.getElementById(button.getAttribute('aria-controls'));
         if (!input || !root.contains(input) || !input.readOnly || typeof input.value !== 'string') return;
+        copying = true;
+        window.clearTimeout(resetLabel);
+        button.setAttribute('aria-busy', 'true');
+        button.setAttribute('aria-disabled', 'true');
+        button.textContent = button.dataset.pendingLabel;
+        report(button.dataset.copyPending, 'pending');
         let copied = false;
         if (navigator.clipboard?.writeText) {
           try {
@@ -206,8 +226,12 @@
           try { copied = document.execCommand('copy'); } catch { /* Keep the callback selected for manual copying. */ }
           if (copied && focused && typeof focused.focus === 'function') focused.focus();
         }
-        announce(copied ? button.dataset.copySuccess || root.dataset.copySuccess
-          : button.dataset.copyError || root.dataset.copyError);
+        copying = false;
+        button.removeAttribute('aria-busy');
+        button.removeAttribute('aria-disabled');
+        button.textContent = copied ? button.dataset.successLabel : button.dataset.errorLabel;
+        report(copied ? button.dataset.copySuccess : button.dataset.copyError, copied ? 'success' : 'error');
+        if (copied) resetLabel = window.setTimeout(() => { button.textContent = label; }, 2500);
       });
     });
 
