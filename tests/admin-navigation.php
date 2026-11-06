@@ -55,13 +55,132 @@ portalweave_sso_test('Admin form rejects cross-screen fields and structured navi
     delete_transient('portalweave_sso_admin_error_' . get_current_user_id());
 });
 
+portalweave_sso_test('Provider sections round trip through real saves without narrowing the submitted provider', function () {
+    wp_set_current_user(get_user_by('login', 'portalweave_sso_test_admin')->ID);
+    portalweave_sso_assert(\PortalWeaveSSO\Config::save(['apps' => [
+        'alpha' => portalweave_sso_app(['id' => 'alpha', 'keep_email' => true, 'jwt_secret' => 'fixture-jwt-secret-at-least-thirty-two-bytes']),
+        'beta' => portalweave_sso_app(['id' => 'beta', 'name' => 'Unrelated provider']),
+    ], 'default_app' => 'beta', 'popup' => true]) === true, 'Unable to save provider-section fixture');
+    $before = get_option('portalweave_sso_settings');
+    foreach (['connection', 'endpoints', 'security', 'mapping', 'accounts', 'integrations', 'button'] as $section) {
+        $destination = portalweave_sso_admin_form_submit(['apps' => ['alpha' => [
+            'id' => 'alpha', 'name' => 'Edited ' . $section, 'client_secret' => '', 'jwt_secret' => '', 'keep_email' => '0',
+            'mapping' => '{"email":"mail","groups":"department.groups"}', 'button_text' => 'Continue with ' . $section,
+        ]]], ['portalweave_sso_screen' => 'providers', 'portalweave_sso_provider' => 'alpha', 'portalweave_sso_provider_section' => $section]);
+        parse_str((string) wp_parse_url($destination, PHP_URL_QUERY), $query);
+        portalweave_sso_assert(($query['provider'] ?? '') === 'alpha' && ($query['provider_section'] ?? '') === $section
+            && ($query['portalweave_sso_notice'] ?? '') === 'saved', 'Provider save lost its selected section: ' . $section);
+        $after = get_option('portalweave_sso_settings');
+        $app = \PortalWeaveSSO\Config::app('alpha');
+        portalweave_sso_assert($app['name'] === 'Edited ' . $section && $app['button_text'] === 'Continue with ' . $section
+            && !$app['keep_email'] && $app['mapping']['email'] === 'mail' && $app['mapping']['groups'] === 'department.groups', 'A section save dropped fields from another section');
+        foreach (['client_secret', 'jwt_secret'] as $key) {
+            portalweave_sso_assert($after['apps']['alpha'][$key] === $before['apps']['alpha'][$key], 'Blank secret input changed stored ciphertext: ' . $key);
+        }
+        portalweave_sso_assert($after['apps']['beta'] === $before['apps']['beta'] && $after['default_app'] === 'beta' && $after['popup'] === true, 'Section navigation changed an unrelated provider or login policy');
+        portalweave_sso_assert(!isset($after['provider_section']) && !isset($after['apps']['alpha']['provider_section']), 'Navigation context entered stored provider configuration');
+    }
+});
+
+portalweave_sso_test('Provider section survives parser, scope and configuration errors without changing settings', function () {
+    wp_set_current_user(get_user_by('login', 'portalweave_sso_test_admin')->ID);
+    portalweave_sso_assert(\PortalWeaveSSO\Config::save(['apps' => ['alpha' => portalweave_sso_app(['id' => 'alpha'])]]) === true, 'Unable to save provider-error fixture');
+    $before = get_option('portalweave_sso_settings');
+    try {
+        foreach ([
+            ['mapping', ['apps' => ['alpha' => ['id' => 'alpha', 'mapping' => '{"email":']]]],
+            ['accounts', ['apps' => ['alpha' => ['id' => 'alpha', 'name' => 'Must not save']], 'popup' => '1']],
+            ['endpoints', ['apps' => ['alpha' => ['id' => 'alpha', 'token_url' => 'http://example.org/token']]]],
+        ] as [$section, $settings]) {
+            $destination = portalweave_sso_admin_form_submit($settings, ['portalweave_sso_screen' => 'providers', 'portalweave_sso_provider' => 'alpha', 'portalweave_sso_provider_section' => $section]);
+            parse_str((string) wp_parse_url($destination, PHP_URL_QUERY), $query);
+            portalweave_sso_assert(($query['provider'] ?? '') === 'alpha' && ($query['provider_section'] ?? '') === $section
+                && ($query['portalweave_sso_notice'] ?? '') === 'error', 'A provider error lost its selected section: ' . $section);
+            portalweave_sso_assert(get_option('portalweave_sso_settings') === $before, 'A rejected provider save changed settings');
+        }
+    } finally { delete_transient('portalweave_sso_admin_error_' . get_current_user_id()); }
+});
+
+portalweave_sso_test('Provider section rejects structured POST context and bounds unknown destinations', function () {
+    wp_set_current_user(get_user_by('login', 'portalweave_sso_test_admin')->ID);
+    portalweave_sso_assert(\PortalWeaveSSO\Config::save(['apps' => ['alpha' => portalweave_sso_app(['id' => 'alpha'])]]) === true, 'Unable to save section-type fixture');
+    $context = ['portalweave_sso_screen' => 'providers', 'portalweave_sso_provider' => 'alpha'];
+    $before = get_option('portalweave_sso_settings');
+    try {
+        $destination = portalweave_sso_admin_form_submit(['apps' => ['alpha' => ['id' => 'alpha', 'name' => 'Must not save']]], $context + ['portalweave_sso_provider_section' => ['accounts']]);
+        parse_str((string) wp_parse_url($destination, PHP_URL_QUERY), $query);
+        portalweave_sso_assert(($query['portalweave_sso_notice'] ?? '') === 'error' && ($query['provider_section'] ?? 'connection') === 'connection', 'Structured section navigation was accepted or reflected');
+        portalweave_sso_assert(get_option('portalweave_sso_settings') === $before, 'Structured section context changed a provider before rejection');
+        foreach ([
+            ['apps' => ['alpha' => ['id' => 'alpha', 'name' => 'Safe fallback']]],
+            ['apps' => ['alpha' => ['id' => 'alpha', 'mapping' => '{invalid-json']]],
+        ] as $index => $settings) {
+            $destination = portalweave_sso_admin_form_submit($settings, $context + ['portalweave_sso_provider_section' => 'unknown-section']);
+            parse_str((string) wp_parse_url($destination, PHP_URL_QUERY), $query);
+            portalweave_sso_assert(($query['provider'] ?? '') === 'alpha' && ($query['provider_section'] ?? 'connection') === 'connection'
+                && ($query['portalweave_sso_notice'] ?? '') === ($index === 0 ? 'saved' : 'error'), 'Unknown scalar section did not fall back to the connection editor');
+            portalweave_sso_assert(!str_contains($destination, 'unknown-section'), 'Unknown section was reflected into the return URL');
+        }
+        portalweave_sso_assert(\PortalWeaveSSO\Config::app('alpha')['name'] === 'Safe fallback', 'Fallback navigation prevented a valid save or allowed a rejected save');
+    } finally { delete_transient('portalweave_sso_admin_error_' . get_current_user_id()); }
+});
+
+portalweave_sso_test('Deleting a provider from a section returns to the list without stale editor context', function () {
+    wp_set_current_user(get_user_by('login', 'portalweave_sso_test_admin')->ID);
+    portalweave_sso_assert(\PortalWeaveSSO\Config::save(['apps' => [
+        'alpha' => portalweave_sso_app(['id' => 'alpha']), 'beta' => portalweave_sso_app(['id' => 'beta']),
+    ], 'default_app' => 'alpha']) === true, 'Unable to save provider-deletion fixture');
+    $before = get_option('portalweave_sso_settings');
+    $destination = portalweave_sso_admin_form_submit(['apps' => ['alpha' => ['id' => 'alpha', '_delete' => '1']]],
+        ['portalweave_sso_screen' => 'providers', 'portalweave_sso_provider' => 'alpha', 'portalweave_sso_provider_section' => 'button']);
+    parse_str((string) wp_parse_url($destination, PHP_URL_QUERY), $query);
+    portalweave_sso_assert(($query['tab'] ?? '') === 'providers' && ($query['portalweave_sso_notice'] ?? '') === 'saved'
+        && !isset($query['provider']) && !isset($query['new_provider']) && !isset($query['provider_section']), 'Deletion returned to a stale provider section');
+    $after = get_option('portalweave_sso_settings');
+    portalweave_sso_assert(!isset($after['apps']['alpha']) && $after['apps']['beta'] === $before['apps']['beta'] && $after['default_app'] === '', 'Provider deletion changed another provider or retained the deleted default');
+});
+
+portalweave_sso_test('Provider sections render one complete secret-free form and remain usable without JavaScript', function () {
+    wp_set_current_user(get_user_by('login', 'portalweave_sso_test_admin')->ID);
+    $app = portalweave_sso_app(['id' => 'alpha', 'jwt_secret' => 'fixture-only-jwt-signing-secret-with-thirty-two-bytes']);
+    portalweave_sso_assert(\PortalWeaveSSO\Config::save(['apps' => ['alpha' => $app]]) === true, 'Unable to save provider-render fixture');
+    $stored = get_option('portalweave_sso_settings');
+    $original_get = $_GET;
+    try {
+        foreach ([['mapping', 'mapping'], ['unknown-section', 'connection'], [['accounts'], 'connection']] as [$requested, $selected]) {
+            $_GET = ['page' => 'portalweave-sso', 'tab' => 'providers', 'provider' => 'alpha', 'provider_section' => $requested];
+            ob_start();
+            \PortalWeaveSSO\Admin::page();
+            $html = ob_get_clean();
+            portalweave_sso_assert(preg_match('/<[^>]*\bdata-provider-editor\b[^>]*>/', $html, $editor) === 1
+                && str_contains($editor[0], 'data-provider-section="' . $selected . '"'), 'Provider editor did not bound its selected section');
+            portalweave_sso_assert(substr_count($html, '<form ') === 1 && str_contains($html, 'name="portalweave_sso_complete" value="1"'), 'Section rendering split the form or lost the truncation guard');
+            portalweave_sso_assert(str_contains($html, 'name="portalweave_sso_provider_section" value="' . $selected . '"'), 'Selected section has no separate POST navigation context');
+            foreach (['connection', 'endpoints', 'security', 'mapping', 'accounts', 'integrations', 'button'] as $section) {
+                $panel_id = 'portalweave-sso-provider-panel-' . $section;
+                portalweave_sso_assert(preg_match('/<a\b[^>]*\bdata-provider-tab="' . $section . '"[^>]*>/', $html, $tab) === 1
+                    && str_contains($tab[0], 'id="portalweave-sso-provider-tab-' . $section . '"') && str_contains($tab[0], 'href="#' . $panel_id . '"'), 'A provider section has no ordinary anchor navigation: ' . $section);
+                portalweave_sso_assert(preg_match('/<div\b[^>]*\bdata-provider-panel="' . $section . '"[^>]*>/', $html, $panel) === 1
+                    && str_contains($panel[0], 'id="' . $panel_id . '"') && !preg_match('/\shidden(?:\s|=|>)|aria-hidden="true"|display\s*:\s*none/', $panel[0]), 'A section is absent or hidden before JavaScript: ' . $section);
+            }
+            foreach (['name', 'token_url', 'algorithms', 'mapping', 'verified_attribute', 'avatar_attribute', 'button_text'] as $field) {
+                portalweave_sso_assert(substr_count($html, 'name="settings[apps][alpha][' . $field . ']"') === 1, 'A section field is missing or duplicated: ' . $field);
+            }
+            foreach (['client_secret', 'jwt_secret'] as $key) {
+                portalweave_sso_assert(!str_contains($html, $app[$key]) && !str_contains($html, $stored['apps']['alpha'][$key]), 'Section rendering disclosed a stored credential: ' . $key);
+                portalweave_sso_assert(preg_match('/<input\b(?=[^>]*\bname="settings\[apps\]\[alpha\]\[' . $key . '\]")(?=[^>]*\btype="password")(?=[^>]*\bvalue="")[^>]*>/', $html) === 1, 'Stored secret is not represented by an empty password input: ' . $key);
+            }
+        }
+    } finally { $_GET = $original_get; }
+});
+
 portalweave_sso_test('Guided provider form creates one connection and returns to its advanced editor', function () {
     wp_set_current_user(get_user_by('login', 'portalweave_sso_test_admin')->ID);
     portalweave_sso_assert(\PortalWeaveSSO\Config::save(['apps' => ['existing' => portalweave_sso_app(['id' => 'existing'])], 'default_app' => 'existing']) === true, 'Existing provider fixture failed');
     $before = get_option('portalweave_sso_settings');
     $secret = "  Fixture-Only+Secret\\with<>&\"'bytes  ";
     $payload = ['provider' => 'discord', 'id' => 'guided-discord', 'name' => 'Community Discord', 'callback_registered' => '1', 'client_id' => 'discord-web-client', 'client_secret' => $secret];
-    $context = ['portalweave_sso_screen' => 'providers', 'portalweave_sso_creating' => '1', 'portalweave_sso_provider' => ''];
+    $context = ['portalweave_sso_screen' => 'providers', 'portalweave_sso_creating' => '1', 'portalweave_sso_provider' => '', 'portalweave_sso_provider_section' => 'accounts'];
     $destination = portalweave_sso_admin_form_submit(['provider_setup' => $payload], $context);
     $after = get_option('portalweave_sso_settings');
     $app = \PortalWeaveSSO\Config::app('guided-discord');
@@ -69,6 +188,7 @@ portalweave_sso_test('Guided provider form creates one connection and returns to
     portalweave_sso_assert($after['apps']['existing'] === $before['apps']['existing'] && $after['default_app'] === 'existing', 'Guided form changed another provider or default');
     parse_str((string) wp_parse_url($destination, PHP_URL_QUERY), $query);
     portalweave_sso_assert(($query['provider'] ?? '') === 'guided-discord' && ($query['portalweave_sso_notice'] ?? '') === 'saved', 'Guided form did not return to the created provider');
+    portalweave_sso_assert(($query['provider_section'] ?? 'connection') === 'connection', 'Guided creation inherited a stale advanced-editor section');
     portalweave_sso_assert(!str_contains($destination, $secret) && !str_contains($destination, $payload['client_id']), 'Guided redirect disclosed credentials');
     $destination = portalweave_sso_admin_form_submit(['provider_setup' => $payload], $context);
     parse_str((string) wp_parse_url($destination, PHP_URL_QUERY), $query);

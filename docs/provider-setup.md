@@ -50,6 +50,26 @@ Advanced JWT configuration supports RS256, RS384, RS512, HS256, HS384 and HS512.
 | ClassLink | Current partner-provided endpoints, client-authentication contract and stable/verified claim paths. The older public endpoint template is not assumed current. |
 | Custom OAuth / OIDC | Explicit protocol, endpoints, scopes and documented client authentication. OIDC requires its exact issuer and trusted JWKS; OAuth2 can supply an authorization-response issuer when it emits `iss`. |
 
+## Edit an existing provider
+
+Open **Identity providers > Configure** for the provider. Its editor has seven tabs:
+
+| Tab | Settings |
+| --- | --- |
+| Connection | Provider template, display name, enabled status, credentials and scopes |
+| Endpoints | Authorization, token, user/group info, issuer, signing keys and logout/callback URLs |
+| Security | Protocol, login grant, PKCE, legacy opt-in, allowed algorithms and immutable subject |
+| Mapping | Standard/custom attributes, group/domain role mappings and default role |
+| Accounts | Registration, linking, retained attributes/roles and verified-email/administrator policy |
+| Integrations | Per-provider guest, moderation, shared/JWT SSO, picture and redirect options |
+| Login button | Provider-specific button text and icon |
+
+**Save provider** saves every tab for this provider. Switching tabs keeps unsaved values, including fields in inactive tabs; it does not save automatically. Leaving a stored secret input blank preserves that credential. Use its explicit clear control only when you intend to remove it. Other providers and site-wide policy remain separate.
+
+Use Left/Right arrows or Home/End while a tab is focused. Browser Back/Forward restores section navigation, and a browser validation error opens the tab containing the first invalid field. Without JavaScript, all seven sections are visible and their links jump within the same form. Network-managed settings remain read-only, with section navigation available.
+
+With JavaScript, the selected tab is retained after saving or a server validation error. Section links accept only the named tabs; an unknown section opens Connection.
+
 ## Provider notes
 
 | Provider | Registration / endpoint considerations |

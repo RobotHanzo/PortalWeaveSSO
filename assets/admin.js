@@ -34,7 +34,83 @@
     });
   });
 
+  function enhanceProviderEditor(editor) {
+    const form = editor.closest('form');
+    const navigation = editor.querySelector('[data-provider-tabs]');
+    const section = form?.elements.namedItem('portalweave_sso_provider_section');
+    const items = Array.from(editor.querySelectorAll('[data-provider-tab]')).map(tab => ({
+      tab, key: tab.dataset.providerTab, panel: document.getElementById(tab.hash.slice(1)),
+    }));
+    if (!form || !navigation || !section || !items.length
+      || items.some(item => !item.panel || !editor.contains(item.panel) || item.panel.dataset.providerPanel !== item.key)) return;
+    const initial = items.find(item => item.key === editor.dataset.providerSection) || items[0];
+    const fromLocation = () => items.find(item => item.panel.id === window.location.hash.slice(1)) || initial;
+    let current = initial;
+
+    function select(item, focus = false, history = '') {
+      items.forEach(candidate => {
+        const active = candidate === item;
+        candidate.tab.setAttribute('aria-selected', String(active));
+        candidate.tab.tabIndex = active ? 0 : -1;
+        candidate.tab.classList.toggle('is-active', active);
+        candidate.panel.hidden = !active;
+      });
+      current = item;
+      if (history && window.location.hash !== '#' + item.panel.id) {
+        const url = new URL(window.location.href);
+        url.hash = item.panel.id;
+        window.history[history === 'push' ? 'pushState' : 'replaceState'](null, '', url);
+      }
+      if (focus) item.tab.focus();
+    }
+
+    navigation.setAttribute('role', 'tablist');
+    items.forEach((item, index) => {
+      item.tab.setAttribute('role', 'tab');
+      item.tab.setAttribute('aria-controls', item.panel.id);
+      item.panel.setAttribute('role', 'tabpanel');
+      item.panel.setAttribute('aria-labelledby', item.tab.id);
+      item.panel.tabIndex = 0;
+      item.tab.addEventListener('click', event => {
+        if (event.button !== 0 || event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        event.preventDefault();
+        select(item, false, 'push');
+      });
+      item.tab.addEventListener('keydown', event => {
+        if (event.metaKey || event.ctrlKey || event.shiftKey || event.altKey) return;
+        let next;
+        const direction = window.getComputedStyle(navigation).direction === 'rtl' ? -1 : 1;
+        if (event.key === 'ArrowRight') next = (index + direction + items.length) % items.length;
+        else if (event.key === 'ArrowLeft') next = (index - direction + items.length) % items.length;
+        else if (event.key === 'Home') next = 0;
+        else if (event.key === 'End') next = items.length - 1;
+        else if (event.key === ' ') next = index;
+        if (next === undefined) return;
+        event.preventDefault();
+        select(items[next], true, 'replace');
+      });
+    });
+    // Native validation must reveal the first invalid field before focusing it.
+    form.addEventListener('invalid', () => {
+      const invalid = Array.from(form.elements).find(control => control.willValidate && !control.validity.valid);
+      const panel = invalid?.closest('[data-provider-panel]');
+      const item = items.find(candidate => candidate.panel === panel);
+      if (item) select(item, false, 'replace');
+    }, true);
+    // Navigation alone must not dirty the settings form's original field values.
+    form.addEventListener('formdata', event => {
+      event.formData.set(section.name, current.key);
+    });
+    if (!('FormDataEvent' in window)) {
+      form.addEventListener('submit', () => { section.value = current.key; });
+    }
+    window.addEventListener('hashchange', () => select(fromLocation()));
+    window.addEventListener('popstate', () => select(fromLocation()));
+    select(fromLocation());
+  }
+
   document.querySelectorAll('.portalweave-sso-admin').forEach(root => {
+    root.querySelectorAll('[data-provider-editor]').forEach(enhanceProviderEditor);
     const forms = new Map();
     root.querySelectorAll('form[data-pending-label][data-pending-message]').forEach(form => {
       const status = document.createElement('p');
