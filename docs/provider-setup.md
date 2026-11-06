@@ -1,6 +1,6 @@
 # PortalWeave SSO provider setup and administrator guide
 
-Install `portalweave-sso-1.0.1.zip` through **Plugins → Add New → Upload Plugin**, activate **PortalWeave SSO**, and open **Settings → PortalWeave SSO**. On multisite, **Network Admin → PortalWeave SSO** can enforce a network-wide policy. Each WordPress network has its own network option.
+Install `portalweave-sso-1.1.0.zip` through **Plugins → Add New → Upload Plugin**, activate **PortalWeave SSO**, and open **Settings → PortalWeave SSO**. On multisite, **Network Admin → PortalWeave SSO** can enforce a network-wide policy. Each WordPress network has its own network option.
 
 The proposed directory slug and text domain are `portalweave-sso`. Use the `[sso_oauth_login]` shortcode, `PORTALWEAVE_SSO_*` server configuration constants, `PortalWeaveSSO` PHP namespace and `wp portalweave-sso` commands.
 
@@ -8,7 +8,9 @@ SSO requires HTTPS. Configure WordPress's HTTPS detection for a trusted reverse 
 
 ## Replacing an earlier installation
 
-This release replaces the entire technical namespace. It provides no earlier-name aliases, automatic database conversion or fallback to previous storage. Treat replacement as a controlled deployment rather than an in-place compatible update:
+Upgrading from PortalWeave SSO 1.0.1 retains existing configuration. The new WordPress sign-in customization remains off until explicitly enabled, so the shared appearance continues to apply.
+
+The controlled replacement below applies to installations using the technical namespace from before 1.0.1. There are no earlier-name aliases, automatic database conversion or fallback to that previous storage. Treat such a replacement as a controlled deployment rather than an in-place compatible update:
 
 1. Restrict the site at the web server or another external access boundary before replacing the plugin. Earlier whole-site, content, moderation and provisioning blocks will not be read under the new names. Existing WordPress accounts and sessions persist; changing the plugin namespace does not revoke those sessions.
 2. Back up the complete database, WordPress salts, server configuration and private-media vault together. Retain the previous plugin version for rollback. A redacted configuration export omits credentials and cannot recover identity links, tokens, policy metadata or vault provenance.
