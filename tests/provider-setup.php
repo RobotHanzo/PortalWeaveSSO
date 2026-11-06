@@ -24,7 +24,7 @@ function portalweave_sso_setup_input(string $provider, array $overrides = []): a
 
 portalweave_sso_test('Provider setup catalog exposes complete local registration instructions and conditional field contracts', function () {
     $catalog = \PortalWeaveSSO\ProviderSetup::catalog();
-    portalweave_sso_assert(array_keys($catalog) === ['custom', 'entra', 'b2c', 'office365', 'cognito', 'keycloak', 'okta', 'salesforce', 'google', 'auth0', 'onelogin', 'discord', 'classlink', 'authentik'], 'Supported provider choices changed unexpectedly');
+    portalweave_sso_assert(array_keys($catalog) === ['cognito', 'auth0', 'authentik', 'b2c', 'classlink', 'custom', 'discord', 'google', 'keycloak', 'office365', 'entra', 'okta', 'onelogin', 'salesforce'], 'Provider choices must retain their IDs and follow alphabetical display-name order');
     foreach ($catalog as $key => $recipe) {
         portalweave_sso_assert($recipe['label'] !== '' && $recipe['summary'] !== '' && str_starts_with($recipe['docs'], 'https://'), 'Provider instructions or official documentation are missing: ' . $key);
         foreach (['registration', 'credentials'] as $step) {
