@@ -65,3 +65,63 @@ wpsso_test('Identity HTTP rejects insecure URLs and never follows redirects', fu
         wpsso_assert(strpos($result->get_error_message(), 'never-expose-me') === false, 'Token leaked in error');
     } finally { remove_filter('pre_http_request', $http, 10); }
 });
+
+wpsso_test('Signed back-channel logout revokes only matching app identities and rejects replay', function () {
+    $old = get_option('wpsso_settings', []);
+    $first = 0;
+    $second = 0;
+    $jti = 'logout-' . wp_generate_password(20, false);
+    $subject = 'backchannel-subject';
+    $app = array_replace(\WPSSO\Config::app_defaults(), [
+        'id' => 'backchannel-test', 'name' => 'Back-channel test', 'enabled' => true,
+        'client_id' => 'test-client', 'issuer' => 'https://example.org',
+        'authorize_url' => 'https://example.org/authorize', 'token_url' => 'https://example.org/token',
+        'jwt_secret' => str_repeat('K', 64), 'algorithms' => ['HS256'], 'backchannel_logout' => true,
+    ]);
+    $encode = static function ($value) { return rtrim(strtr(base64_encode($value), '+/', '-_'), '='); };
+    $sign = static function ($claims) use ($app, $encode) {
+        $input = $encode(json_encode(['alg' => 'HS256'])) . '.' . $encode(json_encode($claims));
+        return $input . '.' . $encode(hash_hmac('sha256', $input, $app['jwt_secret'], true));
+    };
+    try {
+        $saved = \WPSSO\Config::save(['apps' => [$app['id'] => $app]]);
+        wpsso_assert($saved === true, 'Unable to save back-channel fixture');
+        $first = wp_insert_user(['user_login' => 'bc_' . wp_generate_password(12, false), 'user_pass' => wp_generate_password(32), 'user_email' => wp_generate_password(12, false) . '@example.org', 'role' => 'subscriber']);
+        $second = wp_insert_user(['user_login' => 'bc_' . wp_generate_password(12, false), 'user_pass' => wp_generate_password(32), 'user_email' => wp_generate_password(12, false) . '@example.org', 'role' => 'subscriber']);
+        wpsso_assert(is_int($first) && is_int($second), 'Unable to create back-channel users');
+        $scope = get_current_blog_id() . '|' . $app['id'] . '|' . $app['issuer'] . '|' . $app['client_id'];
+        $scope_hash = hash('sha256', $scope);
+        update_user_meta($first, '_wpsso_identity_' . $scope_hash, hash('sha256', $subject));
+        // Same immutable subject on a separate app must not receive this logout.
+        update_user_meta($second, '_wpsso_identity_' . hash('sha256', get_current_blog_id() . '|different-app|' . $app['issuer'] . '|' . $app['client_id']), hash('sha256', $subject));
+        \WPSSO\Auth::remember_sid($first, $app, ['sid' => 'sid-for-first']);
+        \WPSSO\Auth::remember_sid($second, array_merge($app, ['id' => 'different-app']), ['sid' => 'sid-for-first']);
+        update_user_meta($first, '_wpsso_tokens_' . $app['id'], \WPSSO\Secrets::encrypt('{"refresh_token":"sensitive"}'));
+        $one = \WP_Session_Tokens::get_instance($first);
+        $two = \WP_Session_Tokens::get_instance($second);
+        $first_token = $one->create(time() + 3600);
+        $second_token = $two->create(time() + 3600);
+        $claims = ['iss' => $app['issuer'], 'aud' => $app['client_id'], 'iat' => time(), 'jti' => $jti, 'sid' => 'sid-for-first', 'events' => ['http://schemas.openid.net/event/backchannel-logout' => new stdClass()]];
+        $jwt = $sign($claims);
+        wpsso_assert(\WPSSO\Auth::backchannel_logout($app['id'], $jwt) === true, 'Valid signed logout failed');
+        wpsso_assert($one->get($first_token) === null, 'Matching WordPress session survived logout');
+        wpsso_assert(is_array($two->get($second_token)), 'Other app session was incorrectly revoked');
+        wpsso_assert(get_user_meta($first, '_wpsso_tokens_' . $app['id'], true) === '', 'Provider tokens survived logout');
+        wpsso_error(\WPSSO\Auth::backchannel_logout($app['id'], $jwt), 'wpsso_logout_replay');
+        // Subject-only events do not require a sid index or an exp claim.
+        $fresh_session = $one->create(time() + 3600);
+        unset($claims['sid']);
+        $claims['sub'] = $subject;
+        $claims['jti'] .= '-subject';
+        wpsso_assert(\WPSSO\Auth::backchannel_logout($app['id'], $sign($claims)) === true, 'Subject-only logout failed');
+        wpsso_assert($one->get($fresh_session) === null, 'Subject-only logout did not revoke session');
+    } finally {
+        update_option('wpsso_settings', $old, false);
+        if (!function_exists('wp_delete_user')) { require_once ABSPATH . 'wp-admin/includes/user.php'; }
+        if (is_int($first) && $first > 0) { wp_delete_user($first); }
+        if (is_int($second) && $second > 0) { wp_delete_user($second); }
+        foreach ([$jti, $jti . '-subject'] as $id) {
+            delete_option('wpsso_logout_' . hash('sha256', get_current_blog_id() . '|' . $app['id'] . '|' . $app['issuer'] . '|' . $app['client_id'] . '|' . $id));
+        }
+    }
+});

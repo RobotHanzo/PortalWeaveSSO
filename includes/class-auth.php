@@ -51,7 +51,7 @@ final class Auth {
             return;
         }
         $action = sanitize_key(wp_unslash($_GET['wpsso_action']));
-        if (!in_array($action, ['login', 'callback', 'logout', 'logout_callback', 'password'], true)) {
+        if (!in_array($action, ['login', 'callback', 'logout', 'logout_callback', 'password', 'backchannel_logout'], true)) {
             return;
         }
         nocache_headers();
@@ -68,6 +68,7 @@ final class Auth {
                 case 'password': self::password(); break;
                 case 'logout': self::logout(); break;
                 case 'logout_callback': self::logout_callback(); break;
+                case 'backchannel_logout': self::backchannel_endpoint(); break;
             }
         } catch (\Throwable $error) {
             // Never expose exception messages: they may contain provider payloads.
@@ -87,6 +88,9 @@ final class Auth {
             self::fail(new \WP_Error('wpsso_test_permission', __('A fresh administrator test link is required.', 'wpsso')), $id);
         }
         $callback = Config::callback($app);
+        if (!self::https_endpoint($callback)) {
+            self::fail(new \WP_Error('wpsso_callback_https', __('The canonical callback must use HTTPS. Check the WordPress site URL.', 'wpsso')), $id);
+        }
         // Browser binding must be created on the callback origin. login_url always
         // targets the canonical home origin, retaining the initiating redirect.
         if (self::origin($callback) !== self::origin(home_url('/'))) {
@@ -296,6 +300,7 @@ final class Auth {
             self::fail($saved, $app['id']);
         }
         update_user_meta($user->ID, '_wpsso_app', $app['id']);
+        self::remember_sid($user->ID, $app, $attributes);
         wp_set_current_user($user->ID);
         wp_set_auth_cookie($user->ID, false, true);
         do_action('wp_login', $user->user_login, $user);
@@ -478,6 +483,83 @@ final class Auth {
         self::redirect(Redirect::validate($flow['redirect']));
     }
 
+    private static function identity_scope(array $app) {
+        return get_current_blog_id() . '|' . $app['id'] . '|' . ($app['issuer'] ?? '') . '|' . ($app['client_id'] ?? '');
+    }
+
+    /** Store only a sid digest, scoped exactly like the account identity. */
+    public static function remember_sid($user_id, array $app, array $attributes) {
+        if (empty($app['backchannel_logout']) || !isset($attributes['sid']) || !is_string($attributes['sid']) || $attributes['sid'] === '' || strlen($attributes['sid']) > 1024) {
+            return;
+        }
+        $key = '_wpsso_sid_' . hash('sha256', self::identity_scope($app));
+        $digest = hash('sha256', $attributes['sid']);
+        $existing = get_user_meta($user_id, $key, false);
+        if (!in_array($digest, $existing, true)) {
+            // Keep the bounded set of active/recent provider sessions. No bearer
+            // token, ID token or raw provider session identifier is indexed.
+            if (count($existing) >= 100) {
+                delete_user_meta($user_id, $key, reset($existing));
+            }
+            add_user_meta($user_id, $key, $digest, false);
+        }
+    }
+
+    private static function backchannel_endpoint() {
+        if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+            wp_send_json(['error' => 'invalid_request'], 400);
+        }
+        $result = self::backchannel_logout(sanitize_key(self::input($_GET, 'app')), self::input($_POST, 'logout_token'));
+        if (is_wp_error($result)) {
+            wp_send_json(['error' => 'invalid_request', 'error_description' => $result->get_error_code()], 400);
+        }
+        status_header(200);
+        header('Content-Type: application/json; charset=UTF-8');
+        echo '{}';
+        exit;
+    }
+
+    /** A signed logout token is the authorization; no browser session is needed. */
+    public static function backchannel_logout($app_id, $logout_token) {
+        $app = Config::app(sanitize_key($app_id));
+        if (!$app || empty($app['enabled']) || empty($app['backchannel_logout']) || ($app['protocol'] ?? '') !== 'oidc') {
+            return new \WP_Error('wpsso_backchannel_disabled', __('Back-channel logout is disabled for this provider.', 'wpsso'));
+        }
+        $claims = Jwt::validate($logout_token, $app, ['profile' => 'logout']);
+        if (is_wp_error($claims)) {
+            Audit::record('failure', $app['id'], null, $claims->get_error_code());
+            return $claims;
+        }
+        $scope = self::identity_scope($app);
+        $replay = 'wpsso_logout_' . hash('sha256', $scope . '|' . $claims['jti']);
+        if (!add_option($replay, time() + 660, '', false)) {
+            return new \WP_Error('wpsso_logout_replay', __('The logout event has already been processed.', 'wpsso'));
+        }
+        $scope_hash = hash('sha256', $scope);
+        $identity_key = '_wpsso_identity_' . $scope_hash;
+        $sid_key = '_wpsso_sid_' . $scope_hash;
+        $query = ['blog_id' => 0, 'number' => 1000];
+        if (isset($claims['sid'])) {
+            $query['meta_key'] = $sid_key;
+            $query['meta_value'] = hash('sha256', $claims['sid']);
+        } else {
+            $query['meta_key'] = $identity_key;
+            $query['meta_value'] = hash('sha256', $claims['sub']);
+        }
+        foreach (get_users($query) as $user) {
+            // When the provider supplies both values, both must match.
+            if (isset($claims['sub']) && !hash_equals((string) get_user_meta($user->ID, $identity_key, true), hash('sha256', $claims['sub']))) {
+                continue;
+            }
+            \WP_Session_Tokens::get_instance($user->ID)->destroy_all();
+            delete_user_meta($user->ID, '_wpsso_tokens_' . $app['id']);
+            delete_user_meta($user->ID, $sid_key);
+            Audit::record('logout', $app['id'], $user, 'wpsso_backchannel_logout');
+            do_action('wpsso_backchannel_logout', $user, $app, $claims);
+        }
+        return true;
+    }
+
     /** State is random even when an administrator configures extra state data. */
     public static function create_flow(array $flow, $extra_state = '') {
         $state = Jwt::encode(random_bytes(32));
@@ -523,10 +605,12 @@ final class Auth {
     public static function cleanup() {
         global $wpdb;
         $like = $wpdb->esc_like('wpsso_state_') . '%';
-        $rows = $wpdb->get_results($wpdb->prepare("SELECT option_name, option_value FROM {$wpdb->options} WHERE option_name LIKE %s LIMIT 2000", $like));
+        $logout_like = $wpdb->esc_like('wpsso_logout_') . '%';
+        $rows = $wpdb->get_results($wpdb->prepare("SELECT option_name, option_value FROM {$wpdb->options} WHERE option_name LIKE %s OR option_name LIKE %s LIMIT 2000", $like, $logout_like));
         foreach ($rows as $row) {
             $value = maybe_unserialize($row->option_value);
-            if (!is_array($value) || ($value['expires'] ?? 0) < time()) {
+            $expires = is_array($value) ? ($value['expires'] ?? 0) : (int) $value;
+            if ($expires < time()) {
                 delete_option($row->option_name);
             }
         }

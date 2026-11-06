@@ -71,6 +71,20 @@ wpsso_test('Implicit JWT requires the correct access-token hash', function () {
     wpsso_error(\WPSSO\Jwt::validate($token, $app, $context), 'wpsso_jwt_at_hash');
 });
 
+wpsso_test('Back-channel logout uses a distinct signed event claim profile', function () {
+    $app = wpsso_jwt_app();
+    $claims = ['iss' => $app['issuer'], 'aud' => $app['client_id'], 'iat' => time(), 'sid' => 'session-id', 'jti' => 'logout-unique', 'events' => ['http://schemas.openid.net/event/backchannel-logout' => new stdClass()]];
+    $token = wpsso_signed_hmac($claims, $app['jwt_secret']);
+    wpsso_assert(is_array(\WPSSO\Jwt::validate($token, $app, ['profile' => 'logout'])), 'Valid sid-only logout without exp rejected');
+    wpsso_error(\WPSSO\Jwt::validate($token, $app), 'wpsso_jwt_time');
+    foreach ([['nonce' => 'forbidden'], ['iat' => time() - 601], ['jti' => ''], ['events' => []], ['sid' => ''], ['exp' => time() - 120], ['exp' => null], ['sub' => null]] as $override) {
+        $result = \WPSSO\Jwt::validate(wpsso_signed_hmac(array_merge($claims, $override), $app['jwt_secret']), $app, ['profile' => 'logout']);
+        wpsso_assert(is_wp_error($result), 'Invalid logout claim profile accepted');
+    }
+    // An ordinary ID token must never be accepted as a logout event.
+    wpsso_error(\WPSSO\Jwt::validate(wpsso_signed_hmac(wpsso_jwt_claims(), $app['jwt_secret']), $app, ['profile' => 'logout']), 'wpsso_jwt_logout');
+});
+
 wpsso_test('RSA JWKS validates RS256, RS384, RS512 and rejects wrong signatures', function () {
     $private = openssl_pkey_new(['private_key_bits' => 2048, 'private_key_type' => OPENSSL_KEYTYPE_RSA]);
     wpsso_assert($private !== false, 'OpenSSL key generation failed');

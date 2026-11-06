@@ -8,6 +8,7 @@ final class Jwt {
     private const ALGORITHMS = ['HS256' => 'sha256', 'HS384' => 'sha384', 'HS512' => 'sha512', 'RS256' => 'sha256', 'RS384' => 'sha384', 'RS512' => 'sha512'];
 
     public static function validate($jwt, array $app, array $context = []) {
+        $logout = ($context['profile'] ?? '') === 'logout';
         if (!is_string($jwt) || strlen($jwt) > 65536 || count($segments = explode('.', $jwt)) !== 3) {
             return self::error('format', 'The token is not a compact signed JWT.');
         }
@@ -61,17 +62,31 @@ final class Jwt {
         }
         $audiences = $claims['aud'] ?? [];
         $audiences = is_string($audiences) ? [$audiences] : $audiences;
-        if (!is_string($audience) || $audience === '' || !is_array($audiences) || !$audiences || count(array_filter($audiences, 'is_string')) !== count($audiences) || !in_array($audience, $audiences, true)) {
+        if (!is_string($audience) || $audience === '' || !is_array($audiences) || !array_is_list($audiences) || !$audiences || count(array_filter($audiences, 'is_string')) !== count($audiences) || !in_array($audience, $audiences, true)) {
             return self::error('audience', 'The token audience does not include this client.');
         }
-        if ((count($audiences) > 1 && !isset($claims['azp'])) || (isset($claims['azp']) && (!is_string($claims['azp']) || !hash_equals($audience, $claims['azp'])))) {
+        if ((!$logout && count($audiences) > 1 && !isset($claims['azp'])) || (isset($claims['azp']) && (!is_string($claims['azp']) || !hash_equals($audience, $claims['azp'])))) {
             return self::error('audience', 'The token authorized party does not match this client.');
         }
-        if (!isset($claims['exp'], $claims['iat']) || !is_int($claims['exp']) || !is_int($claims['iat']) || $claims['exp'] <= $now - 60 || $claims['iat'] > $now + 60 || $claims['exp'] <= $claims['iat']) {
+        if (!isset($claims['iat']) || !is_int($claims['iat']) || $claims['iat'] > $now + 60 || (!$logout && !isset($claims['exp'])) || (array_key_exists('exp', $claims) && (!is_int($claims['exp']) || $claims['exp'] <= $now - 60 || $claims['exp'] <= $claims['iat']))) {
             return self::error('time', 'The token is expired or its timestamps are invalid.');
         }
-        if (isset($claims['nbf']) && (!is_int($claims['nbf']) || $claims['nbf'] > $now + 60)) {
+        if (array_key_exists('nbf', $claims) && (!is_int($claims['nbf']) || $claims['nbf'] > $now + 60)) {
             return self::error('time', 'The token is not yet valid.');
+        }
+        if ($logout) {
+            if ($claims['iat'] < $now - 600 || array_key_exists('nonce', $claims)) {
+                return self::error('logout', 'The logout token is too old or contains a forbidden nonce.');
+            }
+            if (empty($claims['jti']) || !is_string($claims['jti']) || strlen($claims['jti']) > 256 || !is_array($claims['events'] ?? null) || !array_key_exists('http://schemas.openid.net/event/backchannel-logout', $claims['events']) || !is_array($claims['events']['http://schemas.openid.net/event/backchannel-logout'])) {
+                return self::error('logout', 'The token is not a valid OIDC back-channel logout event.');
+            }
+            $has_subject = isset($claims['sub']) && is_string($claims['sub']) && $claims['sub'] !== '' && strlen($claims['sub']) <= 1024;
+            $has_session = isset($claims['sid']) && is_string($claims['sid']) && $claims['sid'] !== '' && strlen($claims['sid']) <= 1024;
+            if ((!$has_subject && !$has_session) || (array_key_exists('sub', $claims) && !$has_subject) || (array_key_exists('sid', $claims) && !$has_session)) {
+                return self::error('logout', 'The logout event requires a valid subject or session identifier.');
+            }
+            return $claims;
         }
         if (!isset($claims['sub']) || !is_string($claims['sub']) || $claims['sub'] === '' || strlen($claims['sub']) > 1024) {
             return self::error('subject', 'The token has no valid subject.');
