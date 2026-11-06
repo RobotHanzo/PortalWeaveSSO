@@ -10,11 +10,13 @@ An installable WordPress plugin for multiple OAuth 2.0 and OpenID Connect provid
 2. Activate **PortalWeave SSO** and open **Settings → PortalWeave SSO**.
 3. Add a provider, copy its callback URL into the provider registration, and configure its issuer, credentials, endpoints and signing algorithms. The callback always uses the canonical WordPress origin; the initiating page is retained separately as the post-login destination.
 4. Run **Test SSO Config** to inspect attributes. Configure username/email/group mappings and account policies, then test a regular user before enforcing SSO.
-5. Add `[wpsso_oauth_login]`, the **PortalWeave SSO login** widget, or use the automatic WordPress/WooCommerce login buttons.
+5. Add `[portalweave_sso_oauth_login]`, the **PortalWeave SSO login** widget, or use the automatic WordPress/WooCommerce login buttons.
 
 SSO requires HTTPS. Configure HTTPS detection correctly when WordPress is behind a trusted reverse proxy. Keep `AUTH_KEY`, `SECURE_AUTH_KEY` and WordPress salts stable: they protect stored secrets and tokens. Changing them requires re-entering credentials and signing in again.
 
-`portalweave-sso` is the proposed WordPress.org slug and the plugin's text domain; directory approval is still required. The existing `[wpsso_oauth_login]` shortcode, `wp wpsso` commands, `WPSSO` PHP namespace, hook/option names and documented `WPSSO_*` server configuration constants remain for compatibility. The plugin bootstrap version is `PORTALWEAVE_SSO_VERSION`. Local Docker tests deliberately keep the `wordpress-sso` bind directory and `WPSSO Integration` fixture title.
+`portalweave-sso` is the proposed WordPress.org slug and the plugin's text domain; directory approval is still required. PHP classes use `PortalWeaveSSO`, hooks/options use `portalweave_sso_*`, server configuration constants use `PORTALWEAVE_SSO_*`, and WP-CLI commands use `wp portalweave-sso`. Local Docker tests mount the same `portalweave-sso` directory.
+
+This is a breaking namespace replacement with no aliases or automatic conversion of earlier stored data. Existing settings, identity links, access rules and vault metadata must be deliberately transitioned before deployment. Keep an existing site behind an external maintenance/access restriction until its policies and private-media delivery have been verified. Follow [replacing an earlier installation](docs/provider-setup.md#replacing-an-earlier-installation), including provider URL and integration updates.
 
 ## Features
 
@@ -38,7 +40,7 @@ OAuth providers vary. Presets are editable templates; a working registration and
 Protecting an attachment moves its original, registered thumbnails and backup sizes out of public uploads into a private vault. URLs are rewritten to authenticated PHP delivery. The default vault is a sibling of the WordPress directory; if this is inside the document root or is not writable, set an absolute private path in wp-config.php:
 
 ```php
-define('WPSSO_PRIVATE_MEDIA_DIR', '/srv/private/wordpress-media');
+define('PORTALWEAVE_SSO_PRIVATE_MEDIA_DIR', '/srv/private/wordpress-media');
 ```
 
 The PHP worker needs read/write access. A path inside the detected document root is refused. Removing protection restores the files; restoration fails if a differing public file would be overwritten. Protecting an attachment cannot retract already-downloaded files or independently cached CDN copies. Purge existing public caches when enabling protection. Custom image optimizers, offloaded storage and regenerated sizes need deployment-specific checks; do not regenerate public derivatives of protected files. Protected delivery sends private/no-store headers. Include the vault in encrypted server backups.
@@ -52,11 +54,11 @@ On multisite, **Network Admin → PortalWeave SSO** controls the current network
 To restore local login from the server:
 
 ```sh
-wp wpsso recover
-wp wpsso recover --network
+wp portalweave-sso recover
+wp portalweave-sso recover --network
 ```
 
-Alternatively define `WPSSO_ALLOW_LOCAL_LOGIN` as true in wp-config.php temporarily. There is no public query-string bypass. Login restrictions do not replace WordPress REST application-password authentication. External plugins that serve content through their own endpoints need their own integration with `WPSSO\Access::can_post()`.
+Alternatively define `PORTALWEAVE_SSO_ALLOW_LOCAL_LOGIN` as true in wp-config.php temporarily. There is no public query-string bypass. Login restrictions do not replace WordPress REST application-password authentication. External plugins that serve content through their own endpoints need their own integration with `PortalWeaveSSO\Access::can_post()`.
 
 Configuration backups exclude client IDs and secrets. Same-site restores retain local credentials; a clean restore leaves incomplete providers and authentication enforcement disabled until credentials are entered. Backups do not include user accounts, audit records, vault files or WordPress itself. Use a database/files backup for full recovery. Support forms send only on explicit administrator submission and require a configured recipient and working WordPress mail. Booking, forum and demo links point to administrator-configured services; no external support service is bundled.
 
@@ -89,11 +91,11 @@ The disposable local environment binds only to loopback. Docker and Node.js are 
 
 ```sh
 docker compose -f compose.test.yml up -d wordpress
-docker compose -f compose.test.yml run --rm cli wp core install --url=http://localhost:8098 --title='WPSSO Integration' --admin_user=wpsso_test_admin --admin_password=local-test-password-only --admin_email=admin@example.org --skip-email
-docker compose -f compose.test.yml run --rm cli wp plugin activate wordpress-sso
-docker compose -f compose.test.yml exec -T wordpress php /var/www/html/wp-content/plugins/wordpress-sso/tests/run.php
-docker compose -f compose.test.yml exec -T wordpress bash /var/www/html/wp-content/plugins/wordpress-sso/tests/setup-tls.sh
-docker compose -f compose.test.yml exec -T wordpress php /var/www/html/wp-content/plugins/wordpress-sso/tests/setup-e2e.php
+docker compose -f compose.test.yml run --rm cli wp core install --url=http://localhost:8098 --title='PortalWeave SSO Integration' --admin_user=portalweave_sso_test_admin --admin_password=local-test-password-only --admin_email=admin@example.org --skip-email
+docker compose -f compose.test.yml run --rm cli wp plugin activate portalweave-sso
+docker compose -f compose.test.yml exec -T wordpress php /var/www/html/wp-content/plugins/portalweave-sso/tests/run.php
+docker compose -f compose.test.yml exec -T wordpress bash /var/www/html/wp-content/plugins/portalweave-sso/tests/setup-tls.sh
+docker compose -f compose.test.yml exec -T wordpress php /var/www/html/wp-content/plugins/portalweave-sso/tests/setup-e2e.php
 node tests/e2e.mjs
 ```
 

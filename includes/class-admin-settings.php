@@ -1,5 +1,5 @@
 <?php
-namespace WPSSO;
+namespace PortalWeaveSSO;
 
 defined('ABSPATH') || exit;
 
@@ -20,21 +20,21 @@ final class AdminSettings
     public static function prepare(array $input, string $screen, string $provider = '', bool $creating = false, bool $network = false)
     {
         if (!isset(self::FIELDS[$screen]) || array_diff(array_keys($input), self::FIELDS[$screen])) {
-            return new \WP_Error('wpsso_settings_scope', __('The submitted fields do not belong to this settings screen. Reload the page and try again.', 'portalweave-sso'));
+            return new \WP_Error('portalweave_sso_settings_scope', __('The submitted fields do not belong to this settings screen. Reload the page and try again.', 'portalweave-sso'));
         }
         if (!$input) {
-            return new \WP_Error('wpsso_settings_empty', __('No settings were submitted for this screen.', 'portalweave-sso'));
+            return new \WP_Error('portalweave_sso_settings_empty', __('No settings were submitted for this screen.', 'portalweave-sso'));
         }
         if (!$network && array_key_exists('network_enforced', $input)) {
-            return new \WP_Error('wpsso_settings_scope', __('Network enforcement can only be changed in Network Admin.', 'portalweave-sso'));
+            return new \WP_Error('portalweave_sso_settings_scope', __('Network enforcement can only be changed in Network Admin.', 'portalweave-sso'));
         }
-        $stored = $network ? get_site_option('wpsso_settings', []) : get_option('wpsso_settings', []);
+        $stored = $network ? get_site_option('portalweave_sso_settings', []) : get_option('portalweave_sso_settings', []);
         $stored = is_array($stored) ? $stored : [];
         if ($screen === 'providers') {
             return self::provider($input, $provider, $creating, $stored);
         }
         if ($provider !== '' || $creating) {
-            return new \WP_Error('wpsso_provider_target', __('This settings screen does not edit an identity provider.', 'portalweave-sso'));
+            return new \WP_Error('portalweave_sso_provider_target', __('This settings screen does not edit an identity provider.', 'portalweave-sso'));
         }
         foreach (['button', 'modules', 'support'] as $key) {
             if (!array_key_exists($key, $input)) {
@@ -42,11 +42,11 @@ final class AdminSettings
             }
             $defaults = Config::defaults()[$key];
             if (!is_array($input[$key]) || array_diff(array_keys($input[$key]), array_keys($defaults))) {
-                return new \WP_Error('wpsso_settings_scope', __('The submitted settings contain unexpected fields.', 'portalweave-sso'));
+                return new \WP_Error('portalweave_sso_settings_scope', __('The submitted settings contain unexpected fields.', 'portalweave-sso'));
             }
             foreach ($input[$key] as $value) {
                 if (!is_scalar($value)) {
-                    return new \WP_Error('wpsso_form_type', __('Settings form values must be scalar fields.', 'portalweave-sso'));
+                    return new \WP_Error('portalweave_sso_form_type', __('Settings form values must be scalar fields.', 'portalweave-sso'));
                 }
             }
             $prior = isset($stored[$key]) && is_array($stored[$key]) ? $stored[$key] : [];
@@ -61,33 +61,33 @@ final class AdminSettings
         $prior = isset($stored['apps']) && is_array($stored['apps']) ? $stored['apps'] : [];
         if ($creating) {
             if ($provider !== '' || array_keys($input) !== ['new_app'] || !is_array($input['new_app'])) {
-                return new \WP_Error('wpsso_provider_target', __('Submit one new identity provider from the add-provider screen.', 'portalweave-sso'));
+                return new \WP_Error('portalweave_sso_provider_target', __('Submit one new identity provider from the add-provider screen.', 'portalweave-sso'));
             }
             $app = $input['new_app'];
             $provider = $app['id'] ?? '';
             if (!is_string($provider) || $provider === '' || sanitize_key($provider) !== $provider) {
-                return new \WP_Error('wpsso_app_id', __('Enter a valid unique app ID using lowercase letters, digits, underscores or dashes.', 'portalweave-sso'));
+                return new \WP_Error('portalweave_sso_app_id', __('Enter a valid unique app ID using lowercase letters, digits, underscores or dashes.', 'portalweave-sso'));
             }
             if (array_key_exists($provider, $prior)) {
-                return new \WP_Error('wpsso_app_exists', __('A provider with this app ID already exists.', 'portalweave-sso'));
+                return new \WP_Error('portalweave_sso_app_exists', __('A provider with this app ID already exists.', 'portalweave-sso'));
             }
             if (in_array($app['_delete'] ?? false, [true, 1, '1'], true)) {
-                return new \WP_Error('wpsso_provider_target', __('A new provider cannot be deleted before it is created.', 'portalweave-sso'));
+                return new \WP_Error('portalweave_sso_provider_target', __('A new provider cannot be deleted before it is created.', 'portalweave-sso'));
             }
         } else {
             if ($provider === '' || sanitize_key($provider) !== $provider || !array_key_exists($provider, $prior)
                 || array_keys($input) !== ['apps'] || !is_array($input['apps']) || array_map('strval', array_keys($input['apps'])) !== [$provider]
                 || !is_array($input['apps'][$provider])) {
-                return new \WP_Error('wpsso_provider_target', __('Submit only the identity provider selected on this screen.', 'portalweave-sso'));
+                return new \WP_Error('portalweave_sso_provider_target', __('Submit only the identity provider selected on this screen.', 'portalweave-sso'));
             }
             $app = $input['apps'][$provider];
             if (isset($app['id']) && $app['id'] !== $provider) {
-                return new \WP_Error('wpsso_provider_target', __('The provider ID does not match the selected provider.', 'portalweave-sso'));
+                return new \WP_Error('portalweave_sso_provider_target', __('The provider ID does not match the selected provider.', 'portalweave-sso'));
             }
         }
         $allowed = Config::app_defaults() + ['_delete' => false, 'clear_client_secret' => false, 'clear_jwt_secret' => false];
         if (array_diff(array_keys($app), array_keys($allowed))) {
-            return new \WP_Error('wpsso_settings_scope', __('The submitted provider contains unexpected fields.', 'portalweave-sso'));
+            return new \WP_Error('portalweave_sso_settings_scope', __('The submitted provider contains unexpected fields.', 'portalweave-sso'));
         }
         // Empty placeholders ask Config to retain each provider's raw prior, without resubmitting ciphertext.
         $apps = array_fill_keys(array_keys($prior), []);

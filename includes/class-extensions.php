@@ -1,35 +1,35 @@
 <?php
 /** Optional provisioning and account integrations. */
-namespace WPSSO;
+namespace PortalWeaveSSO;
 
 defined('ABSPATH') || exit;
 
 final class Extensions {
     private const SCIM = 'urn:ietf:params:scim:schemas:core:2.0:';
     private const API = 'urn:ietf:params:scim:api:messages:2.0:';
-    private const SHARED_COOKIE = '__Secure-wpsso-shared';
+    private const SHARED_COOKIE = '__Secure-portalweave-sso-shared';
 
     public static function register(): void {
         add_action('rest_api_init', [self::class, 'routes']);
         add_filter('rest_post_dispatch', [self::class, 'scim_headers'], 10, 3);
         add_action('init', [self::class, 'jwt_route'], 1);
         add_action('template_redirect', [self::class, 'shared_consume'], 1);
-        add_action('wpsso_authenticated', [self::class, 'shared_issue'], 10, 3);
-        add_action('wpsso_user_resolved', [self::class, 'resolved'], 10, 4);
-        add_filter('wpsso_account_allowed', [self::class, 'account_allowed'], 10, 4);
-        add_filter('wpsso_pre_authenticate', [self::class, 'account_check'], 10, 3);
+        add_action('portalweave_sso_authenticated', [self::class, 'shared_issue'], 10, 3);
+        add_action('portalweave_sso_user_resolved', [self::class, 'resolved'], 10, 4);
+        add_filter('portalweave_sso_account_allowed', [self::class, 'account_allowed'], 10, 4);
+        add_filter('portalweave_sso_pre_authenticate', [self::class, 'account_check'], 10, 3);
         add_filter('authenticate', [self::class, 'local_account_check'], 99, 3);
-        add_filter('wpsso_login_redirect', [self::class, 'attribute_redirect'], 10, 4);
+        add_filter('portalweave_sso_login_redirect', [self::class, 'attribute_redirect'], 10, 4);
         add_filter('get_avatar_data', [self::class, 'avatar'], 10, 2);
         add_action('show_user_profile', [self::class, 'moderation_profile']);
         add_action('edit_user_profile', [self::class, 'moderation_profile']);
         add_action('personal_options_update', [self::class, 'moderation_save']);
         add_action('edit_user_profile_update', [self::class, 'moderation_save']);
-        add_action('wpsso_extension_cleanup', [self::class, 'cleanup']);
-        add_action('wpsso_expire_claim', [self::class, 'expire_claim']);
+        add_action('portalweave_sso_extension_cleanup', [self::class, 'cleanup']);
+        add_action('portalweave_sso_expire_claim', [self::class, 'expire_claim']);
         add_action('wp_logout', [self::class, 'shared_clear']);
-        if (!wp_next_scheduled('wpsso_extension_cleanup')) {
-            wp_schedule_event(time() + HOUR_IN_SECONDS, 'hourly', 'wpsso_extension_cleanup');
+        if (!wp_next_scheduled('portalweave_sso_extension_cleanup')) {
+            wp_schedule_event(time() + HOUR_IN_SECONDS, 'hourly', 'portalweave_sso_extension_cleanup');
         }
     }
 
@@ -38,15 +38,15 @@ final class Extensions {
     }
 
     private static function scim_meta(string $name): string {
-        return '_wpsso_scim_' . $name . (is_multisite() ? '_' . get_current_blog_id() : '');
+        return '_portalweave_sso_scim_' . $name . (is_multisite() ? '_' . get_current_blog_id() : '');
     }
 
     private static function moderation_meta(): string {
-        return '_wpsso_moderation' . (is_multisite() ? '_' . get_current_blog_id() : '');
+        return '_portalweave_sso_moderation' . (is_multisite() ? '_' . get_current_blog_id() : '');
     }
 
     private static function avatar_meta(): string {
-        return '_wpsso_avatar' . (is_multisite() ? '_' . get_current_blog_id() : '');
+        return '_portalweave_sso_avatar' . (is_multisite() ? '_' . get_current_blog_id() : '');
     }
 
     public static function scim_groups(int $user_id): array {
@@ -76,17 +76,17 @@ final class Extensions {
         }
         $permission = [self::class, 'scim_permission'];
         foreach (['Users', 'Groups'] as $resource) {
-            register_rest_route('wpsso/v1', '/scim/v2/' . $resource, [
+            register_rest_route('portalweave-sso/v1', '/scim/v2/' . $resource, [
                 ['methods' => 'GET,POST', 'callback' => [self::class, 'scim_collection'], 'permission_callback' => $permission,
                     'args' => ['filter' => ['type' => 'string', 'maxLength' => 1024],
                         'startIndex' => ['type' => 'integer', 'minimum' => 1], 'count' => ['type' => 'integer', 'minimum' => 0, 'maximum' => 200]]],
             ]);
-            register_rest_route('wpsso/v1', '/scim/v2/' . $resource . '/(?P<id>[a-zA-Z0-9-]+)', [
+            register_rest_route('portalweave-sso/v1', '/scim/v2/' . $resource . '/(?P<id>[a-zA-Z0-9-]+)', [
                 ['methods' => 'GET,PUT,PATCH,DELETE', 'callback' => [self::class, 'scim_item'], 'permission_callback' => $permission],
             ]);
         }
         foreach (['ServiceProviderConfig', 'Schemas', 'ResourceTypes'] as $resource) {
-            register_rest_route('wpsso/v1', '/scim/v2/' . $resource, [
+            register_rest_route('portalweave-sso/v1', '/scim/v2/' . $resource, [
                 'methods' => 'GET', 'callback' => [self::class, 'scim_discovery'], 'permission_callback' => $permission,
             ]);
         }
@@ -100,13 +100,13 @@ final class Extensions {
         if (!self::enabled('scim') || !is_ssl() || strlen($secret) < 32 ||
             !preg_match('/^Bearer ([^\s]+)$/iD', $header, $match) ||
             !hash_equals(hash('sha256', $secret), hash('sha256', $match[1]))) {
-            return new \WP_Error('wpsso_scim_auth', 'A valid SCIM bearer credential over HTTPS is required.', ['status' => 401]);
+            return new \WP_Error('portalweave_sso_scim_auth', 'A valid SCIM bearer credential over HTTPS is required.', ['status' => 401]);
         }
         return true;
     }
 
     public static function scim_headers($response, $server, $request) {
-        if (strpos($request->get_route(), '/wpsso/v1/scim/v2/') !== 0) {
+        if (strpos($request->get_route(), '/portalweave-sso/v1/scim/v2/') !== 0) {
             return $response;
         }
         $response = rest_ensure_response($response);
@@ -175,11 +175,11 @@ final class Extensions {
             return null;
         }
         if (!preg_match('/^(userName|externalId|id|displayName|emails\.value)\s+eq\s+("(?:[^"\\\\]|\\\\.)*")$/iD', trim($filter), $m)) {
-            return new \WP_Error('wpsso_scim_filter', 'Supported filters are equality on userName, externalId, id, displayName, or emails.value.');
+            return new \WP_Error('portalweave_sso_scim_filter', 'Supported filters are equality on userName, externalId, id, displayName, or emails.value.');
         }
         $value = json_decode($m[2], true);
         if (!is_string($value) || strlen($value) > 512) {
-            return new \WP_Error('wpsso_scim_filter', 'Invalid filter value.');
+            return new \WP_Error('portalweave_sso_scim_filter', 'Invalid filter value.');
         }
         return [strtolower($m[1]), $value];
     }
@@ -222,7 +222,7 @@ final class Extensions {
         $count = $request->get_param('count') === null ? 100 : min(200, max(0, (int) $request->get_param('count')));
         $rows = [];
         if ($group) {
-            foreach (get_option('wpsso_scim_groups', []) as $id => $value) {
+            foreach (get_option('portalweave_sso_scim_groups', []) as $id => $value) {
                 $resource = self::group_resource($id, $value);
                 if (self::filter_matches($resource, $filter)) {
                     $rows[] = $resource;
@@ -248,10 +248,10 @@ final class Extensions {
 
     private static function body($request) {
         if (strlen($request->get_body()) > 262144) {
-            return new \WP_Error('wpsso_scim_body', 'Payload exceeds 256 KiB.');
+            return new \WP_Error('portalweave_sso_scim_body', 'Payload exceeds 256 KiB.');
         }
         $data = json_decode($request->get_body(), true, 32);
-        return is_array($data) && !array_is_list($data) ? $data : new \WP_Error('wpsso_scim_body', 'A JSON object is required.');
+        return is_array($data) && !array_is_list($data) ? $data : new \WP_Error('portalweave_sso_scim_body', 'A JSON object is required.');
     }
 
     public static function scim_item($request) {
@@ -259,7 +259,7 @@ final class Extensions {
         $id = (string) $request['id'];
         $resource = null;
         if ($group) {
-            $groups = get_option('wpsso_scim_groups', []);
+            $groups = get_option('portalweave_sso_scim_groups', []);
             if (isset($groups[$id])) {
                 $resource = self::group_resource($id, $groups[$id]);
             }
@@ -284,7 +284,7 @@ final class Extensions {
             }
             update_user_meta((int) $id, self::scim_meta('active'), '0');
             \WP_Session_Tokens::get_instance((int) $id)->destroy_all();
-            Audit::record('provisioning', 'scim', get_user_by('id', (int) $id), 'wpsso_scim_deactivated');
+            Audit::record('provisioning', 'scim', get_user_by('id', (int) $id), 'portalweave_sso_scim_deactivated');
             return self::response([], 204);
         }
         $body = self::body($request);
@@ -302,25 +302,25 @@ final class Extensions {
 
     public static function patch(array $resource, array $patch) {
         if (empty($patch['Operations']) || !is_array($patch['Operations']) || count($patch['Operations']) > 100) {
-            return new \WP_Error('wpsso_scim_patch', 'One to 100 PATCH operations are required.');
+            return new \WP_Error('portalweave_sso_scim_patch', 'One to 100 PATCH operations are required.');
         }
         $map = ['username' => 'userName', 'externalid' => 'externalId', 'displayname' => 'displayName',
             'active' => 'active', 'emails' => 'emails', 'name' => 'name', 'members' => 'members'];
         foreach ($patch['Operations'] as $op) {
             if (!is_array($op) || !is_string($op['op'] ?? null) || (isset($op['path']) && !is_string($op['path']))) {
-                return new \WP_Error('wpsso_scim_patch', 'Malformed PATCH operation.');
+                return new \WP_Error('portalweave_sso_scim_patch', 'Malformed PATCH operation.');
             }
             $action = strtolower((string) ($op['op'] ?? ''));
             $path = (string) ($op['path'] ?? '');
             $value = $op['value'] ?? null;
             if (!in_array($action, ['add', 'replace', 'remove'], true)) {
-                return new \WP_Error('wpsso_scim_patch', 'Unsupported PATCH operation.');
+                return new \WP_Error('portalweave_sso_scim_patch', 'Unsupported PATCH operation.');
             }
             if ($path === '' && in_array($action, ['add', 'replace'], true) && is_array($value) && !array_is_list($value)) {
                 foreach ($value as $key => $entry) {
                     $canonical = $map[strtolower($key)] ?? null;
                     if (!$canonical) {
-                        return new \WP_Error('wpsso_scim_patch', 'Attribute is unsupported or read-only.');
+                        return new \WP_Error('portalweave_sso_scim_patch', 'Attribute is unsupported or read-only.');
                     }
                     $resource[$canonical] = $entry;
                 }
@@ -336,13 +336,13 @@ final class Extensions {
             }
             $key = $map[strtolower($path)] ?? null;
             if (!$key) {
-                return new \WP_Error('wpsso_scim_patch', 'Attribute path is unsupported or read-only.');
+                return new \WP_Error('portalweave_sso_scim_patch', 'Attribute path is unsupported or read-only.');
             }
             if ($action === 'remove') {
                 unset($resource[$key]);
             } elseif ($action === 'add' && in_array($key, ['members', 'emails'], true)) {
                 if (!is_array($value)) {
-                    return new \WP_Error('wpsso_scim_patch', 'Multivalued attribute requires an array.');
+                    return new \WP_Error('portalweave_sso_scim_patch', 'Multivalued attribute requires an array.');
                 }
                 $resource[$key] = array_merge($resource[$key] ?? [], $value);
             } else {
@@ -396,7 +396,7 @@ final class Extensions {
                 return self::error('Name attributes must be strings.');
             }
         }
-        $lock = 'wpsso_scim_write_lock';
+        $lock = 'portalweave_sso_scim_write_lock';
         if (!add_option($lock, time(), '', false)) {
             return self::error('Another provisioning write is in progress; retry.', 409, 'uniqueness');
         }
@@ -439,9 +439,9 @@ final class Extensions {
                 \WP_Session_Tokens::get_instance($result)->destroy_all();
             }
             $user = get_user_by('id', $result);
-            Audit::record('provisioning', 'scim', $user, $id ? 'wpsso_scim_updated' : 'wpsso_scim_created');
+            Audit::record('provisioning', 'scim', $user, $id ? 'portalweave_sso_scim_updated' : 'portalweave_sso_scim_created');
             $response = self::response(self::user_resource($user), $id ? 200 : 201);
-            $response->header('Location', rest_url('wpsso/v1/scim/v2/Users/' . $result));
+            $response->header('Location', rest_url('portalweave-sso/v1/scim/v2/Users/' . $result));
             return $response;
         } finally {
             delete_option($lock);
@@ -457,7 +457,7 @@ final class Extensions {
             'emails' => $user->user_email ? [['value' => $user->user_email, 'primary' => true, 'type' => 'work']] : [],
             'groups' => array_map(static fn($id) => ['value' => (string) $id], (array) get_user_meta($user->ID, self::scim_meta('groups'), true)),
             'meta' => ['resourceType' => 'User', 'created' => gmdate('c', strtotime($user->user_registered . ' UTC')),
-                'lastModified' => (string) get_user_meta($user->ID, self::scim_meta('modified'), true), 'location' => rest_url('wpsso/v1/scim/v2/Users/' . $user->ID)]];
+                'lastModified' => (string) get_user_meta($user->ID, self::scim_meta('modified'), true), 'location' => rest_url('portalweave-sso/v1/scim/v2/Users/' . $user->ID)]];
     }
 
     private static function group_resource(string $id, array $group): array {
@@ -465,13 +465,13 @@ final class Extensions {
         foreach ($group['members'] ?? [] as $user_id) {
             $user = get_user_by('id', (int) $user_id);
             if ($user) {
-                $members[] = ['value' => (string) $user_id, 'display' => $user->display_name, '$ref' => rest_url('wpsso/v1/scim/v2/Users/' . $user_id)];
+                $members[] = ['value' => (string) $user_id, 'display' => $user->display_name, '$ref' => rest_url('portalweave-sso/v1/scim/v2/Users/' . $user_id)];
             }
         }
         return ['schemas' => [self::SCIM . 'Group'], 'id' => $id, 'externalId' => $group['externalId'] ?? '',
             'displayName' => $group['displayName'], 'members' => $members,
             'meta' => ['resourceType' => 'Group', 'created' => $group['created'], 'lastModified' => $group['modified'],
-                'location' => rest_url('wpsso/v1/scim/v2/Groups/' . $id)]];
+                'location' => rest_url('portalweave-sso/v1/scim/v2/Groups/' . $id)]];
     }
 
     private static function write_group(string $id, array $body) {
@@ -498,12 +498,12 @@ final class Extensions {
             }
             $members[] = $user_id;
         }
-        $lock = 'wpsso_scim_write_lock';
+        $lock = 'portalweave_sso_scim_write_lock';
         if (!add_option($lock, time(), '', false)) {
             return self::error('Another provisioning write is in progress; retry.', 409, 'uniqueness');
         }
         try {
-            $groups = get_option('wpsso_scim_groups', []);
+            $groups = get_option('portalweave_sso_scim_groups', []);
             $old = $id ? ($groups[$id] ?? null) : null;
             if ($id && !$old) {
                 return self::error('Resource not found.', 404, 'noTarget');
@@ -521,7 +521,7 @@ final class Extensions {
                 $groups[$id] = ['displayName' => sanitize_text_field($body['displayName']), 'externalId' => $body['externalId'] ?? '',
                     'members' => array_values(array_unique($members)), 'created' => $old['created'] ?? gmdate('c'), 'modified' => gmdate('c')];
             }
-            update_option('wpsso_scim_groups', $groups, false);
+            update_option('portalweave_sso_scim_groups', $groups, false);
             foreach (array_unique(array_merge($old['members'] ?? [], $members)) as $user_id) {
                 $ids = [];
                 $names = [];
@@ -534,12 +534,12 @@ final class Extensions {
                 update_user_meta($user_id, self::scim_meta('groups'), $ids);
                 update_user_meta($user_id, self::scim_meta('group_names'), array_values(array_unique($names)));
             }
-            Audit::record('provisioning', 'scim', null, !empty($body['_delete']) ? 'wpsso_scim_group_deleted' : 'wpsso_scim_group_saved');
+            Audit::record('provisioning', 'scim', null, !empty($body['_delete']) ? 'portalweave_sso_scim_group_deleted' : 'portalweave_sso_scim_group_saved');
             if (!empty($body['_delete'])) {
                 return self::response([], 204);
             }
             $response = self::response(self::group_resource($id, $groups[$id]), $created ? 201 : 200);
-            $response->header('Location', rest_url('wpsso/v1/scim/v2/Groups/' . $id));
+            $response->header('Location', rest_url('portalweave-sso/v1/scim/v2/Groups/' . $id));
             return $response;
         } finally {
             delete_option($lock);
@@ -562,18 +562,18 @@ final class Extensions {
         if (is_wp_error($user) || !($user instanceof \WP_User)) {
             return $user;
         }
-        if (get_user_meta($user->ID, self::scim_meta('active'), true) === '0' || get_user_meta($user->ID, '_wpsso_scim_active', true) === '0') {
-            return new \WP_Error('wpsso_account_inactive', 'This account has been deactivated by the identity provider.');
+        if (get_user_meta($user->ID, self::scim_meta('active'), true) === '0' || get_user_meta($user->ID, '_portalweave_sso_scim_active', true) === '0') {
+            return new \WP_Error('portalweave_sso_account_inactive', 'This account has been deactivated by the identity provider.');
         }
-        $expires = (int) get_user_meta($user->ID, '_wpsso_guest_expires', true);
+        $expires = (int) get_user_meta($user->ID, '_portalweave_sso_guest_expires', true);
         if ($expires && $expires <= time()) {
-            return new \WP_Error('wpsso_guest_expired', 'This guest account has expired.');
+            return new \WP_Error('portalweave_sso_guest_expired', 'This guest account has expired.');
         }
         if (get_user_meta($user->ID, self::moderation_meta(), true) === 'pending') {
-            return new \WP_Error('wpsso_approval_pending', 'An administrator must approve this account before login.');
+            return new \WP_Error('portalweave_sso_approval_pending', 'An administrator must approve this account before login.');
         }
         if (get_user_meta($user->ID, self::moderation_meta(), true) === 'blocked') {
-            return new \WP_Error('wpsso_account_blocked', 'An administrator has blocked this account.');
+            return new \WP_Error('portalweave_sso_account_blocked', 'An administrator has blocked this account.');
         }
         return $user;
     }
@@ -595,9 +595,9 @@ final class Extensions {
             return;
         }
         $status = get_user_meta($user->ID, self::moderation_meta(), true);
-        echo '<h2>' . esc_html__('SSO account moderation', 'portalweave-sso') . '</h2><table class="form-table"><tr><th><label for="wpsso-moderation">' . esc_html__('Approval', 'portalweave-sso') . '</label></th><td>';
-        wp_nonce_field('wpsso_moderate_' . $user->ID, 'wpsso_moderation_nonce');
-        echo '<select id="wpsso-moderation" name="wpsso_moderation">';
+        echo '<h2>' . esc_html__('SSO account moderation', 'portalweave-sso') . '</h2><table class="form-table"><tr><th><label for="portalweave-sso-moderation">' . esc_html__('Approval', 'portalweave-sso') . '</label></th><td>';
+        wp_nonce_field('portalweave_sso_moderate_' . $user->ID, 'portalweave_sso_moderation_nonce');
+        echo '<select id="portalweave-sso-moderation" name="portalweave_sso_moderation">';
         foreach (['' => __('No moderation policy', 'portalweave-sso'), 'pending' => __('Pending approval', 'portalweave-sso'), 'approved' => __('Approved', 'portalweave-sso'), 'blocked' => __('Blocked', 'portalweave-sso')] as $value => $label) {
             echo '<option value="' . esc_attr($value) . '" ' . selected($status, $value, false) . '>' . esc_html($label) . '</option>';
         }
@@ -606,13 +606,13 @@ final class Extensions {
 
     public static function moderation_save(int $user_id): void {
         if (!self::enabled('moderation') || !current_user_can('manage_options') || !current_user_can('edit_user', $user_id) || self::privileged($user_id) ||
-            !isset($_POST['wpsso_moderation_nonce']) || !is_string($_POST['wpsso_moderation_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['wpsso_moderation_nonce'])), 'wpsso_moderate_' . $user_id)) {
+            !isset($_POST['portalweave_sso_moderation_nonce']) || !is_string($_POST['portalweave_sso_moderation_nonce']) || !wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['portalweave_sso_moderation_nonce'])), 'portalweave_sso_moderate_' . $user_id)) {
             return;
         }
-        if (!isset($_POST['wpsso_moderation']) || !is_string($_POST['wpsso_moderation'])) {
+        if (!isset($_POST['portalweave_sso_moderation']) || !is_string($_POST['portalweave_sso_moderation'])) {
             return;
         }
-        $status = sanitize_key(wp_unslash($_POST['wpsso_moderation']));
+        $status = sanitize_key(wp_unslash($_POST['portalweave_sso_moderation']));
         if (!in_array($status, ['', 'pending', 'approved', 'blocked'], true)) {
             return;
         }
@@ -620,7 +620,7 @@ final class Extensions {
         if (in_array($status, ['pending', 'blocked'], true)) {
             \WP_Session_Tokens::get_instance($user_id)->destroy_all();
         }
-        Audit::record('moderation', '', get_user_by('id', $user_id), 'wpsso_moderation_' . ($status ?: 'cleared'));
+        Audit::record('moderation', '', get_user_by('id', $user_id), 'portalweave_sso_moderation_' . ($status ?: 'cleared'));
     }
 
     public static function avatar(array $args, $id_or_email): array {
@@ -680,12 +680,12 @@ final class Extensions {
     /** JWT SSO uses a real OIDC form_post challenge, rather than a replayable URL token. */
     public static function jwt_route(): void {
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Public login routing; the callback below authenticates its one-use browser-bound OIDC state and signed token.
-        $action = isset($_GET['wpsso_action']) && is_string($_GET['wpsso_action']) ? sanitize_key(wp_unslash($_GET['wpsso_action'])) : '';
+        $action = isset($_GET['portalweave_sso_action']) && is_string($_GET['portalweave_sso_action']) ? sanitize_key(wp_unslash($_GET['portalweave_sso_action'])) : '';
         if (!in_array($action, ['jwt_start', 'jwt_callback'], true)) {
             return;
         }
         if (!self::enabled('jwt_sso') || !is_ssl()) {
-            self::fail(new \WP_Error('wpsso_jwt_disabled', 'JWT SSO is unavailable.'));
+            self::fail(new \WP_Error('portalweave_sso_jwt_disabled', 'JWT SSO is unavailable.'));
         }
         nocache_headers();
         header('Referrer-Policy: no-referrer');
@@ -694,18 +694,18 @@ final class Extensions {
             $id = isset($_GET['app']) && is_string($_GET['app']) ? sanitize_key(wp_unslash($_GET['app'])) : '';
             $app = Config::app($id);
             if (!$app || empty($app['enabled']) || empty($app['jwt_sso']) || empty($app['authorize_url']) || ($app['protocol'] ?? '') !== 'oidc') {
-                self::fail(new \WP_Error('wpsso_jwt_app', 'Choose an enabled OpenID provider with JWT SSO enabled.'));
+                self::fail(new \WP_Error('portalweave_sso_jwt_app', 'Choose an enabled OpenID provider with JWT SSO enabled.'));
             }
             $state = bin2hex(random_bytes(32));
             $binding = bin2hex(random_bytes(32));
             $nonce = bin2hex(random_bytes(32));
             // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- The optional login destination is validated against the administrator's explicit URL allowlist.
             $redirect = isset($_GET['redirect_to']) && is_string($_GET['redirect_to']) ? esc_url_raw(wp_unslash($_GET['redirect_to'])) : '';
-            set_transient('wpsso_jwt_state_' . hash('sha256', $state), ['app' => $id, 'binding' => hash('sha256', $binding), 'nonce' => $nonce,
+            set_transient('portalweave_sso_jwt_state_' . hash('sha256', $state), ['app' => $id, 'binding' => hash('sha256', $binding), 'nonce' => $nonce,
                 'redirect' => Redirect::validate($redirect, home_url('/')), 'expires' => time() + 300], 300);
-            setcookie('__Secure-wpsso-jwt', $binding, ['expires' => time() + 300, 'path' => '/', 'secure' => true, 'httponly' => true, 'samesite' => 'None']);
+            setcookie('__Secure-portalweave-sso-jwt', $binding, ['expires' => time() + 300, 'path' => '/', 'secure' => true, 'httponly' => true, 'samesite' => 'None']);
             $target = add_query_arg(['client_id' => $app['client_id'], 'response_type' => 'id_token', 'response_mode' => 'form_post',
-                'scope' => 'openid', 'redirect_uri' => home_url('/?wpsso_action=jwt_callback'), 'state' => $state, 'nonce' => $nonce], $app['authorize_url']);
+                'scope' => 'openid', 'redirect_uri' => home_url('/?portalweave_sso_action=jwt_callback'), 'state' => $state, 'nonce' => $nonce], $app['authorize_url']);
             // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- OIDC must leave this host for the HTTPS authorization endpoint validated when the administrator saved this provider.
             wp_redirect($target, 302, 'PortalWeave SSO');
             exit;
@@ -716,43 +716,43 @@ final class Extensions {
         // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Compact JWS syntax is validated below; Jwt::validate() verifies signature, issuer, audience, nonce and expiry without altering signed bytes.
         $token = isset($_POST['id_token']) && is_string($_POST['id_token']) ? wp_unslash($_POST['id_token']) : '';
         if ($method !== 'POST' || !preg_match('/^[a-f0-9]{64}$/D', $state) || strlen($token) > 65536 || !preg_match('/^[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+\.[A-Za-z0-9_-]+$/D', $token)) {
-            self::fail(new \WP_Error('wpsso_jwt_request', 'JWT callback requires a form POST containing state and id_token.'));
+            self::fail(new \WP_Error('portalweave_sso_jwt_request', 'JWT callback requires a form POST containing state and id_token.'));
         }
-        $key = 'wpsso_jwt_state_' . hash('sha256', $state);
+        $key = 'portalweave_sso_jwt_state_' . hash('sha256', $state);
         $flow = get_transient($key);
         // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- This generated 64-character hexadecimal browser secret is validated exactly, then compared only by its SHA-256 digest.
-        $binding = isset($_COOKIE['__Secure-wpsso-jwt']) && is_string($_COOKIE['__Secure-wpsso-jwt']) ? wp_unslash($_COOKIE['__Secure-wpsso-jwt']) : '';
+        $binding = isset($_COOKIE['__Secure-portalweave-sso-jwt']) && is_string($_COOKIE['__Secure-portalweave-sso-jwt']) ? wp_unslash($_COOKIE['__Secure-portalweave-sso-jwt']) : '';
         if (!preg_match('/^[a-f0-9]{64}$/D', $binding) || !is_array($flow) || $flow['expires'] < time() || !hash_equals($flow['binding'], hash('sha256', $binding))) {
-            self::fail(new \WP_Error('wpsso_state', 'The JWT challenge expired or belongs to another browser.'));
+            self::fail(new \WP_Error('portalweave_sso_state', 'The JWT challenge expired or belongs to another browser.'));
         }
         if (!self::consume('jwt-state', $state, 300)) {
-            self::fail(new \WP_Error('wpsso_replay', 'This JWT challenge has already been used.'));
+            self::fail(new \WP_Error('portalweave_sso_replay', 'This JWT challenge has already been used.'));
         }
         delete_transient($key);
-        setcookie('__Secure-wpsso-jwt', '', ['expires' => time() - 3600, 'path' => '/', 'secure' => true, 'httponly' => true, 'samesite' => 'None']);
+        setcookie('__Secure-portalweave-sso-jwt', '', ['expires' => time() - 3600, 'path' => '/', 'secure' => true, 'httponly' => true, 'samesite' => 'None']);
         $app = Config::app($flow['app']);
         if (!$app || empty($app['enabled']) || empty($app['jwt_sso'])) {
-            self::fail(new \WP_Error('wpsso_jwt_app', 'This JWT provider is disabled.'));
+            self::fail(new \WP_Error('portalweave_sso_jwt_app', 'This JWT provider is disabled.'));
         }
         $claims = Jwt::validate($token, $app, ['nonce' => $flow['nonce']]);
         if (is_wp_error($claims)) {
             self::fail($claims, $app['id']);
         }
         if (empty($claims['jti']) || !is_string($claims['jti']) || ($claims['exp'] ?? 0) > time() + 300 || !self::consume('jwt', $claims['iss'] . '|' . $claims['jti'], 600)) {
-            self::fail(new \WP_Error('wpsso_replay', 'A unique jti and a JWT exp within five minutes are required.'), $app['id']);
+            self::fail(new \WP_Error('portalweave_sso_replay', 'A unique jti and a JWT exp within five minutes are required.'), $app['id']);
         }
         $user = Accounts::resolve($app, $claims, []);
         self::session($user, $app, $claims);
-        $redirect = apply_filters('wpsso_login_redirect', $flow['redirect'], $app, $claims, $user);
+        $redirect = apply_filters('portalweave_sso_login_redirect', $flow['redirect'], $app, $claims, $user);
         // phpcs:ignore WordPress.Security.SafeRedirect.wp_redirect_wp_redirect -- Redirect::validate() checks the exact origin/path against the configured allowlist, including intentional external destinations.
         wp_redirect(Redirect::validate($redirect, home_url('/')), 302, 'PortalWeave SSO');
         exit;
     }
 
     private static function session($user, array $app, array $attributes): void {
-        $user = apply_filters('wpsso_pre_authenticate', $user, $app, $attributes);
+        $user = apply_filters('portalweave_sso_pre_authenticate', $user, $app, $attributes);
         if (is_wp_error($user) || !($user instanceof \WP_User)) {
-            self::fail(is_wp_error($user) ? $user : new \WP_Error('wpsso_account', 'Unable to resolve this identity.'), $app['id']);
+            self::fail(is_wp_error($user) ? $user : new \WP_Error('portalweave_sso_account', 'Unable to resolve this identity.'), $app['id']);
         }
         Auth::remember_sid($user->ID, $app, $attributes);
         wp_set_current_user($user->ID);
@@ -760,7 +760,7 @@ final class Extensions {
         update_user_meta($user->ID, Auth::app_meta_key(), $app['id']);
         // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- This is WordPress core's authentication lifecycle hook.
         do_action('wp_login', $user->user_login, $user);
-        do_action('wpsso_authenticated', $user, $app, $attributes);
+        do_action('portalweave_sso_authenticated', $user, $app, $attributes);
         Audit::record('success', $app['id'], $user);
     }
 
@@ -770,16 +770,16 @@ final class Extensions {
     }
 
     public static function consume(string $purpose, string $id, int $ttl): bool {
-        $name = 'wpsso_claim_' . hash('sha256', $purpose . '|' . $id);
+        $name = 'portalweave_sso_claim_' . hash('sha256', $purpose . '|' . $id);
         if (!add_option($name, time() + $ttl, '', false)) {
             return false;
         }
-        wp_schedule_single_event(time() + $ttl, 'wpsso_expire_claim', [$name]);
+        wp_schedule_single_event(time() + $ttl, 'portalweave_sso_expire_claim', [$name]);
         return true;
     }
 
     public static function expire_claim(string $name): void {
-        if (preg_match('/^wpsso_claim_[a-f0-9]{64}$/D', $name) && (int) get_option($name, PHP_INT_MAX) <= time()) {
+        if (preg_match('/^portalweave_sso_claim_[a-f0-9]{64}$/D', $name) && (int) get_option($name, PHP_INT_MAX) <= time()) {
             delete_option($name);
         }
     }
@@ -843,7 +843,7 @@ final class Extensions {
 
     public static function shared_consume(): void {
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only route selection avoids consuming a handoff during another authentication flow; the assertion is independently authenticated below.
-        $action = isset($_GET['wpsso_action']) && is_string($_GET['wpsso_action']) ? sanitize_key(wp_unslash($_GET['wpsso_action'])) : '';
+        $action = isset($_GET['portalweave_sso_action']) && is_string($_GET['portalweave_sso_action']) ? sanitize_key(wp_unslash($_GET['portalweave_sso_action'])) : '';
         if (is_user_logged_in() || is_admin() || $action !== '' || !isset($_COOKIE[self::SHARED_COOKIE]) || !is_string($_COOKIE[self::SHARED_COOKIE])) {
             return;
         }
@@ -875,7 +875,7 @@ final class Extensions {
             return;
         }
         $user = Accounts::resolve($app, $claims['attributes'], []);
-        $user = apply_filters('wpsso_pre_authenticate', $user, $app, $claims['attributes']);
+        $user = apply_filters('portalweave_sso_pre_authenticate', $user, $app, $claims['attributes']);
         if (is_wp_error($user)) {
             Audit::record('failure', $app['id'], null, $user->get_error_code());
             return;
@@ -887,7 +887,7 @@ final class Extensions {
         update_user_meta($user->ID, Auth::app_meta_key(), $app['id']);
         // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Dispatch the core login hook for this authenticated WordPress session.
         do_action('wp_login', $user->user_login, $user);
-        Audit::record('success', $app['id'], $user, 'wpsso_shared_login');
+        Audit::record('success', $app['id'], $user, 'portalweave_sso_shared_login');
         wp_safe_redirect(Redirect::current());
         exit;
     }
@@ -901,9 +901,9 @@ final class Extensions {
 
     public static function cleanup(): void {
         // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key,WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Bounded hourly expiry sweep must use the guest expiry timestamp; never scans arbitrary profile metadata.
-        $users = get_users(['meta_key' => '_wpsso_guest_expires', 'meta_value' => time(), 'meta_compare' => '<=', 'meta_type' => 'NUMERIC', 'number' => 100]);
+        $users = get_users(['meta_key' => '_portalweave_sso_guest_expires', 'meta_value' => time(), 'meta_compare' => '<=', 'meta_type' => 'NUMERIC', 'number' => 100]);
         foreach ($users as $user) {
-            if (self::privileged($user->ID) || (int) get_user_meta($user->ID, '_wpsso_guest_expires', true) <= 0) {
+            if (self::privileged($user->ID) || (int) get_user_meta($user->ID, '_portalweave_sso_guest_expires', true) <= 0) {
                 continue;
             }
             \WP_Session_Tokens::get_instance($user->ID)->destroy_all();
@@ -917,9 +917,9 @@ final class Extensions {
             wp_delete_user($user->ID);
         }
         // Release a dead worker's provisioning mutex; the live operation cannot run longer than this lease.
-        $lock = (int) get_option('wpsso_scim_write_lock', 0);
+        $lock = (int) get_option('portalweave_sso_scim_write_lock', 0);
         if ($lock && $lock < time() - 600) {
-            delete_option('wpsso_scim_write_lock');
+            delete_option('portalweave_sso_scim_write_lock');
         }
     }
 }

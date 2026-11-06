@@ -1,4 +1,4 @@
-name: ${COMPOSE_PROJECT_NAME:-wpsso-test}
+name: ${COMPOSE_PROJECT_NAME:-portalweave-sso-test}
 services:
   db:
     image: mariadb:11.4
@@ -14,7 +14,7 @@ services:
     volumes:
       - db:/var/lib/mysql
   wordpress:
-    image: ${WPSSO_WORDPRESS_IMAGE:-wordpress:php8.3-apache}
+    image: ${PORTALWEAVE_SSO_WORDPRESS_IMAGE:-wordpress:php8.3-apache}
     depends_on:
       db:
         condition: service_healthy
@@ -34,9 +34,9 @@ services:
       WORDPRESS_DEBUG: 1
     volumes:
       - wordpress:/var/www/html
-      - ./:/var/www/html/wp-content/plugins/wordpress-sso
+      - ./:/var/www/html/wp-content/plugins/portalweave-sso
   cli:
-    image: ${WPSSO_CLI_IMAGE:-wordpress:cli-php8.3}
+    image: ${PORTALWEAVE_SSO_CLI_IMAGE:-wordpress:cli-php8.3}
     user: '33:33'
     depends_on:
       wordpress:
@@ -50,7 +50,7 @@ services:
       WORDPRESS_DEBUG: 1
     volumes:
       - wordpress:/var/www/html
-      - ./:/var/www/html/wp-content/plugins/wordpress-sso
+      - ./:/var/www/html/wp-content/plugins/portalweave-sso
 volumes:
   db:
   wordpress:

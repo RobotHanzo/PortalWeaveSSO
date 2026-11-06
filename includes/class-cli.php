@@ -1,13 +1,13 @@
 <?php
 /** Local operational commands. */
-namespace WPSSO;
+namespace PortalWeaveSSO;
 
 defined('ABSPATH') || exit;
 
 final class Cli {
     public static function register(): void {
         if (defined('WP_CLI') && WP_CLI) {
-            \WP_CLI::add_command('wpsso', self::class);
+            \WP_CLI::add_command('portalweave-sso', self::class);
         }
     }
 
@@ -69,10 +69,10 @@ final class Cli {
     /** @internal Write a local CLI backup without overwriting any existing destination, even in a race. */
     public static function write_backup(string $file, string $contents) {
         if ($file === '' || str_contains($file, "\0") || wp_is_stream($file)) {
-            return new \WP_Error('wpsso_backup_path', 'Choose a local filesystem path for the backup.');
+            return new \WP_Error('portalweave_sso_backup_path', 'Choose a local filesystem path for the backup.');
         }
         if (file_exists($file) || is_link($file)) {
-            return new \WP_Error('wpsso_backup_exists', 'The destination already exists; choose a new backup path.');
+            return new \WP_Error('portalweave_sso_backup_exists', 'The destination already exists; choose a new backup path.');
         }
         // WP_Filesystem::put_contents() opens with "wb" and has no exclusive-create mode.
         // The CLI must never truncate a destination created between the check above and opening it.
@@ -85,14 +85,14 @@ final class Cli {
             umask($previous_mask);
         }
         if (!$stream) {
-            return new \WP_Error('wpsso_backup_create', 'Cannot create the backup file.');
+            return new \WP_Error('portalweave_sso_backup_create', 'Cannot create the backup file.');
         }
         $success = false;
         try {
             // Verify the descriptor created under the private umask. Windows uses ACLs instead of POSIX modes.
             $created = fstat($stream);
             if (PHP_OS_FAMILY !== 'Windows' && (!is_array($created) || ($created['mode'] & 0777) !== 0600)) {
-                return new \WP_Error('wpsso_backup_permissions', 'Cannot verify private backup permissions. An incomplete file may remain at the requested path.');
+                return new \WP_Error('portalweave_sso_backup_permissions', 'Cannot verify private backup permissions. An incomplete file may remain at the requested path.');
             }
             $offset = 0;
             $length = strlen($contents);
@@ -100,7 +100,7 @@ final class Cli {
                 // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fwrite -- Write through the exclusive descriptor; reopening with WP_Filesystem would lose the no-overwrite guarantee.
                 $written = fwrite($stream, substr($contents, $offset));
                 if ($written === false || $written === 0) {
-                    return new \WP_Error('wpsso_backup_write', 'Could not finish writing the backup. An incomplete file may remain at the requested path.');
+                    return new \WP_Error('portalweave_sso_backup_write', 'Could not finish writing the backup. An incomplete file may remain at the requested path.');
                 }
                 $offset += $written;
             }
@@ -109,7 +109,7 @@ final class Cli {
             // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose -- Close the same exclusive descriptor in every success and failure path.
             $closed = fclose($stream);
         }
-        return $success && $closed ? true : new \WP_Error('wpsso_backup_write', 'Could not finish writing the backup. An incomplete file may remain at the requested path.');
+        return $success && $closed ? true : new \WP_Error('portalweave_sso_backup_write', 'Could not finish writing the backup. An incomplete file may remain at the requested path.');
     }
 
     /** Import a JSON configuration file.

@@ -1,5 +1,5 @@
 <?php
-namespace WPSSO;
+namespace PortalWeaveSSO;
 
 defined('ABSPATH') || exit;
 
@@ -12,17 +12,17 @@ final class Accounts
 
     public static function groups_meta_key(): string
     {
-        return '_wpsso_groups' . (is_multisite() ? '_' . get_current_blog_id() : '');
+        return '_portalweave_sso_groups' . (is_multisite() ? '_' . get_current_blog_id() : '');
     }
 
     public static function mapped_keys_meta_key(): string
     {
-        return '_wpsso_mapped_keys' . (is_multisite() ? '_' . get_current_blog_id() : '');
+        return '_portalweave_sso_mapped_keys' . (is_multisite() ? '_' . get_current_blog_id() : '');
     }
 
     public static function identity_keys_meta_key(): string
     {
-        return '_wpsso_identity_keys' . (is_multisite() ? '_' . get_current_blog_id() : '');
+        return '_portalweave_sso_identity_keys' . (is_multisite() ? '_' . get_current_blog_id() : '');
     }
     public static function claim(array $attributes, string $path, $default = null)
     {
@@ -94,13 +94,13 @@ final class Accounts
 
     private static function lock(string $identity)
     {
-        $key = '_wpsso_lock_' . hash('sha256', $identity);
+        $key = '_portalweave_sso_lock_' . hash('sha256', $identity);
         global $wpdb;
         // Atomic stale-lock deletion does not remove a new owner's unexpired lock.
         $wpdb->query($wpdb->prepare('DELETE FROM %i WHERE option_name = %s AND CAST(option_value AS UNSIGNED) < %d', $wpdb->options, $key, time())); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Atomic stale-owner comparison; option cache is invalidated below.
         wp_cache_delete($key, 'options');
         $owner = (time() + 120) . ':' . bin2hex(random_bytes(16));
-        return add_option($key, $owner, '', false) ? ['key' => $key, 'owner' => $owner] : new \WP_Error('wpsso_login_busy', __('This account is already being processed. Retry sign-in shortly.', 'portalweave-sso'));
+        return add_option($key, $owner, '', false) ? ['key' => $key, 'owner' => $owner] : new \WP_Error('portalweave_sso_login_busy', __('This account is already being processed. Retry sign-in shortly.', 'portalweave-sso'));
     }
 
     private static function unlock(array $lock): void
@@ -114,16 +114,16 @@ final class Accounts
     public static function resolve(array $app, array $attributes, array $tokens = [])
     {
         $app = array_replace(Config::app_defaults(), $app);
-        $pre = apply_filters('wpsso_pre_resolve', null, $app, $attributes, $tokens);
+        $pre = apply_filters('portalweave_sso_pre_resolve', null, $app, $attributes, $tokens);
         if ($pre instanceof \WP_User || is_wp_error($pre)) {
             return $pre;
         }
         $subject = self::claim($attributes, $app['protocol'] === 'oidc' ? 'sub' : $app['subject_attribute']);
         if ((!is_string($subject) && !is_int($subject)) || (string) $subject === '' || strlen((string) $subject) > 1024) {
-            return new \WP_Error('wpsso_subject', __('The provider did not return a stable account identifier.', 'portalweave-sso'));
+            return new \WP_Error('portalweave_sso_subject', __('The provider did not return a stable account identifier.', 'portalweave-sso'));
         }
         $scope = (string) get_current_blog_id() . '|' . $app['id'] . '|' . $app['issuer'] . '|' . $app['client_id'];
-        $identity_key = '_wpsso_identity_' . hash('sha256', $scope);
+        $identity_key = '_portalweave_sso_identity_' . hash('sha256', $scope);
         $identity = hash('sha256', (string) $subject);
         $identity_lock = self::lock($identity_key . $identity);
         if (is_wp_error($identity_lock)) {
@@ -133,28 +133,28 @@ final class Accounts
         try {
             $email = self::claim($attributes, $app['mapping']['email'], '');
             if (!is_string($email) || !is_email($email)) {
-                return new \WP_Error('wpsso_email', __('A valid email address is required from the provider.', 'portalweave-sso'));
+                return new \WP_Error('portalweave_sso_email', __('A valid email address is required from the provider.', 'portalweave-sso'));
             }
             $email = strtolower(sanitize_email($email));
             $original_domain = substr(strrchr($email, '@'), 1);
             $domain = $app['domain_mapping'][$original_domain] ?? $original_domain;
             if (!Config::domain($domain)) {
-                return new \WP_Error('wpsso_domain', __('Invalid mapped email domain.', 'portalweave-sso'));
+                return new \WP_Error('portalweave_sso_domain', __('Invalid mapped email domain.', 'portalweave-sso'));
             }
             $email = substr($email, 0, strrpos($email, '@') + 1) . $domain;
             $blocked = Config::get('blocked_domains', []);
             $allowed = Config::get('allowed_domains', []);
             if (in_array($original_domain, $blocked, true) || in_array($domain, $blocked, true)
                 || ($allowed && !in_array($original_domain, $allowed, true))) {
-                return new \WP_Error('wpsso_domain_blocked', __('Your email domain is not permitted on this site.', 'portalweave-sso'));
+                return new \WP_Error('portalweave_sso_domain_blocked', __('Your email domain is not permitted on this site.', 'portalweave-sso'));
             }
             $verified = self::verified($app, $attributes);
             if ($app['require_verified_email'] && !$verified) {
-                return new \WP_Error('wpsso_unverified', __('Your identity provider must verify your account before sign-in.', 'portalweave-sso'));
+                return new \WP_Error('portalweave_sso_unverified', __('Your identity provider must verify your account before sign-in.', 'portalweave-sso'));
             }
             $matches = get_users(['meta_key' => $identity_key, 'meta_value' => $identity, 'number' => 2, 'blog_id' => 0]);
             if (count($matches) > 1) {
-                return new \WP_Error('wpsso_identity_conflict', __('The provider identity is linked to more than one local account.', 'portalweave-sso'));
+                return new \WP_Error('portalweave_sso_identity_conflict', __('The provider identity is linked to more than one local account.', 'portalweave-sso'));
             }
             $user = $matches[0] ?? null;
             $email_lock = self::lock('email|' . $email);
@@ -166,27 +166,27 @@ final class Accounts
             if (!$user && $email_users && $app['link_existing']) {
                 // Rewriting a domain cannot prove ownership of the destination mailbox.
                 if (!$verified || $domain !== $original_domain || count($email_users) !== 1) {
-                    return new \WP_Error('wpsso_link_verification', __('Account linking requires a unique, verified, unmapped email address.', 'portalweave-sso'));
+                    return new \WP_Error('portalweave_sso_link_verification', __('Account linking requires a unique, verified, unmapped email address.', 'portalweave-sso'));
                 }
                 $user = $email_users[0];
                 $other_subject = get_user_meta($user->ID, $identity_key, true);
                 if ($other_subject && !hash_equals((string) $other_subject, $identity)) {
-                    return new \WP_Error('wpsso_identity_conflict', __('That local account is already linked to another provider identity.', 'portalweave-sso'));
+                    return new \WP_Error('portalweave_sso_identity_conflict', __('That local account is already linked to another provider identity.', 'portalweave-sso'));
                 }
             }
             if (!$user && $email_users && !$app['allow_duplicate_emails']) {
-                return new \WP_Error('wpsso_link_required', __('A local account already uses that email. Ask an administrator to configure verified account linking.', 'portalweave-sso'));
+                return new \WP_Error('portalweave_sso_link_required', __('A local account already uses that email. Ask an administrator to configure verified account linking.', 'portalweave-sso'));
             }
             $new = !$user;
             $guest = !empty(Config::get('modules', [])['guest']) && $app['guest'];
             if ($new && !$app['auto_register'] && !$guest) {
-                return new \WP_Error('wpsso_registration_disabled', __('Only existing linked users can sign in.', 'portalweave-sso'));
+                return new \WP_Error('portalweave_sso_registration_disabled', __('Only existing linked users can sign in.', 'portalweave-sso'));
             }
             if ($user && self::is_privileged($user) && (!$app['allow_admin'] || !$verified)) {
-                return new \WP_Error('wpsso_admin_disabled', __('Administrator SSO requires an enabled provider and its verified account claim.', 'portalweave-sso'));
+                return new \WP_Error('portalweave_sso_admin_disabled', __('Administrator SSO requires an enabled provider and its verified account claim.', 'portalweave-sso'));
             }
-            if ($user && (!empty($user->spam) || !empty($user->deleted) || get_user_meta($user->ID, '_wpsso_scim_active', true) === '0')) {
-                return new \WP_Error('wpsso_account_disabled', __('This local account has been disabled.', 'portalweave-sso'));
+            if ($user && (!empty($user->spam) || !empty($user->deleted) || get_user_meta($user->ID, '_portalweave_sso_scim_active', true) === '0')) {
+                return new \WP_Error('portalweave_sso_account_disabled', __('This local account has been disabled.', 'portalweave-sso'));
             }
             $groups = self::claim($attributes, $app['mapping']['groups'], []);
             $groups = array_values(array_unique(array_filter(array_map(static fn($v) => is_scalar($v) ? (string) $v : '', is_array($groups) ? $groups : [$groups]), static fn($v) => $v !== '')));
@@ -196,23 +196,23 @@ final class Accounts
             }
             $roles = array_merge($roles, Config::list($app['domain_roles'][$original_domain] ?? []));
             if ($app['block_unmapped'] && !$roles) {
-                return new \WP_Error('wpsso_role_unmapped', __('No provider group or email-domain role mapping matched your account.', 'portalweave-sso'));
+                return new \WP_Error('portalweave_sso_role_unmapped', __('No provider group or email-domain role mapping matched your account.', 'portalweave-sso'));
             }
             $roles = array_values(array_unique($roles ?: [$app['default_role']]));
             if ($guest) {
-                if ($user && !get_user_meta($user->ID, '_wpsso_guest_expires', true)) {
-                    return new \WP_Error('wpsso_guest_link', __('Guest providers cannot sign in as permanent accounts.', 'portalweave-sso'));
+                if ($user && !get_user_meta($user->ID, '_portalweave_sso_guest_expires', true)) {
+                    return new \WP_Error('portalweave_sso_guest_link', __('Guest providers cannot sign in as permanent accounts.', 'portalweave-sso'));
                 }
                 $roles = ['subscriber'];
             }
             foreach ($roles as $role) {
                 if (!get_role($role) || (self::role_privileged($role) && (!$app['allow_admin'] || !$verified))) {
-                    return new \WP_Error('wpsso_privileged_role', __('This provider cannot assign the requested privileged role.', 'portalweave-sso'));
+                    return new \WP_Error('portalweave_sso_privileged_role', __('This provider cannot assign the requested privileged role.', 'portalweave-sso'));
                 }
             }
-            $permitted = apply_filters('wpsso_account_allowed', true, $user, $app, $attributes);
+            $permitted = apply_filters('portalweave_sso_account_allowed', true, $user, $app, $attributes);
             if (is_wp_error($permitted) || $permitted !== true) {
-                return is_wp_error($permitted) ? $permitted : new \WP_Error('wpsso_account_denied', __('Sign-in was denied by an account policy.', 'portalweave-sso'));
+                return is_wp_error($permitted) ? $permitted : new \WP_Error('portalweave_sso_account_denied', __('Sign-in was denied by an account policy.', 'portalweave-sso'));
             }
             $data = [];
             if ($new || !$app['keep_attributes']) {
@@ -243,7 +243,7 @@ final class Accounts
             }
             $other_email_users = array_filter($email_users, static fn($u) => !$user || $u->ID !== $user->ID);
             if ($other_email_users && isset($data['user_email']) && !$app['allow_duplicate_emails']) {
-                return new \WP_Error('wpsso_duplicate_email', __('Another local account uses the mapped email address.', 'portalweave-sso'));
+                return new \WP_Error('portalweave_sso_duplicate_email', __('Another local account uses the mapped email address.', 'portalweave-sso'));
             }
             $restore_email = null;
             if ($other_email_users && isset($data['user_email']) && $app['allow_duplicate_emails']) {
@@ -260,7 +260,7 @@ final class Accounts
                 }
             }
             if (is_wp_error($id)) {
-                return new \WP_Error('wpsso_user_save', __('The local account could not be saved.', 'portalweave-sso'));
+                return new \WP_Error('portalweave_sso_user_save', __('The local account could not be saved.', 'portalweave-sso'));
             }
             $user = get_userdata($id);
             if ($new || !$app['keep_roles'] || !is_user_member_of_blog($id)) {
@@ -274,12 +274,12 @@ final class Accounts
             // so this site's privacy eraser can remove its old hashed identity keys.
             $identity_keys = get_user_meta($id, self::identity_keys_meta_key(), true);
             $identity_keys = is_array($identity_keys) ? $identity_keys : [];
-            $identity_keys = array_merge($identity_keys, [$identity_key, '_wpsso_sid_' . hash('sha256', $scope)]);
+            $identity_keys = array_merge($identity_keys, [$identity_key, '_portalweave_sso_sid_' . hash('sha256', $scope)]);
             update_user_meta($id, self::identity_keys_meta_key(), array_values(array_unique($identity_keys)));
             update_user_meta($id, self::groups_meta_key(), $groups);
             update_user_meta($id, Auth::app_meta_key(), $app['id']);
             if ($guest && $new) {
-                update_user_meta($id, '_wpsso_guest_expires', time() + (int) Config::get('guest_ttl', 3600));
+                update_user_meta($id, '_portalweave_sso_guest_expires', time() + (int) Config::get('guest_ttl', 3600));
             }
             if ($new || !$app['keep_attributes']) {
                 foreach ($app['custom_mapping'] as $meta => $path) {
@@ -298,7 +298,7 @@ final class Accounts
                     }
                 }
             }
-            do_action('wpsso_user_resolved', $user, $app, $attributes, $tokens);
+            do_action('portalweave_sso_user_resolved', $user, $app, $attributes, $tokens);
             return $user;
         } finally {
             self::unlock($identity_lock);

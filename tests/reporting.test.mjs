@@ -10,7 +10,7 @@ import { commandEscape, summarizeReports } from '../scripts/report-results.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 function fixture(t) {
-    const directory = mkdtempSync(join(tmpdir(), 'wpsso-report-'));
+    const directory = mkdtempSync(join(tmpdir(), 'portalweave-sso-report-'));
     t.after(() => rmSync(directory, { recursive: true, force: true }));
     return directory;
 }
@@ -101,7 +101,7 @@ test('An unfinished Node test runner writes an explicit failing report and exits
     const guardModule = pathToFileURL(join(root, 'tests/report.mjs')).href;
     const script = join(directory, 'unfinished.mjs');
     writeFileSync(script, `import { reportGuard } from ${JSON.stringify(guardModule)};\nreportGuard('https', []);\nprocess.exit(0);\n`);
-    const result = spawnSync(process.execPath, [script], { encoding: 'utf8', env: { ...process.env, WPSSO_REPORT_DIR: directory } });
+    const result = spawnSync(process.execPath, [script], { encoding: 'utf8', env: { ...process.env, PORTALWEAVE_SSO_REPORT_DIR: directory } });
     assert.equal(result.status, 1);
     const report = JSON.parse(readFileSync(join(directory, 'https.json'), 'utf8'));
     assert.equal(report.tests[0].pass, false);
