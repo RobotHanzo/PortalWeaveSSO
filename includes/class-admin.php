@@ -35,7 +35,7 @@ final class Admin {
     public static function redirect_legacy_page(): void {
         global $pagenow;
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Capability-gated, read-only bookmark navigation; no settings are read from the request or mutated.
-        if ($pagenow !== 'options-general.php' || is_network_admin() || !current_user_can('manage_options') || ($_SERVER['REQUEST_METHOD'] ?? 'GET') !== 'GET' || self::request_key($_GET, 'page') !== 'portalweave-sso') {
+        if ($pagenow !== 'options-general.php' || is_network_admin() || !current_user_can('manage_options') || self::request_key($_SERVER, 'REQUEST_METHOD') !== 'get' || self::request_key($_GET, 'page') !== 'portalweave-sso') {
             return;
         }
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Only an allowlisted local task selects the canonical destination.
