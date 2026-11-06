@@ -22,14 +22,14 @@ final class ProviderWizard
         }
         $recipe = $catalog[$selected];
         $steps = $recipe['steps'];
-        $steps['review'] = ['title' => __('Review your connection', 'portalweave-sso'), 'description' => __('Check the details, then save this provider. Your existing sign-in policy stays in effect.', 'portalweave-sso')];
+        $steps['review'] = ['title' => __('Review your connection', 'portalweave-sso'), 'description' => __('Check the details and test the connection before saving this provider. Your existing sign-in policy stays in effect.', 'portalweave-sso')];
         echo '<div class="portalweave-sso-setup-service">';
         self::logo($selected);
         echo '<div><strong>' . esc_html($recipe['label']) . '</strong><p>' . esc_html($recipe['summary']) . '</p></div></div><ol class="portalweave-sso-setup-progress" aria-label="' . esc_attr__('Provider setup progress', 'portalweave-sso') . '"><li><a href="' . esc_url($base_url) . '">' . esc_html__('Choose provider', 'portalweave-sso') . '</a></li>';
         foreach ($steps as $key => $step) {
             echo '<li><button type="button" data-step-target="' . esc_attr($key) . '" disabled>' . esc_html($step['title']) . '</button></li>';
         }
-        echo '</ol><form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" class="portalweave-sso-settings-form portalweave-sso-setup-form" data-setup-form data-pending-label="' . esc_attr__('Saving…', 'portalweave-sso') . '" data-pending-message="' . esc_attr__('Saving your provider…', 'portalweave-sso') . '">';
+        echo '</ol><form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" rel="noopener" class="portalweave-sso-settings-form portalweave-sso-setup-form" data-setup-form data-pending-label="' . esc_attr__('Saving…', 'portalweave-sso') . '" data-pending-message="' . esc_attr__('Saving your provider…', 'portalweave-sso') . '">';
         wp_nonce_field('portalweave_sso_save');
         foreach (['action' => 'portalweave_sso_save', 'portalweave_sso_screen' => 'providers', 'portalweave_sso_provider' => '', 'portalweave_sso_creating' => '1'] as $key => $value) {
             self::hidden($key, $value);
@@ -60,10 +60,7 @@ final class ProviderWizard
             }
             echo '</div><aside class="portalweave-sso-setup-guide" aria-label="' . esc_attr__('Setup instructions', 'portalweave-sso') . '">';
             if ($key === 'review') {
-                echo '<h4>' . esc_html__('What happens next', 'portalweave-sso') . '</h4><p>' . esc_html__('After saving, open Test SSO Config to inspect the returned attributes. Then test sign-in with an ordinary account before making this your default provider.', 'portalweave-sso') . '</p><p>' . esc_html__('A successful attribute test does not verify account linking, email verification or administrator access. Review those policies in the advanced editor.', 'portalweave-sso') . '</p>';
-                if ($network) {
-                    echo '<p>' . esc_html__('Network providers can be tested here only when network configuration is active. Use a staging site to validate a new network policy before enforcing it.', 'portalweave-sso') . '</p>';
-                }
+                echo '<h4>' . esc_html__('What happens next', 'portalweave-sso') . '</h4><p>' . esc_html__('Test connection opens a new tab to inspect the returned attributes without saving this provider. Keep this page open, review the test results, then return here to save.', 'portalweave-sso') . '</p><p>' . esc_html__('A successful attribute test does not verify account linking, email verification or administrator access. After saving, review those policies in the advanced editor and test sign-in with an ordinary account before making this your default provider.', 'portalweave-sso') . '</p>';
             } else {
                 echo '<h4>' . esc_html__('In your provider console', 'portalweave-sso') . '</h4>';
                 if (!empty($step['instructions'])) {
@@ -83,11 +80,22 @@ final class ProviderWizard
             echo '</fieldset>';
         }
         if (!$readonly) {
-            echo '<div class="portalweave-sso-setup-navigation" data-setup-navigation hidden><button class="button button-secondary" type="button" data-setup-back>' . esc_html__('Back', 'portalweave-sso') . '</button><button class="button button-primary" type="button" data-setup-next>' . esc_html__('Continue', 'portalweave-sso') . '</button><button class="button button-primary" type="submit" data-setup-submit>' . esc_html__('Save provider', 'portalweave-sso') . '</button></div><div class="portalweave-sso-setup-navigation" data-setup-fallback-submit><button class="button button-primary" type="submit">' . esc_html__('Save provider', 'portalweave-sso') . '</button></div>';
+            echo '<p class="portalweave-sso-setup-test-status" data-setup-test-status data-test-message="' . esc_attr__('Opening the connection test in a new tab. This provider is still unsaved. Return here to save after reviewing the test results.', 'portalweave-sso') . '" role="status" aria-live="polite" aria-atomic="true"></p><div class="portalweave-sso-setup-navigation" data-setup-navigation hidden><button class="button button-secondary" type="button" data-setup-back>' . esc_html__('Back', 'portalweave-sso') . '</button><button class="button button-primary" type="button" data-setup-next>' . esc_html__('Continue', 'portalweave-sso') . '</button><div class="portalweave-sso-setup-final-actions" data-setup-final-actions>';
+            // The first submitter keeps native, no-JavaScript Enter on the Save action.
+            echo '<button class="button button-primary" type="submit" data-setup-submit>' . esc_html__('Save provider', 'portalweave-sso') . '</button>';
+            self::test_button();
+            echo '</div></div><div class="portalweave-sso-setup-navigation" data-setup-fallback-submit>';
+            self::test_button();
+            echo '<button class="button button-primary" type="submit">' . esc_html__('Save provider', 'portalweave-sso') . '</button></div>';
         }
         echo '</fieldset>';
         self::hidden('portalweave_sso_complete', '1');
         echo '</form></section>';
+    }
+
+    private static function test_button(): void
+    {
+        echo '<button class="button button-secondary" type="submit" data-setup-test formaction="' . esc_url(Auth::setup_test_url()) . '" formtarget="_blank">' . esc_html__('Test connection', 'portalweave-sso') . '</button>';
     }
 
     private static function hidden(string $name, string $value): void

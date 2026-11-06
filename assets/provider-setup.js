@@ -8,7 +8,9 @@
     const back = root.querySelector('[data-setup-back]');
     const next = root.querySelector('[data-setup-next]');
     const submit = root.querySelector('[data-setup-submit]');
-    if (!form || !steps.length || !navigation || !back || !next || !submit) return;
+    const finalActions = root.querySelector('[data-setup-final-actions]');
+    const testStatus = root.querySelector('[data-setup-test-status]');
+    if (!form || !steps.length || !navigation || !back || !next || !submit || !finalActions) return;
 
     const progress = Array.from(root.querySelectorAll('[data-step-target]'));
     const status = root.querySelector('[data-setup-status]');
@@ -17,6 +19,7 @@
     const originalRequired = new Map(controls.map(control => [control, control.required]));
     let current = 0;
     let visited = 0;
+    let testAnnouncement;
     let fields;
     try {
       fields = Array.from(form.querySelectorAll('[data-setup-field]')).map(field => ({
@@ -42,6 +45,11 @@
 
     function announce(message) {
       if (status) status.textContent = message || '';
+    }
+
+    function clearTestStatus() {
+      window.clearTimeout(testAnnouncement);
+      if (testStatus) testStatus.textContent = '';
     }
 
     function review() {
@@ -100,6 +108,7 @@
     }).filter(Boolean);
 
     function showStep(index, focus = true) {
+      clearTestStatus();
       current = index;
       visited = Math.max(visited, current);
       steps.forEach((step, position) => { step.hidden = position !== current; });
@@ -119,6 +128,7 @@
       back.hidden = current === 0;
       next.hidden = final;
       submit.hidden = !final;
+      finalActions.hidden = !final;
       secretToggles.forEach(({ button, input, show }) => {
         input.type = 'password';
         button.textContent = show;
@@ -162,13 +172,19 @@
         if (index <= visited) goTo(index);
       });
     });
-    form.addEventListener('input', syncFields);
-    form.addEventListener('change', syncFields);
+    function changed() {
+      clearTestStatus();
+      syncFields();
+    }
+    form.addEventListener('input', changed);
+    form.addEventListener('change', changed);
     form.addEventListener('keydown', event => {
-      if (event.key !== 'Enter' || event.isComposing || current === steps.length - 1
+      if (event.key !== 'Enter' || event.isComposing
         || !event.target.matches('input:not([type="button"]):not([type="submit"]):not([type="reset"]):not([type="checkbox"]):not([type="radio"])')) return;
       event.preventDefault();
-      goTo(current + 1);
+      // Enter keeps its primary Save behavior; testing requires its explicit action.
+      if (current === steps.length - 1) form.requestSubmit(submit);
+      else goTo(current + 1);
     });
     form.addEventListener('submit', event => {
       syncFields();
@@ -182,6 +198,13 @@
           event.preventDefault();
           return;
         }
+      }
+      if (event.submitter?.matches('[data-setup-test]') && testStatus) {
+        clearTestStatus();
+        // Let every submit listener finish before reporting the native new-tab POST.
+        testAnnouncement = window.setTimeout(() => {
+          if (!event.defaultPrevented) testStatus.textContent = testStatus.dataset.testMessage || '';
+        }, 0);
       }
     });
 
@@ -247,6 +270,8 @@
     root.querySelectorAll('[data-setup-fallback-submit]').forEach(button => { button.hidden = true; });
     navigation.hidden = false;
     showStep(0, false);
+    // Once validation is active, put Test before Save in both visual and focus order.
+    finalActions.append(submit);
   }
 
   function start() {

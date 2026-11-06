@@ -513,12 +513,36 @@
 
 .portalweave-sso-onboarding [data-setup-navigation] {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     justify-content: flex-end;
     gap: 10px;
     padding: 20px 32px;
     border-top: 1px solid var(--portalweave-setup-line);
     background: var(--portalweave-setup-tint);
+}
+
+.portalweave-sso-setup-final-actions,
+.portalweave-sso-onboarding [data-setup-fallback-submit] {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 10px;
+}
+
+.portalweave-sso-setup-final-actions {
+    min-width: 0;
+    margin-inline-start: auto;
+}
+
+.portalweave-sso-setup-test-status:not(:empty) {
+    padding: 12px 16px;
+    margin: 0 32px 20px;
+    border-inline-start: 3px solid var(--portalweave-setup-accent);
+    background: var(--portalweave-setup-tint);
+    color: var(--portalweave-setup-ink);
+    font-size: 13px;
 }
 
 .portalweave-sso-onboarding [data-setup-navigation] .button {
@@ -626,12 +650,20 @@
         margin-inline: 20px;
     }
 
+    .portalweave-sso-setup-test-status:not(:empty) {
+        margin-inline: 20px;
+    }
+
     .portalweave-sso-onboarding [data-setup-error] {
         margin-inline: 20px;
     }
 }
 
 @media (max-width: 420px) {
+    .portalweave-sso-setup-final-actions {
+        flex: 1 1 100%;
+    }
+
     .portalweave-sso-setup-callback {
         grid-template-columns: minmax(0, 1fr);
     }
