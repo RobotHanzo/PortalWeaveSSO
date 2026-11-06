@@ -2,7 +2,7 @@ import test from 'node:test';
 import assert from 'node:assert/strict';
 import { createRequire } from 'node:module';
 
-const { readRows, writeRows } = createRequire(import.meta.url)('../assets/admin-mappings.js');
+const { readRows, writeRows, serializeRows } = createRequire(import.meta.url)('../assets/admin-mappings.js');
 const convert = (type, value) => JSON.parse(writeRows(type, readRows(type, JSON.stringify(value))));
 
 test('Visual mapping conversions preserve provider paths, domains, Unicode and literal markup', () => {
@@ -40,6 +40,28 @@ test('Visual content rules retain post/category scope and explicit access choice
     assert.throws(() => writeRows('content_rules', [rows[0], rows[0]]), /duplicate/);
     assert.throws(() => writeRows('content_rules', [{ ...rows[0], id: '-1' }]), /required/);
     assert.throws(() => writeRows('content_rules', [{ ...rows[0], id: '1.5' }]), /required/);
+});
+
+test('Content group names keep significant spaces and cannot split a single authorization group', () => {
+    const value = { posts: { 42: { groups: 'Faculty Team, Support Staff\nGuest Team' } } };
+    const result = convert('content_rules', value);
+    assert.deepEqual(result.posts[42].groups, ['Faculty Team', 'Support Staff', 'Guest Team']);
+    assert.deepEqual(convert('content_rules', { posts: { 42: { groups: ['Faculty, Team', 'Support Staff'] } } }).posts[42].groups, ['Faculty, Team', 'Support Staff']);
+    for (const group of ['Faculty\nTeam', 'Faculty\rTeam', 'Faculty\r\nTeam']) {
+        assert.throws(() => readRows('content_rules', JSON.stringify({ posts: { 42: { groups: [group] } } })), /unsupported/);
+    }
+});
+
+test('Returning visual values to the original restores exact source text without ignoring rule order', () => {
+    const original = '{\n    "editors": ["editor"],\n    "members": ["subscriber"]\n}';
+    const rows = readRows('role_mapping', original);
+    assert.equal(serializeRows('role_mapping', rows, rows, original), original);
+    assert.equal(serializeRows('role_mapping', [...rows].reverse(), rows, original), original, 'map-key order must not create a false draft');
+    assert.notEqual(serializeRows('role_mapping', [{ key: 'editors', roles: ['author'] }, rows[1]], rows, original), original);
+    const rules = '[{"claim":"group","equals":"staff","url":"https://site.example/staff/"},{"claim":"group","equals":"members","url":"https://site.example/members/"}]';
+    const redirects = readRows('redirect_rules', rules);
+    assert.equal(serializeRows('redirect_rules', redirects, redirects, rules), rules);
+    assert.notEqual(serializeRows('redirect_rules', [...redirects].reverse(), redirects, rules), rules, 'redirect rule order changes policy');
 });
 
 test('Empty maps and lists are usable while unsupported shapes remain in advanced JSON', () => {

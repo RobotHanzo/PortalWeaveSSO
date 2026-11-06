@@ -4,7 +4,8 @@
   const object = value => value !== null && typeof value === 'object' && !Array.isArray(value);
   const empty = value => (object(value) || Array.isArray(value)) && Object.keys(value).length === 0;
   const strings = value => Array.isArray(value) && value.every(item => typeof item === 'string');
-  const list = value => typeof value === 'string' ? value.split(/[\s,]+/).filter(Boolean) : strings(value) ? value : null;
+  // Match Config::list(): spaces inside a group or role name are significant.
+  const list = value => typeof value === 'string' ? value.split(/[\r\n,]+/).map(item => item.trim()).filter(Boolean) : strings(value) ? value : null;
   const keysOnly = (value, keys) => Object.keys(value).every(key => keys.includes(key));
 
   // These conversions deliberately refuse structures that cannot be represented without loss.
@@ -29,7 +30,9 @@
         return Object.entries(rules).map(([id, rule]) => {
           if (!/^[1-9]\d*$/.test(id) || !object(rule) || !keysOnly(rule, ['login', 'roles', 'groups'])
             || (Object.hasOwn(rule, 'login') && ![true, false, 0, 1, '', '0', '1'].includes(rule.login))
-            || list(rule.roles ?? []) === null || list(rule.groups ?? []) === null) throw new Error('unsupported');
+            || list(rule.roles ?? []) === null || list(rule.groups ?? []) === null
+            // One group per visible line cannot preserve a newline inside an array entry.
+            || (Array.isArray(rule.groups) && rule.groups.some(group => /[\r\n]/.test(group)))) throw new Error('unsupported');
           return { target, id, login: Boolean(rule.login) && rule.login !== '0', roles: list(rule.roles ?? []), groups: list(rule.groups ?? []).join('\n') };
         });
       });
@@ -75,8 +78,21 @@
     return JSON.stringify(value, null, 2);
   }
 
+  function canonical(value) {
+    if (Array.isArray(value)) return value.map(canonical);
+    if (!object(value)) return value;
+    return Object.fromEntries(Object.keys(value).sort().map(key => [key, canonical(value[key])]));
+  }
+
+  function serializeRows(type, rows, originalRows, originalText) {
+    const next = writeRows(type, rows);
+    // Map-key order has no policy meaning; redirect-rule and role-list order is retained.
+    if (originalRows && JSON.stringify(canonical(JSON.parse(next))) === JSON.stringify(canonical(JSON.parse(writeRows(type, originalRows))))) return originalText;
+    return next;
+  }
+
   // Dependency-free conversion tests also exercise the production serialization boundary.
-  if (typeof module === 'object' && module.exports) module.exports = { readRows, writeRows };
+  if (typeof module === 'object' && module.exports) module.exports = { readRows, writeRows, serializeRows };
   if (typeof document === 'undefined') return;
 
   document.querySelectorAll('[data-mapping-editor]').forEach(editor => {
@@ -106,6 +122,8 @@
     source.before(toolbar, visual, status);
     let mode = 'advanced';
     let sequence = 0;
+    const originalText = source.value;
+    let originalRows;
 
     function message(error) {
       status.textContent = labels[error.message] || labels.invalid;
@@ -174,7 +192,7 @@
     function sync() {
       visual.querySelectorAll('[data-mapping-key]').forEach(control => control.setCustomValidity(''));
       try {
-        const next = writeRows(type, rowValues());
+        const next = serializeRows(type, rowValues(), originalRows, originalText);
         source.value = next;
         delete source.dataset.unsavedDraft;
         status.textContent = '';
@@ -299,7 +317,7 @@
     }
     form.addEventListener('reset', reset);
     form.addEventListener('portalweave-sso:reverted', reset);
-    try { render(); setMode('visual'); }
+    try { render(); originalRows = rowValues(); setMode('visual'); }
     catch (error) { setMode('advanced'); message(error instanceof SyntaxError ? new Error('invalid') : error); }
   });
 })();
