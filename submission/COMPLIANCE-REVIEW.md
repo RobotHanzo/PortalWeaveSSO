@@ -8,7 +8,7 @@ The numbers below refer to the official [Detailed Plugin Guidelines](https://dev
 
 | Guideline | Implementation and evidence |
 | --- | --- |
-| 1 | GPL-2.0-or-later plugin header and complete GPL license; no bundled runtime dependency or copied provider logo. Human-readable PHP, JS and CSS are shipped. |
+| 1 | GPL-2.0-or-later plugin code/header and complete GPL license; no bundled runtime dependency. Provider artwork retains separate published terms and provenance in `assets/providers/README.txt`, including brand-specific terms that do not inherit the code license. Human-readable PHP, JS and CSS are shipped. |
 | 2 | Reviewed all shipped source and service boundaries; regression checks cover malformed inputs, authorization, account takeover, role escalation, media integrity and privacy isolation. Maintainer remains responsible for operation and future updates. |
 | 3 | A complete 1.0.0 package is prepared. After approval, the release workflow deploys the same verified package to SVN and attaches it to the corresponding GitHub release. |
 | 4 | No obfuscated assets, binary runtime or minified-only source. The public repository includes maintained source, reproducible package tools and test harnesses; readme.txt links the repository. |

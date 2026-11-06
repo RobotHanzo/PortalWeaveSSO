@@ -20,14 +20,31 @@ This release replaces the entire technical namespace. It provides no earlier-nam
 
 The Overview screen links to each setup task. Identity providers, Login & logout, Access policies, Appearance, Integrations, Activity and Tools & support are separate screens. Each save applies only to its current screen; editing one provider preserves the others.
 
-1. Open **Identity providers > Add provider** and choose a unique stable app ID. Choose a provider template or enter custom endpoints. Open a provider's **Configure** action to edit it later.
-2. Replace every `YOUR_*` placeholder. Get the exact issuer and endpoints from the provider’s discovery document or current tenant documentation. Templates are starting points, not discovery substitutes.
-3. Register the displayed callback URL as an exact redirect URI. A callback override must use this installation's canonical origin and route back to WordPress. The separately validated original destination is retained through the state transaction, so returning to the page that initiated login does not require changing the provider callback.
-4. Use Authorization Code, PKCE S256, `openid profile email`, and RSA signature validation for OIDC. Public clients can use no client authentication and omit the secret. Confidential clients should use the provider-supported Basic header or request-body method.
-5. Pin only the expected JWT algorithms. RSA uses keys from the configured HTTPS JWKS URL. HMAC uses an explicit signing secret; never mix an RSA public key into an HMAC secret.
-6. Run **Test SSO Config** while signed in as an administrator. The protected result shows raw provider attributes, without changing your WordPress user session. Configure mappings from that result.
-7. Keep auto-registration, existing-account linking, and administrator SSO set to your intended policy. Administrator SSO is disabled by default. When enabled, the provider’s configured verified claim must match the configured JSON scalar. An expectation of `true`, `"true"`, `1`, or `"1"` accepts those four representations; other scalar expectations use an exact string comparison.
-8. Test a non-admin user and an approved administrator before forcing site authentication or disabling WordPress password login. Retain filesystem or WP-CLI recovery access.
+1. Open **Identity providers > Add provider** and choose your service. Its guide shows one task at a time, with the relevant provider-console instructions beside the fields. Existing providers open in the advanced editor through **Configure**.
+2. Supply the server, tenant or application details requested by that recipe. Discord and Google skip server configuration entirely. The server derives known endpoints; ClassLink and custom services ask for authoritative connection details instead of guessing them.
+3. Follow **Register** in the provider console and copy the exact **Redirect URI** shown in the guide. Providers that use a sign-out return URI also show that separate value. Confirm registration after adding the URI. This confirmation records your setup step; it does not contact or verify the external registration.
+4. Follow the provider-specific credential instructions. Copy the actual client ID and secret value, not a tenant ID, secret identifier, API key, bot token or account password. The documented OneLogin public-client recipe uses PKCE and needs only its client ID. **Back** retains unsaved fields in the current form; the wizard does not store secrets in browser storage or a saved draft.
+5. Review the connection and optionally change its display name, then **Save provider**. A unique internal app ID is generated for the form and shown in the advanced editor after saving. Other providers, the default provider and site-wide access policies are preserved. Endpoint derivation and all required fields are validated again on the server; JavaScript controls presentation only. Without JavaScript, the selected recipe remains a complete ordered form with the same final save.
+6. Run **Test SSO Config** while signed in as an administrator. The protected result shows raw provider attributes without changing your WordPress session. It does not test account eligibility, verification claims or role assignment. A network provider can be tested from the network UI only while that network configuration is active; use staging to validate a network policy before enforcing it.
+7. Configure mappings and account policies from the actual returned attributes. Guided OIDC profiles use Authorization Code, S256 PKCE and pinned RS256/JWKS validation; verified-email checks remain enabled, email linking remains opt-in and administrator SSO remains disabled. A provider that omits a trustworthy verification claim needs deliberate claim configuration; the wizard never fabricates one or disables verification to make a test pass.
+8. Test a non-admin user and any explicitly permitted administrator before forcing site authentication or disabling WordPress password login. Retain filesystem or WP-CLI recovery access. Advanced edits can configure a documented alternate issuer, client-authentication method, signing algorithm or callback override without weakening signature/state checks.
+
+### Details requested by each guide
+
+| Service | Connection details before credentials |
+| --- | --- |
+| Microsoft Entra ID / Microsoft 365 | Directory tenant UUID; the application client ID and secret Value come from the app registration. |
+| Azure AD B2C | Existing-tenant policy authority and exact policy metadata issuer, including its trailing slash. The app client UUID is also requested as its own resource scope so the token response includes the required Bearer access token. |
+| Amazon Cognito | User-pool issuer and managed-login/custom-domain origin; these are different addresses. Both documented issuer families are supported. |
+| Keycloak | Instance base URL and realm. Preserve a real deployment base path such as `/auth`. |
+| Okta | Organization origin, plus an explicit custom authorization-server ID only when using that server. |
+| Salesforce | Production, sandbox or custom environment. A custom authority requires its exact metadata issuer. Instructions use External Client Apps. |
+| Google | Client ID and secret only; fixed Google endpoints are derived. |
+| Auth0 | Tenant or custom-domain origin and the Regular Web Application credentials. |
+| OneLogin | Tenant origin and public-client ID; configure **None (PKCE)** in the provider. |
+| Discord | Client ID and secret only; the OAuth2 profile uses `identify email`, immutable `id`, verified `verified`, and the documented authorization-response issuer. |
+| ClassLink | Current partner-provided endpoints, client-authentication contract and stable/verified claim paths. The older public endpoint template is not assumed current. |
+| Custom OAuth / OIDC | Explicit protocol, endpoints, scopes and documented client authentication. OIDC requires its exact issuer and trusted JWKS; OAuth2 can supply an authorization-response issuer when it emits `iss`. |
 
 ## Provider notes
 
@@ -49,7 +66,7 @@ The Overview screen links to each setup task. Identity providers, Login & logout
 
 Multiple apps can be enabled at once. Each button selects its own app. The default app is used for forced and single-flow login.
 
-Review [external services and provider policy links](external-services.md) before enabling each provider. Selecting a template only fills local fields. Actual authentication exchanges occur when login/test/refresh/logout flows run; optional remote icons and mapped pictures also make browser requests. Choose necessary scopes and mappings, and disclose the actual recipients to your users.
+Review [external services and provider policy links](external-services.md) before enabling each provider. Setup derives local configuration and links official instructions; it does not fetch discovery documents or contact an identity service. Actual authentication exchanges occur when login/test/refresh/logout flows run; optional remote icons and mapped pictures also make browser requests. Choose necessary scopes and mappings, and disclose the actual recipients to your users.
 
 For provider-initiated OIDC session revocation, enable **signed OIDC back-channel logout** on the app and register the displayed back-channel URL with your provider. The provider must send a signed logout token; the endpoint validates the provider signature and logout-token claims and rejects replays. The ordinary end-session URL is used for browser-initiated logout.
 

@@ -23,6 +23,8 @@ The plugin has no developer telemetry, advertising service, license-check server
 
 Outbound token, profile, group and JWKS requests use the WordPress HTTP API, HTTPS certificate verification and bounded responses. Authorization, logout, image and final allowed navigation URLs are browser requests. Administrators must verify every configured host; templates are starting points and can be edited.
 
+The provider setup guide derives configuration locally and displays bundled provider artwork. It does not contact an identity service, image CDN or discovery URL while entering settings. Official documentation opens only when the administrator chooses its link. Bundled artwork attribution is recorded in `assets/providers/README.txt`; administrator-configured frontend icons and mapped pictures remain the separate remote-image flows described above.
+
 **Test SSO Config** intentionally displays the provider's returned attributes to the authenticated administrator who initiated the test. It does not automatically send the result to support. Treat copied results and screenshots as personal data and remove secrets before sharing them.
 
 ## Provider privacy notices and terms
