@@ -151,6 +151,27 @@ wpsso_test('core: verified first login creates an account and immutable subject 
     });
 });
 
+wpsso_test('core: OIDC always binds the signed subject while OAuth honors its configured identifier', function (): void {
+    wpsso_core_fixture(function (&$users, &$posts, &$terms, $prefix): void {
+        $app = wpsso_core_app(['subject_attribute' => 'mutable_alias']);
+        $attributes = wpsso_core_attributes($prefix, ['mutable_alias' => 'first-alias']);
+        $user = \WPSSO\Accounts::resolve($app, $attributes);
+        wpsso_assert($user instanceof WP_User, 'OIDC fixture failed.');
+        $users[] = $user->ID;
+        $again = \WPSSO\Accounts::resolve($app, array_replace($attributes, ['mutable_alias' => 'changed-alias']));
+        wpsso_assert($again instanceof WP_User && $again->ID === $user->ID, 'A mutable OIDC alias replaced the signed subject binding.');
+        $missing_sub = $attributes;
+        unset($missing_sub['sub']);
+        wpsso_error(\WPSSO\Accounts::resolve($app, $missing_sub), 'wpsso_subject');
+        $oauth = wpsso_core_app(['id' => 'core-oauth', 'protocol' => 'oauth2', 'subject_attribute' => 'provider_id']);
+        $oauth_attributes = wpsso_core_attributes($prefix . '_oauth', ['provider_id' => 'immutable-oauth-id']);
+        unset($oauth_attributes['sub']);
+        $oauth_user = \WPSSO\Accounts::resolve($oauth, $oauth_attributes);
+        wpsso_assert($oauth_user instanceof WP_User, 'OAuth did not honor its configured immutable identifier.');
+        $users[] = $oauth_user->ID;
+    });
+});
+
 wpsso_test('core: existing-account email linking is opt-in and requires verified mailbox ownership', function (): void {
     wpsso_core_fixture(function (&$users, &$posts, &$terms, $prefix): void {
         $local = wpsso_core_local($users, $prefix);
@@ -342,5 +363,46 @@ wpsso_test('core: rejected settings cannot restore protected media to a public U
         wpsso_error($result, 'wpsso_shared_domain');
         wpsso_assert(in_array($attachment, \WPSSO\Config::get('protected_media'), true), 'Rejected policy lost its media restriction.');
         wpsso_assert(!file_exists($upload['file']), 'Rejected settings restored protected bytes to a public static URL.');
+    });
+});
+
+wpsso_test('core: protection retries remove unchanged public leftovers and preserve replacement bytes', function (): void {
+    wpsso_core_fixture(function (&$users, &$posts, &$terms, $prefix): void {
+        $bytes = 'Protected retry fixture ' . $prefix;
+        $upload = wp_upload_bits($prefix . '-retry.txt', null, $bytes);
+        wpsso_assert(empty($upload['error']), 'Retry upload fixture failed.');
+        $attachment = wp_insert_attachment(['post_title' => $prefix, 'post_status' => 'inherit', 'post_mime_type' => 'text/plain'], $upload['file']);
+        wpsso_assert(!is_wp_error($attachment) && $attachment > 0, 'Retry attachment fixture failed.');
+        $posts[] = $attachment;
+        wpsso_assert(\WPSSO\Access::protect_media($attachment) === true, 'Initial protection failed.');
+        file_put_contents($upload['file'], $bytes);
+        wpsso_assert(\WPSSO\Access::protect_media($attachment) === true && !file_exists($upload['file']), 'Protection retry reported success while unchanged public bytes remained.');
+        file_put_contents($upload['file'], 'New public replacement bytes');
+        $result = \WPSSO\Access::protect_media($attachment);
+        wpsso_assert(is_wp_error($result), 'Protection silently accepted a different public replacement.');
+        wpsso_assert(file_get_contents($upload['file']) === 'New public replacement bytes', 'Protection retry deleted unrelated replacement bytes.');
+        $private = (array) get_post_meta($attachment, '_wpsso_private_files', true);
+        wpsso_assert(file_get_contents($private[basename($upload['file'])]) === $bytes, 'Protection retry changed the private original.');
+        // Remove the replacement fixture so standard attachment cleanup can delete the private original.
+        unlink($upload['file']);
+    });
+});
+
+wpsso_test('core: admin navigation targets every settings section and includes truncation protection', function (): void {
+    wpsso_core_fixture(function (): void {
+        $admin = get_user_by('login', 'wpsso_test_admin');
+        wpsso_assert($admin instanceof WP_User, 'Test administrator fixture is missing.');
+        wp_set_current_user($admin->ID);
+        ob_start();
+        try {
+            \WPSSO\Admin::page();
+        } finally {
+            $html = ob_get_clean();
+        }
+        foreach (['providers', 'accounts', 'appearance', 'modules', 'reports', 'tools'] as $section) {
+            wpsso_assert(str_contains($html, 'href="#wpsso-' . $section . '"') && str_contains($html, 'id="wpsso-' . $section . '"'), 'Admin navigation has an absent section: ' . $section);
+        }
+        wpsso_assert(str_contains($html, 'name="wpsso_complete" value="1"'), 'The server-rendered form lacks its truncation sentinel.');
+        wpsso_assert(str_contains($html, 'settings[new_app][backchannel_logout]'), 'OIDC back-channel logout setting is missing.');
     });
 });
