@@ -554,9 +554,11 @@ final class Admin {
         } else {
             echo '<input type="hidden" name="' . esc_attr($prefix . '[id]') . '" value="' . esc_attr($id) . '"><p><strong>' . esc_html__('App ID:', 'portalweave-sso') . '</strong> <code>' . esc_html($id) . '</code></p>';
         }
-        self::select($prefix . '[provider]', $app['provider'] ?? 'custom', __('Provider template', 'portalweave-sso'), [
+        $templates = [
             'custom' => __('Custom OAuth / OpenID', 'portalweave-sso'), 'entra' => __('Microsoft Entra ID / Azure AD', 'portalweave-sso'), 'b2c' => __('Azure AD B2C', 'portalweave-sso'), 'office365' => __('Office 365', 'portalweave-sso'), 'cognito' => __('AWS Cognito', 'portalweave-sso'), 'keycloak' => __('Keycloak', 'portalweave-sso'), 'okta' => __('Okta', 'portalweave-sso'), 'salesforce' => __('Salesforce', 'portalweave-sso'), 'google' => __('Google', 'portalweave-sso'), 'auth0' => __('Auth0', 'portalweave-sso'), 'onelogin' => __('OneLogin', 'portalweave-sso'), 'discord' => __('Discord', 'portalweave-sso'), 'classlink' => __('ClassLink', 'portalweave-sso'), 'authentik' => 'authentik',
-        ], __('Templates fill empty endpoint fields. Replace tenant and domain placeholders with values from your provider.', 'portalweave-sso'), 'portalweave-sso-preset');
+        ];
+        asort($templates, SORT_STRING | SORT_FLAG_CASE);
+        self::select($prefix . '[provider]', $app['provider'] ?? 'custom', __('Provider template', 'portalweave-sso'), $templates, __('Templates fill empty endpoint fields. Replace tenant and domain placeholders with values from your provider.', 'portalweave-sso'), 'portalweave-sso-preset');
         self::field($prefix . '[name]', $app['name'], __('Display name', 'portalweave-sso'));
         self::check($prefix . '[enabled]', $app['enabled'], __('Enable this provider', 'portalweave-sso'));
         echo '<div class="portalweave-sso-grid">';
