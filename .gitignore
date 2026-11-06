@@ -6,3 +6,5 @@
 /.test-runtime/
 /reports/
 /release-stage/
+/output/playwright/
+/.playwright-cli/

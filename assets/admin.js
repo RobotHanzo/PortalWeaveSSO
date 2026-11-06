@@ -20,6 +20,7 @@
       const preset = presets[select.value];
       if (!preset) return;
       const provider = select.closest('.wpsso-provider');
+      if (!provider) return;
       const defaults = { protocol: 'oidc', scope: 'openid profile email', issuer: preset.base || '', ...preset };
       Object.entries(defaults).forEach(([key, value]) => {
         if (key === 'base') return;

@@ -6,7 +6,9 @@ The proposed directory slug and text domain are `portalweave-sso`. The `[wpsso_o
 
 ## Register an identity provider
 
-1. Add an app with a unique stable app ID. Choose a provider template or enter custom endpoints.
+The Overview screen links to each setup task. Identity providers, Login & logout, Access policies, Appearance, Integrations, Activity and Tools & support are separate screens. Each save applies only to its current screen; editing one provider preserves the others.
+
+1. Open **Identity providers > Add provider** and choose a unique stable app ID. Choose a provider template or enter custom endpoints. Open a provider's **Configure** action to edit it later.
 2. Replace every `YOUR_*` placeholder. Get the exact issuer and endpoints from the provider’s discovery document or current tenant documentation. Templates are starting points, not discovery substitutes.
 3. Register the displayed callback URL as an exact redirect URI. A callback override must use this installation's canonical origin and route back to WordPress. The separately validated original destination is retained through the state transaction, so returning to the page that initiated login does not require changing the provider callback.
 4. Use Authorization Code, PKCE S256, `openid profile email`, and RSA signature validation for OIDC. Public clients can use no client authentication and omit the secret. Confidential clients should use the provider-supported Basic header or request-body method.
