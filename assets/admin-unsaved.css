@@ -1,0 +1,87 @@
+.portalweave-sso-unsaved {
+    position: fixed;
+    z-index: 9990;
+    inset-inline: 192px 32px;
+    bottom: 24px;
+    max-width: 1000px;
+    margin-inline: auto;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    padding: 16px 20px;
+    border: 1px solid #3c434a;
+    border-radius: 8px;
+    background: #1d2327;
+    color: #fff;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, .22);
+    opacity: 0;
+    visibility: hidden;
+    transform: translateY(20px);
+    transition: opacity 180ms ease, transform 180ms ease, visibility 180ms;
+}
+
+.portalweave-sso-unsaved.is-visible {
+    opacity: 1;
+    visibility: visible;
+    transform: translateY(0);
+}
+
+.portalweave-sso-unsaved p {
+    margin: 0;
+    font-size: 14px;
+    font-weight: 500;
+}
+
+.portalweave-sso-unsaved-actions {
+    display: flex;
+    flex-shrink: 0;
+    gap: 12px;
+}
+
+.portalweave-sso-unsaved .portalweave-sso-unsaved-revert {
+    border-color: #a7aaad;
+    background: transparent;
+    color: #fff;
+}
+
+.portalweave-sso-unsaved .portalweave-sso-unsaved-revert:hover {
+    border-color: #fff;
+    background: #3c434a;
+    color: #fff;
+}
+
+.portalweave-sso-unsaved .button:focus-visible {
+    outline-color: #72aee6;
+}
+
+.portalweave-sso-admin.has-unsaved-changes {
+    padding-bottom: 100px;
+}
+
+.folded .portalweave-sso-unsaved {
+    inset-inline-start: 68px;
+}
+
+@media screen and (max-width: 960px) {
+    .auto-fold .portalweave-sso-unsaved { inset-inline-start: 68px; }
+}
+
+@media screen and (max-width: 782px) {
+    .portalweave-sso-unsaved,
+    .folded .portalweave-sso-unsaved,
+    .auto-fold .portalweave-sso-unsaved {
+        inset-inline: 12px;
+        bottom: 12px;
+        padding: 14px 16px;
+        flex-wrap: wrap;
+        gap: 12px;
+    }
+
+    .portalweave-sso-unsaved-actions { margin-inline-start: auto; }
+    .portalweave-sso-admin.has-unsaved-changes { padding-bottom: 160px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .portalweave-sso-unsaved { transition: none; transform: none; }
+}
