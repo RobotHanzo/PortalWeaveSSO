@@ -1,4 +1,6 @@
-# PortalWeave SSO
+# <img src="assets/branding/logo.png" width="48" height="48" alt=""> PortalWeave SSO
+
+![PortalWeave SSO — OAuth & OpenID Connect for WordPress](.wordpress-org/banner-1544x500.png)
 
 [![CI](https://github.com/RobotHanzo/PortalWeaveSSO/actions/workflows/verify.yml/badge.svg)](https://github.com/RobotHanzo/PortalWeaveSSO/actions/workflows/verify.yml)
 
