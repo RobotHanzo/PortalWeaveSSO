@@ -2,6 +2,8 @@
 
 Every optional module starts disabled. Enabling a module does not disable the core account rules: provider identities, verified email, administrator protections, domain restrictions and redirect allowlists still apply.
 
+Open **PortalWeave SSO → Integrations**, then choose an integration from the grouped directory. Its enable switch, configuration and provider setup links are kept together. **Save changes** saves all integration panels, including any changes made before switching panels. Provider-specific options open in their own editor and are saved separately; save integration changes before following those links. Without JavaScript, the directory links jump to the corresponding sections and every integration remains editable.
+
 The plugin's proposed directory slug/text domain is `portalweave-sso`. Protocol routes and abilities use `portalweave-sso`, commands use `wp portalweave-sso`, PHP classes use `PortalWeaveSSO`, hooks and option/meta names use `portalweave_sso_*`, and server configuration constants use `PORTALWEAVE_SSO_*`. Earlier technical names are unsupported; existing deployments must follow [the replacement procedure](provider-setup.md#replacing-an-earlier-installation). See [external-service disclosures](external-services.md) and [privacy/retention behavior](privacy.md) when deciding which integrations to enable.
 
 ## SCIM 2.0 inbound provisioning

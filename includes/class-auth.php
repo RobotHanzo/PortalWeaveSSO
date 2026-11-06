@@ -357,7 +357,7 @@ final class Auth {
             Audit::record('test_success', $app['id'], wp_get_current_user(), '', $flow['redirect']);
             $draft = !empty($flow['test_config']);
             $message = $draft ? '<p>' . esc_html__('Connection test succeeded. Return to the setup tab to save your provider. These details have not been saved.', 'portalweave-sso') . '</p>' : '';
-            $settings_url = !empty($flow['test_network']) ? network_admin_url('admin.php?page=portalweave-sso') : admin_url('options-general.php?page=portalweave-sso');
+            $settings_url = !empty($flow['test_network']) ? network_admin_url('admin.php?page=portalweave-sso') : admin_url('admin.php?page=portalweave-sso');
             self::page(__('SSO configuration test', 'portalweave-sso'), $message . '<p>' . esc_html__('Authentication succeeded. These are the attributes returned by the configured provider. No user account was created or signed in.', 'portalweave-sso') . '</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere">' . esc_html(wp_json_encode($attributes, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)) . '</pre><p><a href="' . esc_url($settings_url) . '">' . esc_html__('Return to settings', 'portalweave-sso') . '</a></p>');
         }
         $user = Accounts::resolve($app, $attributes, $tokens);

@@ -15,7 +15,7 @@ final class Display
         add_action('login_form', [self::class, 'login_buttons']);
         add_action('woocommerce_login_form_end', [self::class, 'login_buttons']);
         add_filter('plugin_action_links_' . plugin_basename(PORTALWEAVE_SSO_FILE), static function ($links) {
-            array_unshift($links, '<a href="' . esc_url(admin_url('options-general.php?page=portalweave-sso')) . '">' . esc_html__('Settings', 'portalweave-sso') . '</a>');
+            array_unshift($links, '<a href="' . esc_url(admin_url('admin.php?page=portalweave-sso')) . '">' . esc_html__('Settings', 'portalweave-sso') . '</a>');
             return $links;
         });
         add_action('wp_login', static function ($name, $user) {
