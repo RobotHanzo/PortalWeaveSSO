@@ -1,5 +1,18 @@
 # Verification and rollout
 
+## Version 1.2.0 administrator workflow checks
+
+The combined administrator changes were exercised on 2026-11-07 in a new disposable WordPress 7.1.4 / PHP 8.3 fixture with fictional providers and audit history. Playwright verified the following behavior in the running plugin:
+
+- Visual mappings retain exact JSON through mode switches and restored values. Unsupported JSON stays editable in advanced mode; incomplete rows trigger the reminder and block submission, including when their provider panel is hidden.
+- The floating Save action completes real provider-mapping, provider-logo and integration form submissions, retains the selected section, and returns to a clean form. Revert restores all values, added rows and image previews.
+- The native WordPress media dialog uploads and selects an image, previews its HTTPS URL, and supports removal and reversion.
+- All eight integration panels support keyboard navigation. Invalid hidden controls reveal their panel; navigation alone does not create an unsaved draft.
+- Audit pagination displays at most 50 events, carries a stable snapshot, advances through Next/Last/First, and disables unavailable directions.
+- Integrations and audit views fit a 320px viewport. Reduced motion removes the banner transition. With JavaScript disabled, all provider and integration sections and the JSON fallback remain reachable.
+
+The existing HTTPS protocol suite also passed, including canonical sidebar routes and redirects from earlier Settings bookmarks. The complete official Plugin Check, including runtime and experimental checks, passed the strict parser with no errors or warnings after request-method validation was corrected. Its initial failing report was retained alongside the final local report. Packaging validated the production allowlist and hashes; product screenshots remain excluded. These are local evidence snapshots; the required CI checks and immutable-tag release artifacts remain authoritative for the final merged commit.
+
 ## Historical local evidence
 
 The earlier source was exercised with WordPress 7.1.4, PHP 8.3.36 and MariaDB 11.4 in disposable Docker environments. These counts predate the full namespace replacement. Current runners and reports are authoritative for the current source; this historical report does not establish that every provider or hosting stack was exercised.

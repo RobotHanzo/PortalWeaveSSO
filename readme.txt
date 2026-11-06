@@ -3,7 +3,7 @@ Tags: oauth, openid-connect, sso, scim, login
 Requires at least: 6.5
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 1.1.0
+Stable tag: 1.2.0
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -12,13 +12,13 @@ OAuth and OpenID Connect sign-in with account mapping, access controls, SCIM pro
 == Description ==
 PortalWeave SSO connects a site to administrator-configured OAuth 2.0 and OpenID Connect identity providers. Authorization Code with S256 PKCE is the default. Public clients can use PKCE without a client secret.
 
-* Configure multiple providers, attribute mappings and group/email-domain role policies.
+* Configure multiple providers, attribute mappings and group/email-domain role policies with visual editors or advanced JSON.
 * Register users at first login or allow only existing accounts. Account linking requires explicit configuration and a verified, unique email.
 * Keep administrator SSO disabled by default; enable it per provider with a verified account claim.
 * Display login buttons using the login widget, [sso_oauth_login] shortcode, WordPress login screen or WooCommerce login form.
 * Preview custom WordPress sign-in button styles and provider/custom icons independently of website buttons.
 * Restrict posts, pages, categories and media using login, role or group rules.
-* Visualize retained authentication activity over 7, 30 or 90 days, inspect audit logs and export CSV reports. Debug logging, client IP collection and optional modules are administrator controlled.
+* Visualize retained authentication activity over 7, 30 or 90 days, page through retained audit logs and export CSV reports. Debug logging, client IP collection and optional modules are administrator controlled.
 * Enable SCIM Users/Groups, JWT sign-in, temporary guest accounts, moderation, mapped pictures, attribute redirects or a short shared-subdomain handoff.
 * Use site/network settings, WP-CLI and eight optional administrator-only WordPress abilities.
 
@@ -64,7 +64,7 @@ Deactivation preserves data. Uninstall preserves settings unless the administrat
 == Installation ==
 Upgrades from PortalWeave SSO 1.0.1 retain existing configuration. Replacing an installation that uses the earlier technical namespace requires the controlled procedure in docs/provider-setup.md; there are no earlier-name aliases or automatic conversion of that stored data. Restrict access externally during that replacement, including settings, identity links, access rules, provider URLs and private-media metadata.
 
-1. Upload portalweave-sso-1.1.0.zip or copy the portalweave-sso directory into wp-content/plugins.
+1. Upload portalweave-sso-1.2.0.zip or copy the portalweave-sso directory into wp-content/plugins.
 2. Activate PortalWeave SSO and open PortalWeave SSO in the WordPress admin sidebar.
 3. Add a provider, register the displayed callback URL and enter its details. Use Test connection on the final review step before saving the provider.
 4. Saved providers also offer Test SSO Config to inspect returned attributes. Configure mappings and test an ordinary user before enforcing login.
@@ -93,6 +93,15 @@ Run wp portalweave-sso recover (or --network), or temporarily define PORTALWEAVE
 No. Re-enter credentials on a new installation. Same-site restores retain existing credentials.
 
 == Changelog ==
+= 1.2.0 =
+* Add PortalWeave SSO directly to the WordPress admin sidebar.
+* Configure mappings in visual editors, with advanced JSON editing available for those fields.
+* Show an animated floating reminder for unsaved settings, with Save changes and Revert changes actions and reduced-motion support.
+* Group integrations into focused panels with related configuration and provider settings links.
+* Paginate retained audit events with event counts, stable page navigation and a refresh action.
+* Upload or select custom provider button logos from the WordPress media library alongside manual image URLs.
+* Refresh affected feature screenshots and administration documentation.
+
 = 1.1.0 =
 * Test a new provider connection before saving, using the current setup details in a separate tab without changing the administrator session.
 * Customize WordPress sign-in button text, colors, sizing and icons with a live preview, presets and media-library selection.
@@ -111,3 +120,7 @@ No. Re-enter credentials on a new installation. Same-site restores retain existi
 = 1.0.0 =
 Initial multi-provider OAuth/OIDC, access policy, provisioning and operations release.
 Includes private-media recovery, privacy-policy guidance, data export/erasure and administrator-controlled retention.
+
+== Upgrade Notice ==
+= 1.2.0 =
+Adds visual mapping editors, an unsaved-settings reminder, organized integration panels, audit pagination and media-library logos. Existing configuration and credentials are retained. Find PortalWeave SSO directly in the admin sidebar.
