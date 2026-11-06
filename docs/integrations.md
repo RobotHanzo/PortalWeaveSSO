@@ -2,11 +2,11 @@
 
 Every optional module starts disabled. Enabling a module does not disable the core account rules: provider identities, verified email, administrator protections, domain restrictions and redirect allowlists still apply.
 
-The plugin's proposed directory slug/text domain is `portalweave-sso`. Existing protocol routes, `wpsso/*` abilities, `wp wpsso` commands, `WPSSO` namespace, hooks, option/meta names and documented `WPSSO_*` server configuration constants remain compatible. These technical names do not change when the display name is PortalWeave SSO. See [external-service disclosures](external-services.md) and [privacy/retention behavior](privacy.md) when deciding which integrations to enable.
+The plugin's proposed directory slug/text domain is `portalweave-sso`. Protocol routes and abilities use `portalweave-sso`, commands use `wp portalweave-sso`, PHP classes use `PortalWeaveSSO`, hooks and option/meta names use `portalweave_sso_*`, and server configuration constants use `PORTALWEAVE_SSO_*`. Earlier technical names are unsupported; existing deployments must follow [the replacement procedure](provider-setup.md#replacing-an-earlier-installation). See [external-service disclosures](external-services.md) and [privacy/retention behavior](privacy.md) when deciding which integrations to enable.
 
 ## SCIM 2.0 inbound provisioning
 
-Enable **SCIM** and set a dedicated random bearer secret of at least 32 characters. This secret is encrypted in the WordPress settings and excluded from exports. Configure the provisioning client with the base URL `https://your-site.example/wp-json/wpsso/v1/scim/v2` and `Authorization: Bearer YOUR_SECRET`. HTTPS is required. Configure trusted reverse-proxy HTTPS detection in WordPress when TLS terminates at a proxy; never trust arbitrary incoming forwarded headers.
+Enable **SCIM** and set a dedicated random bearer secret of at least 32 characters. This secret is encrypted in the WordPress settings and excluded from exports. Configure the provisioning client with the base URL `https://your-site.example/wp-json/portalweave-sso/v1/scim/v2` and `Authorization: Bearer YOUR_SECRET`. HTTPS is required. Configure trusted reverse-proxy HTTPS detection in WordPress when TLS terminates at a proxy; never trust arbitrary incoming forwarded headers.
 
 The API implements Users and Groups collection/item GET, POST, PUT, PATCH and DELETE, plus ServiceProviderConfig, Schemas and ResourceTypes discovery. A User POST always creates a subscriber with a random unusable-in-practice password. SCIM cannot set passwords, WordPress roles or capabilities, take over existing local users, or mutate privileged users. Creating an already-used username, email or externalId returns a conflict. Changing a WordPress username returns a mutability error. Groups are separate provider groups; group provisioning does not grant WordPress roles.
 
@@ -19,7 +19,7 @@ PATCH accepts add, replace and remove for userName, externalId, displayName, act
 ### Example
 
 ```http
-POST /wp-json/wpsso/v1/scim/v2/Users
+POST /wp-json/portalweave-sso/v1/scim/v2/Users
 Authorization: Bearer YOUR_SECRET
 Content-Type: application/scim+json
 
@@ -32,7 +32,7 @@ Reference: [SCIM protocol, RFC 7644](https://www.rfc-editor.org/rfc/rfc7644.html
 
 Enable the JWT SSO module and the provider's JWT SSO switch. This uses an OpenID provider capable of returning a signed ID token with `response_type=id_token` and `response_mode=form_post`. Pin the provider's issuer, client ID, signing algorithms and signing key source exactly as with the normal OIDC flow.
 
-Register an additional callback at the provider: `https://your-site.example/?wpsso_action=jwt_callback`. Initiate login through `https://your-site.example/?wpsso_action=jwt_start&app=PROVIDER_ID`. A safe `redirect_to` can be appended. The plugin creates a five-minute browser-bound challenge, nonce and state. The provider must POST state and id_token to the callback. Cross-site POST needs a Secure, HttpOnly, SameSite=None challenge cookie. A unique string jti and a token expiry at most five minutes from callback time are additionally required; some providers need a custom claim or token policy for this. The default Authorization Code flow is available when a provider cannot meet this contract.
+Register an additional callback at the provider: `https://your-site.example/?portalweave_sso_action=jwt_callback`. Initiate login through `https://your-site.example/?portalweave_sso_action=jwt_start&app=PROVIDER_ID`. A safe `redirect_to` can be appended. The plugin creates a five-minute browser-bound challenge, nonce and state. The provider must POST state and id_token to the callback. Cross-site POST needs a Secure, HttpOnly, SameSite=None challenge cookie. A unique string jti and a token expiry at most five minutes from callback time are additionally required; some providers need a custom claim or token policy for this. The default Authorization Code flow is available when a provider cannot meet this contract.
 
 ID tokens in query parameters and unsolicited bearer-token login are not accepted. State and token jti are consumed atomically. Validation uses the configured keys and issuer, never token-supplied key URLs. This module's five-minute assertion and replay policy may be stricter than an identity provider's defaults.
 
@@ -56,7 +56,7 @@ Configure/disclose the actual picture host before enabling the feature. The modu
 
 ## AI abilities and MCP
 
-On WordPress 6.9 or later, enable **AI / MCP abilities** to register exactly eight namespaced abilities: `wpsso/list-providers`, `wpsso/get-provider`, `wpsso/configure-provider`, `wpsso/diagnose`, `wpsso/fix-common-error`, `wpsso/export-config`, `wpsso/login-audit`, `wpsso/support-query`. All execution paths require manage_options and recheck that the feature is enabled. Outputs exclude credentials and client identifiers; audit output contains personal data and remains administrator-only.
+On WordPress 6.9 or later, enable **AI / MCP abilities** to register exactly eight namespaced abilities: `portalweave-sso/list-providers`, `portalweave-sso/get-provider`, `portalweave-sso/configure-provider`, `portalweave-sso/diagnose`, `portalweave-sso/fix-common-error`, `portalweave-sso/export-config`, `portalweave-sso/login-audit`, `portalweave-sso/support-query`. All execution paths require manage_options and recheck that the feature is enabled. Outputs exclude credentials and client identifiers; audit output contains personal data and remains administrator-only.
 
 Install and configure the official [WordPress MCP Adapter](https://github.com/WordPress/mcp-adapter) to expose these abilities to Claude Desktop, Cursor, ChatGPT or another compatible MCP client. This plugin provides abilities; the adapter owns MCP transport, authentication and connection instructions. Both current meta.public and the older meta.mcp.public flags are supplied. Use an authenticated administrator identity and the adapter's discovery tools to discover the abilities. Keep application passwords out of source code.
 
@@ -69,20 +69,20 @@ References: [Abilities registration](https://developer.wordpress.org/reference/f
 ## WP-CLI and recovery
 
 ```sh
-wp wpsso providers --format=json
-wp wpsso diagnose my-provider
-wp wpsso export ./sso-backup-redacted.json
-wp wpsso import ./sso-settings-private.json
-wp wpsso set debug false
-wp wpsso audit --limit=50 --format=csv
-wp wpsso recover
-wp wpsso recover --network
+wp portalweave-sso providers --format=json
+wp portalweave-sso diagnose my-provider
+wp portalweave-sso export ./sso-backup-redacted.json
+wp portalweave-sso import ./sso-settings-private.json
+wp portalweave-sso set debug false
+wp portalweave-sso audit --limit=50 --format=csv
+wp portalweave-sso recover
+wp portalweave-sso recover --network
 ```
 
 CLI runs with the authority of the local server operator. Backups contain redacted configuration, not the database. A same-site import preserves client identifiers and secrets by app ID. On a clean installation, importing a redacted backup disables incomplete providers and enforcement until their credentials are entered. File export refuses to overwrite a file and sets restrictive permissions where supported. Never pass credentials as shell command arguments; use a protected file and remove it securely when finished. `recover` disables authentication enforcement, site restriction, standard-login blocking and single-flow behavior. Network-enforced settings must be recovered with --network from the appropriate network context.
 
 ## Protected media deployment
 
-WordPress PHP cannot intercept direct static-file requests, so protecting an attachment relocates its originals and generated sizes outside the document root. Configure a writable `WPSSO_PRIVATE_MEDIA_DIR` (the default is a sibling of ABSPATH) and use the plugin-generated media delivery URLs, which enforce authorization and private cache headers. Protection fails closed if relocation cannot complete. Purge any previously cached web-server or CDN copies and remove externally hosted public duplicates before relying on access control. Verify your deployment's document root and private directory in a browser; protecting an attachment page alone does not protect copies that still exist elsewhere.
+WordPress PHP cannot intercept direct static-file requests, so protecting an attachment relocates its originals and generated sizes outside the document root. Configure a writable `PORTALWEAVE_SSO_PRIVATE_MEDIA_DIR` (the default is a sibling of ABSPATH) and use the plugin-generated media delivery URLs, which enforce authorization and private cache headers. Protection fails closed if relocation cannot complete. Purge any previously cached web-server or CDN copies and remove externally hosted public duplicates before relying on access control. Verify your deployment's document root and private directory in a browser; protecting an attachment page alone does not protect copies that still exist elsewhere.
 
 Deactivation and uninstall do not publish or delete vault files. The data-removal setting is off by default; even opt-in uninstall cleanup retains vault recovery metadata and WordPress accounts/content/public profile values. Use the [administrator guide](provider-setup.md) and [privacy guide](privacy.md) to plan erasure, removal and recovery.

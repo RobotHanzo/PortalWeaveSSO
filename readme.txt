@@ -15,7 +15,7 @@ PortalWeave SSO connects a site to administrator-configured OAuth 2.0 and OpenID
 * Configure multiple providers, attribute mappings and group/email-domain role policies.
 * Register users at first login or allow only existing accounts. Account linking requires explicit configuration and a verified, unique email.
 * Keep administrator SSO disabled by default; enable it per provider with a verified account claim.
-* Display login buttons using the login widget, [wpsso_oauth_login] shortcode, WordPress login screen or WooCommerce login form.
+* Display login buttons using the login widget, [portalweave_sso_oauth_login] shortcode, WordPress login screen or WooCommerce login form.
 * Restrict posts, pages, categories and media using login, role or group rules.
 * Review local authentication transactions and export CSV reports. Debug logging, client IP collection and optional modules are administrator controlled.
 * Enable SCIM Users/Groups, JWT sign-in, temporary guest accounts, moderation, mapped pictures, attribute redirects or a short shared-subdomain handoff.
@@ -61,11 +61,13 @@ Suggested privacy-policy text is available in the WordPress privacy tools. Perso
 Deactivation preserves data. Uninstall preserves settings unless the administrator enables data removal. Even with removal enabled, WordPress accounts, content, public mapped profile values, private-media files and their recovery metadata are retained. Review docs/privacy.md and include the private vault in server backups. The plugin does not claim to provide or guarantee legal compliance.
 
 == Installation ==
+This release replaces the technical namespace without aliases or automatic conversion of earlier stored data. Existing installations must restrict access externally and follow the replacement procedure in docs/provider-setup.md before reopening, including settings, identity links, access rules, provider URLs and private-media metadata.
+
 1. Upload portalweave-sso-1.0.0.zip or copy the portalweave-sso directory into wp-content/plugins.
 2. Activate PortalWeave SSO and open Settings > PortalWeave SSO.
 3. Add a provider, register the displayed callback URL, enter its credentials/endpoints/signing settings and save.
 4. Run Test SSO Config as an administrator to inspect returned attributes. Configure mappings and test an ordinary user before enforcing login.
-5. Add [wpsso_oauth_login], the PortalWeave SSO login widget or use the WordPress/WooCommerce login form integration.
+5. Add [portalweave_sso_oauth_login], the PortalWeave SSO login widget or use the WordPress/WooCommerce login form integration.
 
 Optional features start disabled. Use the distributed user guides for provider, SCIM, media and MCP setup. Development source and build tools are [publicly maintained](https://github.com/RobotHanzo/PortalWeaveSSO).
 
@@ -83,7 +85,7 @@ Authorization Code with PKCE and refresh tokens are supported. Legacy Password a
 No. It is a one-minute handoff between explicitly trusted HTTPS subdomains and creates independent WordPress sessions. Normal IdP sign-in remains available after that handoff expires.
 
 = How do I recover local login? =
-Run wp wpsso recover (or --network), or temporarily define WPSSO_ALLOW_LOCAL_LOGIN in wp-config.php.
+Run wp portalweave-sso recover (or --network), or temporarily define PORTALWEAVE_SSO_ALLOW_LOCAL_LOGIN in wp-config.php.
 
 = Are credentials in configuration exports? =
 No. Re-enter credentials on a new installation. Same-site restores retain existing credentials.

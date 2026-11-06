@@ -2,7 +2,19 @@
 
 Install `portalweave-sso-1.0.0.zip` through **Plugins → Add New → Upload Plugin**, activate **PortalWeave SSO**, and open **Settings → PortalWeave SSO**. On multisite, **Network Admin → PortalWeave SSO** can enforce a network-wide policy. Each WordPress network has its own network option.
 
-The proposed directory slug and text domain are `portalweave-sso`. The `[wpsso_oauth_login]` shortcode, `WPSSO_*` server configuration constants, `WPSSO` namespace and `wp wpsso` commands retain their established names for compatibility.
+The proposed directory slug and text domain are `portalweave-sso`. Use the `[portalweave_sso_oauth_login]` shortcode, `PORTALWEAVE_SSO_*` server configuration constants, `PortalWeaveSSO` PHP namespace and `wp portalweave-sso` commands.
+
+## Replacing an earlier installation
+
+This release replaces the entire technical namespace. It provides no earlier-name aliases, automatic database conversion or fallback to previous storage. Treat replacement as a controlled deployment rather than an in-place compatible update:
+
+1. Restrict the site at the web server or another external access boundary before replacing the plugin. Earlier whole-site, content, moderation and provisioning blocks will not be read under the new names. Existing WordPress accounts and sessions persist; changing the plugin namespace does not revoke those sessions.
+2. Back up the complete database, WordPress salts, server configuration and private-media vault together. Retain the previous plugin version for rollback. A redacted configuration export omits credentials and cannot recover identity links, tokens, policy metadata or vault provenance.
+3. Reconfigure site and network settings, provider credentials, account-linking policies, content/category/media restrictions, moderation and provisioning ownership under the new namespace. Do not enable automatic registration or provisioning until existing identities and ownership have been reconciled; otherwise duplicate or differently owned accounts can result. An operator-managed database conversion needs its own staging validation and rollback plan.
+4. Update provider OAuth/JWT callbacks and back-channel logout URLs, SCIM base URLs, shared-domain peers, MCP ability names, server constants, custom PHP hooks, CLI scripts, shortcodes, widget placements and custom CSS. Copy the new URLs from the plugin. Re-enter secrets excluded by configuration exports.
+5. Reconcile private-media manifests and attachment recovery metadata with the intended private vault path before enabling delivery. The default vault directory also changes. Retain every original private file; never copy vault files into public uploads to repair links. Verify authenticated delivery, unauthorized denial and recovery on a staging copy.
+6. Reconcile earlier scheduled tasks, audit records and retained personal data through an explicit maintenance procedure. The new cleanup and uninstall handlers operate on the new namespace and do not remove earlier records or schedules. Verify retention consent and cron operation on every affected site/network.
+7. Test regular and administrator authentication, recovery login, authorization and logout, then remove the external restriction only after all intended policies and private-media checks pass. Roll back the database, files and configuration together if validation fails.
 
 ## Register an identity provider
 
@@ -53,19 +65,19 @@ Domain allow/block policy uses exact lower-case domains. Domain mapping is an op
 
 ## Login display
 
-Insert `[wpsso_oauth_login]` or add the **PortalWeave SSO login** widget. WooCommerce's login form gets enabled-provider buttons. Customize global theme, shape, size, curve, spacing, shadow, and hover treatment. Each app can set text and an HTTPS icon URL. `##user##` and `##Sign Out##` are available in the logged-in message. Button assets load for the relevant login/widget/shortcode/account contexts; normal pages without those displays do not need them.
+Insert `[portalweave_sso_oauth_login]` or add the **PortalWeave SSO login** widget. WooCommerce's login form gets enabled-provider buttons. Customize global theme, shape, size, curve, spacing, shadow, and hover treatment. Each app can set text and an HTTPS icon URL. `##user##` and `##Sign Out##` are available in the logged-in message. Button assets load for the relevant login/widget/shortcode/account contexts; normal pages without those displays do not need them.
 
 ## Content restrictions and media
 
 Post/page editors and category forms expose login, allowed-role, and allowed-group controls. A matching configured role or group grants access. Attachment editing includes a protected checkbox; the global protected-ID list provides the same file protection.
 
-Protecting an attachment relocates its original, thumbnails, and other recorded derivatives outside the web document root. WordPress generates authenticated delivery URLs and applies the attachment and parent-content access policies before serving files. Unprotecting moves the files back to their original upload paths. Configure a writable `WPSSO_PRIVATE_MEDIA_DIR` in `wp-config.php` when the default private sibling directory of `ABSPATH` is not writable. The plugin rejects a vault inside the web document root. Purge previously cached copies from the web server and CDN when protecting media. An attachment-page role restriction alone does not relocate static files; select file protection as well.
+Protecting an attachment relocates its original, thumbnails, and other recorded derivatives outside the web document root. WordPress generates authenticated delivery URLs and applies the attachment and parent-content access policies before serving files. Unprotecting moves the files back to their original upload paths. Configure a writable `PORTALWEAVE_SSO_PRIVATE_MEDIA_DIR` in `wp-config.php` when the default private sibling directory of `ABSPATH` is not writable. The plugin rejects a vault inside the web document root. Purge previously cached copies from the web server and CDN when protecting media. An attachment-page role restriction alone does not relocate static files; select file protection as well.
 
 Before removal, back up the database and vault together. If a file should become public again, remove its ID from the global protected-ID list and save, then clear its per-attachment protected checkbox if set. Verify the restored original and derivatives through an uncached browser request. A conflicting public file causes restoration to fail rather than overwrite it; resolve the conflict before removing the plugin. If the file must remain private, keep the vault and attachment recovery metadata and plan to restore the plugin or provide a separate authenticated delivery service. Do not move vault files into public uploads merely to make old links work.
 
 ## Backups, reports, and support
 
-Configuration download is credential-free JSON. Restore it through the import form or `wp wpsso import backup.json`. Importing into the same installation preserves omitted or redacted client IDs and stored secrets according to the app ID. On a clean installation, incomplete restored apps and login enforcement are disabled; enter credentials, test SSO, and enable your intended access policy. An independent database backup, including the WordPress salts used for encryption and the private media directory, is required for complete recovery.
+Configuration download is credential-free JSON. Restore it through the import form or `wp portalweave-sso import backup.json`. Importing into the same installation preserves omitted or redacted client IDs and stored secrets according to the app ID. On a clean installation, incomplete restored apps and login enforcement are disabled; enter credentials, test SSO, and enable your intended access policy. An independent database backup, including the WordPress salts used for encryption and the private media directory, is required for complete recovery.
 
 The transaction table and CSV include username, status, app, UTC time, email, navigation URL and stable error code. Audit collection starts enabled, with a default retention of 90 days. **Include client IP addresses in audit events** is a separate opt-in and is off by default. Turn off **Record SSO transactions and login audit events** to stop new collection; existing rows remain until cleanup. CSV fields are protected from spreadsheet formula interpretation. Diagnostic debug events are optional, bounded to 500 entries, and pruned after seven days. Scheduled removal requires working WordPress cron.
 

@@ -3,12 +3,12 @@
     'use strict';
 
     const page = document.body;
-    if (page.dataset.wpssoMode === 'relay') {
+    if (page.dataset.portalweaveSsoMode === 'relay') {
         const response = new URLSearchParams(window.location.hash.slice(1));
         window.history.replaceState(null, '', window.location.pathname + window.location.search);
-        const form = document.getElementById('wpsso-relay');
+        const form = document.getElementById('portalweave-sso-relay');
         if (!response.has('state')) {
-            document.getElementById('wpsso-relay-status').textContent = page.dataset.wpssoNoResponse;
+            document.getElementById('portalweave-sso-relay-status').textContent = page.dataset.portalweaveSsoNoResponse;
             return;
         }
         ['state', 'id_token', 'access_token', 'token_type', 'error', 'iss'].forEach(function (key) {
@@ -21,10 +21,10 @@
             }
         });
         form.submit();
-    } else if (page.dataset.wpssoMode === 'popup') {
-        const redirect = page.dataset.wpssoRedirect;
+    } else if (page.dataset.portalweaveSsoMode === 'popup') {
+        const redirect = page.dataset.portalweaveSsoRedirect;
         if (window.opener) {
-            window.opener.postMessage({ type: 'wpsso-complete', redirect: redirect }, page.dataset.wpssoOrigin);
+            window.opener.postMessage({ type: 'portalweave-sso-complete', redirect: redirect }, page.dataset.portalweaveSsoOrigin);
             window.close();
         } else {
             window.location.replace(redirect);

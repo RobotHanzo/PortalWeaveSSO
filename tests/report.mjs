@@ -7,13 +7,13 @@ export function xmlEscape(value) {
         .replace(/"/g, '&quot;').replace(/'/g, '&apos;');
 }
 
-export function writeReports(suite, results, directory = process.env.WPSSO_REPORT_DIR) {
+export function writeReports(suite, results, directory = process.env.PORTALWEAVE_SSO_REPORT_DIR) {
     if (!directory) return;
     if (!/^[a-z][a-z0-9-]*$/.test(suite)) throw new Error('Invalid report suite name');
     mkdirSync(directory, { recursive: true });
     const failed = results.filter(result => !result.pass).length;
     const duration = results.reduce((total, result) => total + (result.duration ?? 0), 0);
-    const cases = results.map(result => `<testcase classname="wpsso.${suite}" name="${xmlEscape(result.name)}" time="${(result.duration ?? 0).toFixed(6)}">${result.pass ? '' : `<failure type="AssertionFailure" message="${xmlEscape(result.error ?? 'Test failed.')}">${xmlEscape(result.error ?? 'Test failed.')}</failure>`}</testcase>`).join('');
+    const cases = results.map(result => `<testcase classname="portalweave-sso.${suite}" name="${xmlEscape(result.name)}" time="${(result.duration ?? 0).toFixed(6)}">${result.pass ? '' : `<failure type="AssertionFailure" message="${xmlEscape(result.error ?? 'Test failed.')}">${xmlEscape(result.error ?? 'Test failed.')}</failure>`}</testcase>`).join('');
     const xml = `<?xml version="1.0" encoding="UTF-8"?>\n<testsuites tests="${results.length}" failures="${failed}" errors="0" time="${duration.toFixed(6)}"><testsuite name="${suite}" tests="${results.length}" failures="${failed}" errors="0" skipped="0" time="${duration.toFixed(6)}">${cases}</testsuite></testsuites>\n`;
     writeFileSync(join(directory, `${suite}.json`), JSON.stringify({ suite, tests: results, summary: {
         total: results.length, passed: results.length - failed, failed, duration,

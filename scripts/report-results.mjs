@@ -81,7 +81,7 @@ function main(args) {
         } else if (args[i].startsWith('-') || directory) throw new Error('Usage: node scripts/report-results.mjs <directory> [--expect integration,https]');
         else directory = args[i];
     }
-    directory ??= process.env.WPSSO_REPORT_DIR;
+    directory ??= process.env.PORTALWEAVE_SSO_REPORT_DIR;
     if (!directory) throw new Error('A report directory is required.');
     if (expected.some(suite => !/^[a-z][a-z0-9-]*$/.test(suite))) throw new Error('Expected suite names are invalid.');
     const result = summarizeReports(resolve(directory), [...new Set(expected)]);

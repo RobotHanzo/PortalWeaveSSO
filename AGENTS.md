@@ -12,7 +12,7 @@ This guide applies to the whole repository. PortalWeave SSO is a WordPress OAuth
 
 Keep the public name, main filename, directory slug and literal text domain aligned: **PortalWeave SSO**, `portalweave-sso.php`, `portalweave-sso`. Bootstrap constants use `PORTALWEAVE_SSO_*`.
 
-Preserve the existing `WPSSO` PHP namespace, `wpsso_*` hooks/options/errors, `[wpsso_oauth_login]`, `wp wpsso` commands and documented `WPSSO_*` server configuration constants. They are compatibility interfaces. The Docker source mount remains `/var/www/html/wp-content/plugins/wordpress-sso`; its directory name is distinct from the distribution slug.
+Use the `PortalWeaveSSO` PHP namespace, `portalweave_sso_*` hooks/options/errors, `[portalweave_sso_oauth_login]`, `wp portalweave-sso` commands and documented `PORTALWEAVE_SSO_*` server configuration constants. Routes, abilities, asset handles and the distribution directory use `portalweave-sso`. The Docker source mount is `/var/www/html/wp-content/plugins/portalweave-sso`. Do not reintroduce earlier naming aliases. This is a breaking namespace replacement; existing installations require the controlled transition described in [provider setup](docs/provider-setup.md#replacing-an-earlier-installation).
 
 ## Working practices
 
@@ -52,18 +52,18 @@ php scripts/lint.php
 If PHP is available only in a running disposable WordPress container:
 
 ```sh
-docker compose -f compose.test.yml exec -T wordpress php /var/www/html/wp-content/plugins/wordpress-sso/scripts/lint.php
-docker compose -f compose.test.yml exec -T wordpress php /var/www/html/wp-content/plugins/wordpress-sso/tests/run.php
+docker compose -f compose.test.yml exec -T wordpress php /var/www/html/wp-content/plugins/portalweave-sso/scripts/lint.php
+docker compose -f compose.test.yml exec -T wordpress php /var/www/html/wp-content/plugins/portalweave-sso/tests/run.php
 ```
 
 For a fresh POSIX shell environment with Docker and Node, the same scripts used by CI run integration/HTTPS and multisite checks:
 
 ```sh
-COMPOSE_PROJECT_NAME=wpsso-agent-integration bash scripts/ci.sh integration
-COMPOSE_PROJECT_NAME=wpsso-agent-multisite bash scripts/ci.sh multisite
+COMPOSE_PROJECT_NAME=portalweave-sso-agent-integration bash scripts/ci.sh integration
+COMPOSE_PROJECT_NAME=portalweave-sso-agent-multisite bash scripts/ci.sh multisite
 ```
 
-These are separate runs, not commands to execute concurrently. Each requires fresh disposable volumes, and both bind host ports 8098/8448. Check existing containers and port ownership first; stop only a verified task-owned project before starting the other. Never delete volumes or run fixtures against a real site's database. The harnesses intentionally require the exact `WPSSO Integration` site title and `WPSSO Multisite Integration` network fixture naming; do not remove those guards. Reuse an initialized fixture only through its appropriate test runner, rather than repeating a fresh-install script against it.
+These are separate runs, not commands to execute concurrently. Each requires fresh disposable volumes, and both bind host ports 8098/8448. Check existing containers and port ownership first; stop only a verified task-owned project before starting the other. Never delete volumes or run fixtures against a real site's database. The harnesses intentionally require the exact `PortalWeave SSO Integration` site title and `PortalWeave SSO Multisite Integration` network fixture naming; do not remove those guards. Reuse an initialized fixture only through its appropriate test runner, rather than repeating a fresh-install script against it.
 
 For manual HTTPS testing, run `tests/setup-tls.sh` and `tests/setup-e2e.php` in the disposable WordPress container, then `node tests/e2e.mjs`. Always run the container's `tests/setup-e2e.php --restore` in a `finally` block or shell trap, including after failure. Test IdP routes, local test credentials and self-signed TLS belong only in disposable fixtures.
 

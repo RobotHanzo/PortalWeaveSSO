@@ -15,7 +15,7 @@ const finding = (override = {}) => ({ line: 12, column: 7, type: 'ERROR', code: 
 const block = (file, values) => `FILE: ${file}\n${JSON.stringify(values)}\n\n`;
 
 function fixture(work) {
-    const root = mkdtempSync(path.join(os.tmpdir(), 'wpsso-plugin-check-'));
+    const root = mkdtempSync(path.join(os.tmpdir(), 'portalweave-sso-plugin-check-'));
     try { return work(root); }
     finally { rmSync(root, { recursive: true, force: true }); }
 }
