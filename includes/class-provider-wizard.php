@@ -29,7 +29,7 @@ final class ProviderWizard
         foreach ($steps as $key => $step) {
             echo '<li><button type="button" data-step-target="' . esc_attr($key) . '" disabled>' . esc_html($step['title']) . '</button></li>';
         }
-        echo '</ol><form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" class="portalweave-sso-settings-form portalweave-sso-setup-form" data-setup-form>';
+        echo '</ol><form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" class="portalweave-sso-settings-form portalweave-sso-setup-form" data-setup-form data-pending-label="' . esc_attr__('Saving…', 'portalweave-sso') . '" data-pending-message="' . esc_attr__('Saving your provider…', 'portalweave-sso') . '">';
         wp_nonce_field('portalweave_sso_save');
         foreach (['action' => 'portalweave_sso_save', 'portalweave_sso_screen' => 'providers', 'portalweave_sso_provider' => '', 'portalweave_sso_creating' => '1'] as $key => $value) {
             self::hidden($key, $value);
@@ -112,7 +112,9 @@ final class ProviderWizard
             $uris[] = ['id' => 'portalweave-sso-setup-logout', 'label' => __('Sign-out redirect URI', 'portalweave-sso'), 'url' => add_query_arg('portalweave_sso_action', 'logout_callback', home_url('/')), 'help' => __('If the provider asks for an allowed logout or sign-out return URL, register this separate URI.', 'portalweave-sso')];
         }
         foreach ($uris as $uri) {
-            echo '<div class="portalweave-sso-setup-callback"><label for="' . esc_attr($uri['id']) . '">' . esc_html($uri['label']) . '</label><input type="text" id="' . esc_attr($uri['id']) . '" value="' . esc_attr($uri['url']) . '" readonly spellcheck="false"><button type="button" class="button button-secondary" data-setup-copy aria-controls="' . esc_attr($uri['id']) . '" data-copy-success="' . esc_attr__('Redirect URI copied.', 'portalweave-sso') . '" data-copy-error="' . esc_attr__('Select and copy the redirect URI above.', 'portalweave-sso') . '" hidden>' . esc_html__('Copy URI', 'portalweave-sso') . '</button><p>' . esc_html($uri['help']) . '</p></div>';
+            $status_id = $uri['id'] . '-status';
+            $success = $uri['id'] === 'portalweave-sso-setup-logout' ? __('Sign-out redirect URI copied.', 'portalweave-sso') : __('Redirect URI copied.', 'portalweave-sso');
+            echo '<div class="portalweave-sso-setup-callback"><label for="' . esc_attr($uri['id']) . '">' . esc_html($uri['label']) . '</label><input type="text" id="' . esc_attr($uri['id']) . '" value="' . esc_attr($uri['url']) . '" readonly spellcheck="false" aria-describedby="' . esc_attr($status_id) . '"><button type="button" class="button button-secondary" data-setup-copy aria-controls="' . esc_attr($uri['id']) . '" aria-describedby="' . esc_attr($status_id) . '" data-copy-status="' . esc_attr($status_id) . '" data-copy-pending="' . esc_attr__('Copying URI…', 'portalweave-sso') . '" data-copy-success="' . esc_attr($success) . '" data-copy-error="' . esc_attr__('Copy failed. The URI is selected; use your device’s copy command.', 'portalweave-sso') . '" data-pending-label="' . esc_attr__('Copying…', 'portalweave-sso') . '" data-success-label="' . esc_attr__('Copied', 'portalweave-sso') . '" data-error-label="' . esc_attr__('Try again', 'portalweave-sso') . '" hidden>' . esc_html__('Copy URI', 'portalweave-sso') . '</button><p><span class="portalweave-sso-copy-status" id="' . esc_attr($status_id) . '" role="status" aria-live="polite" aria-atomic="true"></span>' . esc_html($uri['help']) . '</p></div>';
         }
     }
 

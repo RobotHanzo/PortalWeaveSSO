@@ -435,7 +435,29 @@
 
 .portalweave-sso-setup-callback [data-setup-copy] {
     min-height: 40px;
+    min-width: 92px;
     white-space: nowrap;
+}
+
+.portalweave-sso-setup-callback .portalweave-sso-copy-status {
+    display: block;
+    font-weight: 600;
+}
+
+.portalweave-sso-copy-status:not(:empty) {
+    margin-bottom: 10px;
+}
+
+.portalweave-sso-copy-status[data-state="success"] {
+    color: #006b1b;
+}
+
+.portalweave-sso-copy-status[data-state="error"] {
+    color: #b32d2e;
+}
+
+.portalweave-sso-setup-form .portalweave-sso-action-status:not(:empty) {
+    margin: 16px 32px;
 }
 
 .portalweave-sso-setup-confirm {

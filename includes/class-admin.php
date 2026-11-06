@@ -477,7 +477,7 @@ final class Admin {
             if ($screen === 'reports') {
                 self::reports($settings, $network);
             }
-            echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" class="portalweave-sso-settings-form"><input type="hidden" name="action" value="portalweave_sso_save"><input type="hidden" name="portalweave_sso_screen" value="' . esc_attr($screen) . '">';
+            echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" class="portalweave-sso-settings-form" data-pending-label="' . esc_attr__('Saving…', 'portalweave-sso') . '" data-pending-message="' . esc_attr__('Saving your changes…', 'portalweave-sso') . '"><input type="hidden" name="action" value="portalweave_sso_save"><input type="hidden" name="portalweave_sso_screen" value="' . esc_attr($screen) . '">';
             wp_nonce_field('portalweave_sso_save');
             self::hidden_scope($network);
             if ($editing) {
@@ -803,7 +803,7 @@ final class Admin {
         $export = wp_nonce_url(add_query_arg(['action' => 'portalweave_sso_export', 'kind' => 'configuration', 'network' => $network ? 1 : 0], admin_url('admin-post.php')), 'portalweave_sso_export');
         echo '</details><h3>' . esc_html__('Configuration backup', 'portalweave-sso') . '</h3><p><a class="button" href="' . esc_url($export) . '">' . esc_html__('Download configuration backup', 'portalweave-sso') . '</a></p><p class="description">' . esc_html__('Credential-free JSON includes mappings and policy. Client IDs, all secrets, and tokens are excluded. Restore retains existing credentials by app ID; on a clean installation, incomplete providers and login enforcement remain disabled until credentials are entered. Retain an independent WordPress database backup for complete recovery.', 'portalweave-sso') . '</p>';
         if (!$enforced) {
-            echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" enctype="multipart/form-data"><input type="hidden" name="action" value="portalweave_sso_import">';
+            echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" enctype="multipart/form-data" data-pending-label="' . esc_attr__('Importing…', 'portalweave-sso') . '" data-pending-message="' . esc_attr__('Importing your configuration…', 'portalweave-sso') . '"><input type="hidden" name="action" value="portalweave_sso_import">';
             wp_nonce_field('portalweave_sso_import');
             self::hidden_scope($network, 'tools');
             echo '<label for="portalweave-sso-import">' . esc_html__('Restore configuration JSON (maximum 1 MB)', 'portalweave-sso') . '</label><p><input type="file" id="portalweave-sso-import" name="configuration" accept="application/json,.json" required> <button type="submit" class="button">' . esc_html__('Import configuration', 'portalweave-sso') . '</button></p></form>';
@@ -816,7 +816,7 @@ final class Admin {
         }
         echo '</p>';
         if (!empty($settings['support']['email'])) {
-            echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '"><input type="hidden" name="action" value="portalweave_sso_support">';
+            echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" data-pending-label="' . esc_attr__('Sending…', 'portalweave-sso') . '" data-pending-message="' . esc_attr__('Submitting your support message…', 'portalweave-sso') . '"><input type="hidden" name="action" value="portalweave_sso_support">';
             wp_nonce_field('portalweave_sso_support');
             self::hidden_scope($network, 'tools');
             /* translators: %s: support recipient email address. */
