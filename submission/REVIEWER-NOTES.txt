@@ -79,9 +79,11 @@ AUTOMATED REVIEW AND WARNINGS
 The final packaged candidate is checked with the official WordPress Plugin
 Check tool. Complete raw output plus machine-readable JSON/JUnit results
 accompany these notes in the reviewer-materials archive. Findings are retained;
-there are no command-line ignored errors or categories.
+there are no command-line ignored errors, codes or categories. CI includes
+experimental and runtime checks and fails on warnings as well as errors.
 
-The verified installed package reports zero errors and 17 warnings:
+The historical installed package reported zero errors and 17 warnings. These
+operations were reviewed and now carry precise source-level analysis reasons:
   - Nonce heuristics: public initiation reads a test flag, then checks the
     administrator nonce whenever testing is requested. The logout path reads
     POST or GET into one request array, then verifies the portalweave_sso_logout nonce
@@ -94,6 +96,14 @@ The verified installed package reports zero errors and 17 warnings:
     scheduled retention and reports read the authoritative table without a
     secondary PII cache. Uninstall intentionally drops only that site's table
     after explicit cleanup consent. This is deliberate schema removal.
+  - Expired lock cleanup now uses bounded batches, owner-conditional deletion
+    and WordPress option-cache eviction. Regression tests cover stale cached
+    locks and owners renewed after discovery. Audit rows remain uncached.
+
+The supplied first report also listed four bootstrap-prefix warnings. They
+did not reproduce with the current naming and correctly staged directory.
+Current raw reports and their commit, not historical counts, establish the
+candidate's result. See docs/directory-review.md for the guidance/evidence map.
 
 Source contains narrowly scoped explanatory PHPCS exceptions for protocol
 authorization, atomic replay/lock operations, binary streaming after access
