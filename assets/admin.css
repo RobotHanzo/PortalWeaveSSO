@@ -9,6 +9,36 @@
     color: var(--portalweave-sso-ink);
 }
 
+.portalweave-sso-audit-pagination {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px 20px;
+    padding: 14px 0;
+}
+
+.portalweave-sso-audit-page-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 6px;
+}
+
+.portalweave-sso-audit-page-number {
+    padding: 0 6px;
+}
+
+.portalweave-sso-audit-count,
+.portalweave-sso-audit-page-number {
+    color: var(--portalweave-sso-muted);
+    font-size: 12px;
+}
+
+.portalweave-sso-audit-refresh {
+    white-space: nowrap;
+}
+
 .portalweave-sso-admin *,
 .portalweave-sso-admin *::before,
 .portalweave-sso-admin *::after {
@@ -45,6 +75,30 @@
     padding: 24px 0;
     border-bottom: 1px solid var(--portalweave-sso-line);
     margin-bottom: 28px;
+}
+
+.portalweave-sso-brand {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    min-width: 0;
+}
+
+.portalweave-sso-brand-logo {
+    display: block;
+    flex: 0 0 48px;
+    width: 48px;
+    height: 48px;
+    object-fit: contain;
+}
+
+.portalweave-sso-brand-copy {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.portalweave-sso-header > .portalweave-sso-version {
+    flex-shrink: 0;
 }
 
 .portalweave-sso-header h1 {
@@ -1012,6 +1066,18 @@
         gap: 12px;
         padding: 20px 0;
         margin-bottom: 20px;
+    }
+
+    .portalweave-sso-brand {
+        align-items: flex-start;
+        gap: 10px;
+    }
+
+    .portalweave-sso-brand-logo {
+        flex-basis: 40px;
+        width: 40px;
+        height: 40px;
+        margin-top: 2px;
     }
 
     .portalweave-sso-header h1 {

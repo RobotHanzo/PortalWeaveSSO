@@ -19,6 +19,7 @@ final class Extensions {
         add_filter('portalweave_sso_account_allowed', [self::class, 'account_allowed'], 10, 4);
         add_filter('portalweave_sso_pre_authenticate', [self::class, 'account_check'], 10, 3);
         add_filter('authenticate', [self::class, 'local_account_check'], 99, 3);
+        add_action('wp_authenticate_application_password_errors', [self::class, 'application_password_check'], 10, 2);
         add_filter('portalweave_sso_login_redirect', [self::class, 'attribute_redirect'], 10, 4);
         add_filter('get_avatar_data', [self::class, 'avatar'], 10, 2);
         add_action('show_user_profile', [self::class, 'moderation_profile']);
@@ -590,6 +591,15 @@ final class Extensions {
         return self::account_check($user);
     }
 
+    public static function application_password_check(\WP_Error $error, \WP_User $user): void {
+        // Native API authentication bypasses the browser authenticate filter.
+        // Check the current blog's policy without deleting global credentials.
+        $checked = self::account_check($user);
+        if (is_wp_error($checked)) {
+            $error->merge_from($checked);
+        }
+    }
+
     public static function moderation_profile($user): void {
         if (!current_user_can('manage_options') || !current_user_can('edit_user', $user->ID) || !self::enabled('moderation') || self::privileged($user->ID)) {
             return;
@@ -758,8 +768,8 @@ final class Extensions {
         wp_set_current_user($user->ID);
         wp_set_auth_cookie($user->ID, false, true);
         update_user_meta($user->ID, Auth::app_meta_key(), $app['id']);
-        // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- This is WordPress core's authentication lifecycle hook.
-        do_action('wp_login', $user->user_login, $user);
+        // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core login event; internal context suppresses only its duplicate local audit event.
+        do_action('wp_login', $user->user_login, $user, 'portalweave-sso');
         do_action('portalweave_sso_authenticated', $user, $app, $attributes);
         Audit::record('success', $app['id'], $user);
     }
@@ -885,8 +895,8 @@ final class Extensions {
         wp_set_current_user($user->ID);
         wp_set_auth_cookie($user->ID, false, true);
         update_user_meta($user->ID, Auth::app_meta_key(), $app['id']);
-        // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Dispatch the core login hook for this authenticated WordPress session.
-        do_action('wp_login', $user->user_login, $user);
+        // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Core login event; internal context suppresses only its duplicate local audit event.
+        do_action('wp_login', $user->user_login, $user, 'portalweave-sso');
         Audit::record('success', $app['id'], $user, 'portalweave_sso_shared_login');
         wp_safe_redirect(Redirect::current());
         exit;

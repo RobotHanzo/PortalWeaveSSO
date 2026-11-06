@@ -9,6 +9,7 @@ final class Admin {
         add_action('admin_menu', [self::class, 'menu']);
         add_action('network_admin_menu', [self::class, 'network_menu']);
         add_action('admin_enqueue_scripts', [self::class, 'assets']);
+        add_action('admin_init', [self::class, 'redirect_legacy_page']);
         foreach (['save', 'export', 'import', 'support'] as $action) {
             add_action('admin_post_portalweave_sso_' . $action, [self::class, $action]);
         }
@@ -23,18 +24,37 @@ final class Admin {
     }
 
     public static function menu(): void {
-        add_options_page(__('PortalWeave SSO', 'portalweave-sso'), __('PortalWeave SSO', 'portalweave-sso'), 'manage_options', 'portalweave-sso', [self::class, 'page']);
+        add_menu_page(__('PortalWeave SSO', 'portalweave-sso'), __('PortalWeave SSO', 'portalweave-sso'), 'manage_options', 'portalweave-sso', [self::class, 'page'], 'dashicons-shield');
     }
 
     public static function network_menu(): void {
         add_menu_page(__('PortalWeave SSO for networks', 'portalweave-sso'), __('PortalWeave SSO', 'portalweave-sso'), 'manage_network_options', 'portalweave-sso', [self::class, 'page'], 'dashicons-shield');
     }
 
+    /** Preserve old bookmarks without asking WordPress to render a removed submenu. */
+    public static function redirect_legacy_page(): void {
+        global $pagenow;
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Capability-gated, read-only bookmark navigation; no settings are read from the request or mutated.
+        if ($pagenow !== 'options-general.php' || is_network_admin() || !current_user_can('manage_options') || self::request_key($_SERVER, 'REQUEST_METHOD') !== 'get' || self::request_key($_GET, 'page') !== 'portalweave-sso') {
+            return;
+        }
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Only an allowlisted local task selects the canonical destination.
+        $screen = self::request_key($_GET, 'tab');
+        $args = [];
+        foreach (['provider', 'provider_section', 'new_provider', 'setup_provider', 'activity_view', 'activity_days', 'appearance_section', 'integration_section', 'audit_page', 'audit_snapshot', 'portalweave_sso_notice'] as $key) {
+            // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Scalar local navigation keys only; each screen validates its own presentation values.
+            $value = self::request_key($_GET, $key);
+            if ($value !== '') $args[$key] = $value;
+        }
+        wp_safe_redirect(self::screen_url($screen, false, $args));
+        exit;
+    }
+
     public static function assets(string $hook): void {
         if (strpos($hook, 'portalweave-sso') === false) {
             return;
         }
-        $version = defined('PORTALWEAVE_SSO_VERSION') ? PORTALWEAVE_SSO_VERSION : '1.0.1';
+        $version = defined('PORTALWEAVE_SSO_VERSION') ? PORTALWEAVE_SSO_VERSION : '1.3.0';
         $style = dirname(__DIR__) . '/assets/admin.css';
         $script = dirname(__DIR__) . '/assets/admin.js';
         // File revisions also refresh assets when administrators test an unpublished build at the same plugin version.
@@ -42,6 +62,25 @@ final class Admin {
         $script_version = $version . '-' . (is_file($script) ? (string) filemtime($script) : '0');
         wp_enqueue_style('portalweave-sso-admin', plugins_url('../assets/admin.css', __FILE__), [], $style_version);
         wp_enqueue_script('portalweave-sso-admin', plugins_url('../assets/admin.js', __FILE__), [], $script_version, ['in_footer' => true, 'strategy' => 'defer']);
+        wp_enqueue_style('portalweave-sso-unsaved', plugins_url('../assets/admin-unsaved.css', __FILE__), ['portalweave-sso-admin'], $version . '-' . (string) filemtime(dirname(__DIR__) . '/assets/admin-unsaved.css'));
+        wp_enqueue_script('portalweave-sso-unsaved', plugins_url('../assets/admin-unsaved.js', __FILE__), ['portalweave-sso-admin'], $version . '-' . (string) filemtime(dirname(__DIR__) . '/assets/admin-unsaved.js'), ['in_footer' => true, 'strategy' => 'defer']);
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- An allowlisted screen loads local presentation assets; all writes retain their own permission and nonce checks.
+        if (self::request_key($_GET, 'tab') === 'modules') {
+            wp_enqueue_style('portalweave-sso-integrations', plugins_url('../assets/integrations.css', __FILE__), ['portalweave-sso-admin'], $version . '-' . (string) filemtime(dirname(__DIR__) . '/assets/integrations.css'));
+            wp_enqueue_script('portalweave-sso-integrations', plugins_url('../assets/integrations.js', __FILE__), [], $version . '-' . (string) filemtime(dirname(__DIR__) . '/assets/integrations.js'), ['in_footer' => true, 'strategy' => 'defer']);
+        }
+        wp_enqueue_style('portalweave-sso-mappings', plugins_url('../assets/admin-mappings.css', __FILE__), ['portalweave-sso-admin'], $version . '-' . (string) filemtime(dirname(__DIR__) . '/assets/admin-mappings.css'));
+        wp_enqueue_script('portalweave-sso-mappings', plugins_url('../assets/admin-mappings.js', __FILE__), ['portalweave-sso-admin'], $version . '-' . (string) filemtime(dirname(__DIR__) . '/assets/admin-mappings.js'), ['in_footer' => true, 'strategy' => 'defer']);
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only provider navigation loads local image controls; settings saves and WordPress uploads retain their own authorization.
+        if (self::request_key($_GET, 'tab') === 'providers' && self::request_key($_GET, 'provider') !== '' && self::request_key($_GET, 'new_provider') !== '1' && current_user_can(is_network_admin() ? 'manage_network_options' : 'manage_options')) {
+            $dependencies = [];
+            if (current_user_can('upload_files')) {
+                wp_enqueue_media();
+                $dependencies[] = 'media-editor';
+            }
+            wp_enqueue_style('portalweave-sso-provider-logo', plugins_url('../assets/provider-logo.css', __FILE__), ['portalweave-sso-admin'], $version . '-' . (string) filemtime(dirname(__DIR__) . '/assets/provider-logo.css'));
+            wp_enqueue_script('portalweave-sso-provider-logo', plugins_url('../assets/provider-logo.js', __FILE__), $dependencies, $version . '-' . (string) filemtime(dirname(__DIR__) . '/assets/provider-logo.js'), ['in_footer' => true, 'strategy' => 'defer']);
+        }
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation decides whether to load the local setup interface; saves retain their own nonce and capability checks.
         if (self::request_key($_GET, 'tab') === 'providers' && self::request_key($_GET, 'new_provider') === '1') {
             $setup_style = dirname(__DIR__) . '/assets/provider-setup.css';
@@ -126,10 +165,18 @@ final class Admin {
             $args['activity_view'] = self::activity_view($_POST, 'portalweave_sso_activity_view', 'audit');
             // phpcs:ignore WordPress.Security.NonceVerification.Missing -- The period is a bounded navigation value, never a settings mutation.
             $args['activity_days'] = self::activity_days($_POST, 'portalweave_sso_activity_days');
+            // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Bounded audit navigation is retained only after the action's nonce checks and is never stored.
+            $args['audit_page'] = self::audit_number($_POST, 'portalweave_sso_audit_page', 1);
+            // phpcs:ignore WordPress.Security.NonceVerification.Missing -- This integer ceiling chooses only a local retained-history view.
+            $args['audit_snapshot'] = self::audit_number($_POST, 'portalweave_sso_audit_snapshot');
         }
         if ($screen === 'appearance') {
             // phpcs:ignore WordPress.Security.NonceVerification.Missing -- An allowlisted presentation tab is retained only after the action's nonce checks.
             $args['appearance_section'] = self::appearance_section($_POST, 'portalweave_sso_appearance_section');
+        }
+        if ($screen === 'modules') {
+            // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Only a known integration panel is retained after the action's nonce checks.
+            $args['integration_section'] = self::integration_section($_POST, 'portalweave_sso_integration_section');
         }
         $url = self::screen_url($screen ?: 'overview', $network, $args);
         return $notice === '' ? $url : add_query_arg('portalweave_sso_notice', $notice, $url);
@@ -174,6 +221,11 @@ final class Admin {
         return in_array($section, ['shared', 'wordpress'], true) ? $section : 'shared';
     }
 
+    private static function integration_section(array $values, string $key): string {
+        $section = self::request_key($values, $key);
+        return in_array($section, ['scim', 'jwt_sso', 'shared_sso', 'guest', 'moderation', 'avatar', 'attribute_redirect', 'abilities'], true) ? $section : 'scim';
+    }
+
     private static function activity_view(array $values, string $key, string $default = 'overview'): string {
         $view = self::request_key($values, $key);
         return in_array($view, ['overview', 'audit'], true) ? $view : $default;
@@ -184,9 +236,14 @@ final class Admin {
         return in_array($days, ['7', '30', '90'], true) ? (int) $days : 30;
     }
 
+    private static function audit_number(array $values, string $key, int $fallback = 0): int {
+        $value = $values[$key] ?? null;
+        return is_string($value) && strlen($value) <= 20 && ctype_digit($value) && (int) $value > 0 ? (int) $value : $fallback;
+    }
+
     private static function screen_url(string $screen, bool $network, array $args = []): string {
         $screen = isset(self::screens()[$screen]) ? $screen : 'overview';
-        $base = $network ? network_admin_url('admin.php') : admin_url('options-general.php');
+        $base = $network ? network_admin_url('admin.php') : admin_url('admin.php');
         return add_query_arg(array_merge(['page' => 'portalweave-sso', 'tab' => $screen], $args), $base);
     }
 
@@ -212,7 +269,7 @@ final class Admin {
         if (!$input) {
             self::fail(__('No settings were submitted. Check the server POST size limit.', 'portalweave-sso'), $network);
         }
-        foreach (['portalweave_sso_screen', 'portalweave_sso_provider', 'portalweave_sso_creating', 'portalweave_sso_provider_section', 'portalweave_sso_activity_view', 'portalweave_sso_activity_days', 'portalweave_sso_appearance_section'] as $key) {
+        foreach (['portalweave_sso_screen', 'portalweave_sso_provider', 'portalweave_sso_creating', 'portalweave_sso_provider_section', 'portalweave_sso_activity_view', 'portalweave_sso_activity_days', 'portalweave_sso_appearance_section', 'portalweave_sso_integration_section', 'portalweave_sso_audit_page', 'portalweave_sso_audit_snapshot'] as $key) {
             if (isset($_POST[$key]) && !is_string($_POST[$key])) {
                 self::fail(__('The settings screen is invalid. Reload the page and try again.', 'portalweave-sso'), $network);
             }
@@ -493,7 +550,7 @@ final class Admin {
         $notices = ['saved' => __('Changes saved.', 'portalweave-sso'), 'imported' => __('Configuration imported. Existing credentials were retained by app ID. Incomplete restored providers and login enforcement are disabled until you configure credentials and test SSO.', 'portalweave-sso'), 'sent' => __('Support message submitted to the WordPress mail service.', 'portalweave-sso')];
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Selects a display-only notice; error details come from the current administrator's server transient.
         $notice = self::request_key($_GET, 'portalweave_sso_notice');
-        echo '<div class="wrap portalweave-sso-admin"><header class="portalweave-sso-header"><div><h1>' . esc_html__('PortalWeave SSO', 'portalweave-sso') . '</h1><p>' . esc_html($network ? __('Single sign-on for your network', 'portalweave-sso') : __('Identity and access for your WordPress site', 'portalweave-sso')) . '</p></div><span class="portalweave-sso-version">' . esc_html(defined('PORTALWEAVE_SSO_VERSION') ? PORTALWEAVE_SSO_VERSION : '1.0.1') . '</span></header>';
+        echo '<div class="wrap portalweave-sso-admin" data-unsaved-title="' . esc_attr__('Unsaved settings', 'portalweave-sso') . '" data-unsaved-message="' . esc_attr__('You have unsaved changes.', 'portalweave-sso') . '" data-unsaved-save="' . esc_attr__('Save changes', 'portalweave-sso') . '" data-unsaved-revert="' . esc_attr__('Revert all changes', 'portalweave-sso') . '"><header class="portalweave-sso-header"><div class="portalweave-sso-brand"><img class="portalweave-sso-brand-logo" src="' . esc_url(plugins_url('assets/branding/logo.png', PORTALWEAVE_SSO_FILE)) . '" srcset="' . esc_url(plugins_url('assets/branding/logo-2x.png', PORTALWEAVE_SSO_FILE)) . ' 2x" width="48" height="48" alt="" decoding="async"><div class="portalweave-sso-brand-copy"><h1>' . esc_html__('PortalWeave SSO', 'portalweave-sso') . '</h1><p>' . esc_html($network ? __('Single sign-on for your network', 'portalweave-sso') : __('Identity and access for your WordPress site', 'portalweave-sso')) . '</p></div></div><span class="portalweave-sso-version">' . esc_html(defined('PORTALWEAVE_SSO_VERSION') ? PORTALWEAVE_SSO_VERSION : '1.3.0') . '</span></header>';
         if ($notice === 'error') {
             $error = get_transient('portalweave_sso_admin_error_' . get_current_user_id());
             delete_transient('portalweave_sso_admin_error_' . get_current_user_id());
@@ -544,6 +601,7 @@ final class Admin {
         } else {
             $activity_view = '';
             $activity_days = 30;
+            $audit_context = ['page' => 1, 'snapshot' => 0];
             if ($screen === 'reports') {
                 // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation is restricted to the two Activity views.
                 $activity_view = self::activity_view($_GET, 'activity_view');
@@ -553,13 +611,14 @@ final class Admin {
                 if ($activity_view === 'overview') {
                     self::activity_overview($activity_days, $network);
                 } else {
-                    self::reports($settings, $network);
+                    $audit_context = self::reports($settings, $network, $activity_days);
                 }
             }
             if ($screen !== 'reports' || $activity_view === 'audit') {
             echo '<form method="post" action="' . esc_url(admin_url('admin-post.php')) . '" class="portalweave-sso-settings-form" data-pending-label="' . esc_attr__('Saving…', 'portalweave-sso') . '" data-pending-message="' . esc_attr__('Saving your changes…', 'portalweave-sso') . '"><input type="hidden" name="action" value="portalweave_sso_save"><input type="hidden" name="portalweave_sso_screen" value="' . esc_attr($screen) . '">';
             if ($screen === 'reports') {
                 echo '<input type="hidden" name="portalweave_sso_activity_view" value="audit"><input type="hidden" name="portalweave_sso_activity_days" value="' . esc_attr((string) $activity_days) . '">';
+                echo '<input type="hidden" name="portalweave_sso_audit_page" value="' . esc_attr((string) $audit_context['page']) . '"><input type="hidden" name="portalweave_sso_audit_snapshot" value="' . esc_attr((string) $audit_context['snapshot']) . '">';
             }
             wp_nonce_field('portalweave_sso_save');
             self::hidden_scope($network);
@@ -684,14 +743,14 @@ final class Admin {
         self::field($prefix . '[subject_attribute]', $app['subject_attribute'], __('Immutable subject attribute', 'portalweave-sso'), 'text', __('OIDC uses the signed sub claim. OAuth-only providers need a stable unique ID.', 'portalweave-sso'));
         echo '</div>';
         self::provider_panel('mapping', __('Attributes and role mapping', 'portalweave-sso'));
-        self::json($prefix . '[mapping]', $app['mapping'], __('Standard attribute paths', 'portalweave-sso'), __('Dot paths for username, email, first_name, last_name, display_name, groups. Example: {"email":"email","groups":"realm_access.roles"}.', 'portalweave-sso'));
-        self::json($prefix . '[custom_mapping]', $app['custom_mapping'], __('Custom profile attributes', 'portalweave-sso'), __('Object of safe user-meta key → provider attribute path. Privilege and internal WordPress meta keys are blocked.', 'portalweave-sso'));
-        self::json($prefix . '[role_mapping]', $app['role_mapping'], __('Group → WordPress roles', 'portalweave-sso'), __('Example: {"members":["subscriber"],"editors":["editor"]}.', 'portalweave-sso'));
-        self::json($prefix . '[domain_roles]', $app['domain_roles'], __('Email domain → WordPress roles', 'portalweave-sso'), __('Example: {"school.example":["author"]}.', 'portalweave-sso'));
+        self::json($prefix . '[mapping]', $app['mapping'], __('Standard attribute paths', 'portalweave-sso'), __('Map WordPress profile fields to provider attributes. Use dot paths for nested attributes, such as realm_access.roles.', 'portalweave-sso'));
+        self::json($prefix . '[custom_mapping]', $app['custom_mapping'], __('Custom profile attributes', 'portalweave-sso'), __('Map safe public profile keys to provider attribute paths. Privilege and internal WordPress metadata are blocked.', 'portalweave-sso'));
+        self::json($prefix . '[role_mapping]', $app['role_mapping'], __('Group → WordPress roles', 'portalweave-sso'), __('Choose the WordPress roles assigned for each matching provider group. Use Ctrl or Command to select multiple roles.', 'portalweave-sso'));
+        self::json($prefix . '[domain_roles]', $app['domain_roles'], __('Email domain → WordPress roles', 'portalweave-sso'), __('Choose roles for exact email domains, such as school.example. Use Ctrl or Command to select multiple roles.', 'portalweave-sso'));
         self::field($prefix . '[default_role]', $app['default_role'], __('Default WordPress role', 'portalweave-sso'));
         echo '</div>';
         self::provider_panel('accounts', __('Account access and verification', 'portalweave-sso'));
-        self::json($prefix . '[domain_mapping]', $app['domain_mapping'], __('Email domain mapping', 'portalweave-sso'), __('Example: {"old.example":"new.example"}. Identity verification uses the original provider claim.', 'portalweave-sso'));
+        self::json($prefix . '[domain_mapping]', $app['domain_mapping'], __('Email domain mapping', 'portalweave-sso'), __('Replace an exact email domain with another domain. Identity verification still uses the original provider claim.', 'portalweave-sso'));
         foreach ([
             'auto_register' => [__('Automatically register users at first SSO login', 'portalweave-sso'), __('Turn off to allow existing linked or eligible local accounts only.', 'portalweave-sso')],
             'link_existing' => [__('Link existing users by verified email', 'portalweave-sso'), __('Only a verified provider email may link an existing account.', 'portalweave-sso')],
@@ -714,11 +773,11 @@ final class Admin {
         self::check($prefix . '[shared_sso]', $app['shared_sso'] ?? false, __('Issue a shared subdomain SSO ticket', 'portalweave-sso'), __('Also enable and configure the Shared SSO module.', 'portalweave-sso'));
         self::check($prefix . '[jwt_sso]', $app['jwt_sso'] ?? false, __('Allow signed JWT SSO for this app', 'portalweave-sso'), __('Also enable the JWT SSO module.', 'portalweave-sso'));
         self::field($prefix . '[avatar_attribute]', $app['avatar_attribute'] ?? 'picture', __('Profile picture attribute', 'portalweave-sso'), 'text', __('Used when the Profile Picture module is enabled.', 'portalweave-sso'));
-        self::json($prefix . '[redirect_rules]', $app['redirect_rules'], __('Attribute based redirect rules', 'portalweave-sso'), __('Array of {"claim":"department","equals":"sales","url":"https://example.com/sales/"}. URLs must pass the redirect allowlist.', 'portalweave-sso'));
+        self::json($prefix . '[redirect_rules]', $app['redirect_rules'], __('Attribute based redirect rules', 'portalweave-sso'), __('Match a provider attribute to a value and choose its redirect URL. Rules run in order and URLs must pass the redirect allowlist.', 'portalweave-sso'));
         echo '</div>';
         self::provider_panel('button', __('Login button', 'portalweave-sso'));
         self::field($prefix . '[button_text]', $app['button_text'], __('Button text', 'portalweave-sso'), 'text', __('Leave blank to use the global text and provider name.', 'portalweave-sso'));
-        self::field($prefix . '[icon_url]', $app['icon_url'], __('Custom icon URL', 'portalweave-sso'), 'url', __('Use an HTTPS image you control.', 'portalweave-sso'));
+        self::provider_logo($prefix, $app['icon_url']);
         echo '</div><div class="portalweave-sso-provider-body portalweave-sso-provider-footer">';
         if (!$new) {
             if ($can_test) {
@@ -759,7 +818,7 @@ final class Admin {
             self::check('settings[restrict_site]', $settings['restrict_site'], __('Restrict the site to logged-in users', 'portalweave-sso'));
         self::field('settings[allowed_domains]', implode("\n", $settings['allowed_domains']), __('Allowed email domains', 'portalweave-sso'), 'textarea', __('One exact domain per line. Leave empty to allow all domains except blocked ones.', 'portalweave-sso'));
         self::field('settings[blocked_domains]', implode("\n", $settings['blocked_domains']), __('Blocked email domains', 'portalweave-sso'), 'textarea', __('One exact domain per line. A blocked domain always takes precedence.', 'portalweave-sso'));
-        self::json('settings[content_rules]', $settings['content_rules'], __('Advanced content rules', 'portalweave-sso'), __('Optional bulk rules; individual post and category editors also expose role/group restrictions. See the documentation for the schema.', 'portalweave-sso'));
+        self::json('settings[content_rules]', $settings['content_rules'], __('Content access rules', 'portalweave-sso'), __('Add bulk rules by post, page or category ID. Individual editors also expose access restrictions. When roles or groups are selected, a user must match either one.', 'portalweave-sso'));
         self::field('settings[protected_media]', implode(', ', $settings['protected_media']), __('Protected attachment IDs', 'portalweave-sso'), 'text', __('Comma separated. Original files and derivatives are relocated outside the document root and served through authenticated delivery. Purge old copies from web-server and CDN caches.', 'portalweave-sso'));
         /* translators: %s: private media directory configuration constant, displayed as code. */
         $media_help = sprintf(__('Protecting an attachment relocates its original and derivatives outside the web document root. WordPress URLs then use the authenticated delivery endpoint. Configure a writable %s in wp-config.php; the default is a private sibling directory of ABSPATH. Purge previously cached files from web-server and CDN caches. Restoring public access moves files back to their original upload paths.', 'portalweave-sso'), '<code>PORTALWEAVE_SSO_PRIVATE_MEDIA_DIR</code>');
@@ -768,17 +827,8 @@ final class Admin {
             self::appearance($settings);
             return;
         } elseif ($screen === 'modules') {
-        echo '<section id="portalweave-sso-modules" class="portalweave-sso-section"><h3>' . esc_html__('Provisioning and add-on modules', 'portalweave-sso') . '</h3><p>' . esc_html__('Modules are bundled and opt in. Each endpoint enforces the corresponding toggle and its own authentication.', 'portalweave-sso') . '</p>';
-        foreach (['scim' => __('SCIM user provisioning', 'portalweave-sso'), 'jwt_sso' => __('JWT Single Sign-On', 'portalweave-sso'), 'shared_sso' => __('SSO into multiple subdomain apps', 'portalweave-sso'), 'guest' => __('Guest User Login', 'portalweave-sso'), 'moderation' => __('User Moderation', 'portalweave-sso'), 'avatar' => __('Profile Picture / Gravatar mapping', 'portalweave-sso'), 'attribute_redirect' => __('Attribute Based Redirection', 'portalweave-sso')] as $key => $label) {
-            self::check('settings[modules][' . $key . ']', $settings['modules'][$key] ?? false, $label);
-        }
-        self::secret('settings', 'scim_token', !empty($settings['scim_token']), __('SCIM bearer token', 'portalweave-sso'));
-        echo '<p class="description">' . esc_html__('Use a cryptographically random token of at least 32 characters. Configure it in the provisioning client; it is never displayed again.', 'portalweave-sso') . '</p>';
-        self::field('settings[guest_ttl]', $settings['guest_ttl'] ?? 3600, __('Guest session lifetime (seconds)', 'portalweave-sso'), 'number');
-        self::field('settings[shared_cookie_domain]', $settings['shared_cookie_domain'], __('Shared cookie domain', 'portalweave-sso'), 'text', __('Example: .example.com. Every subdomain that can set cookies must be trusted.', 'portalweave-sso'));
-        self::secret('settings', 'shared_secret', !empty($settings['shared_secret']), __('Shared SSO signing secret', 'portalweave-sso'));
-        self::field('settings[shared_sites]', implode("\n", $settings['shared_sites']), __('Trusted shared SSO sites', 'portalweave-sso'), 'textarea', __('One exact HTTPS origin per line. Configure matching signing secrets and provider identities in each app.', 'portalweave-sso'));
-        self::check('settings[abilities_enabled]', $settings['abilities_enabled'], __('Enable the eight AI / MCP abilities', 'portalweave-sso'), __('Off by default. Execution requires manage_options; MCP transport requires the WordPress MCP Adapter.', 'portalweave-sso'));
+            self::integrations($settings, $network);
+            return;
         } elseif ($screen === 'reports') {
             echo '<section class="portalweave-sso-section"><h3>' . esc_html__('Audit collection and retention', 'portalweave-sso') . '</h3>';
         self::check('settings[debug]', $settings['debug'], __('Enable diagnostic debug events', 'portalweave-sso'), __('No bearer tokens, client secrets, or raw provider attributes are logged. Debug events are removed weekly.', 'portalweave-sso'));
@@ -796,6 +846,89 @@ final class Admin {
             echo '</details>';
         }
         echo '</section>';
+    }
+
+    private static function integrations(array $settings, bool $network): void {
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- A bounded section selects local presentation only; all integrations remain in the protected scoped form.
+        $section = self::integration_section($_GET, 'integration_section');
+        $groups = [
+            [__('Provisioning', 'portalweave-sso'), ['scim']],
+            [__('Sign-in and sessions', 'portalweave-sso'), ['jwt_sso', 'shared_sso', 'guest']],
+            [__('Account experience', 'portalweave-sso'), ['moderation', 'avatar', 'attribute_redirect']],
+            [__('Automation', 'portalweave-sso'), ['abilities']],
+        ];
+        $items = [
+            'scim' => [__('SCIM provisioning', 'portalweave-sso'), __('Create and manage site-owned directory users and groups through an authenticated SCIM client.', 'portalweave-sso'), 'networking'],
+            'jwt_sso' => [__('JWT single sign-on', 'portalweave-sso'), __('Accept signed ID tokens through the browser-bound JWT sign-in flow.', 'portalweave-sso'), 'shield'],
+            'shared_sso' => [__('Shared subdomain SSO', 'portalweave-sso'), __('Hand off sign-in between trusted HTTPS sites on the same parent domain.', 'portalweave-sso'), 'admin-multisite'],
+            'guest' => [__('Guest accounts', 'portalweave-sso'), __('Create temporary subscriber accounts through selected identity providers.', 'portalweave-sso'), 'clock'],
+            'moderation' => [__('User moderation', 'portalweave-sso'), __('Hold new nonprivileged identities for administrator approval before sign-in.', 'portalweave-sso'), 'admin-users'],
+            'avatar' => [__('Profile pictures', 'portalweave-sso'), __('Use a provider picture attribute for WordPress avatars.', 'portalweave-sso'), 'format-image'],
+            'attribute_redirect' => [__('Attribute redirects', 'portalweave-sso'), __('Choose a destination after sign-in using ordered provider claim rules.', 'portalweave-sso'), 'randomize'],
+            'abilities' => [__('AI / MCP abilities', 'portalweave-sso'), __('Expose eight administrator abilities to an authenticated automation client.', 'portalweave-sso'), 'admin-tools'],
+        ];
+        echo '<section id="portalweave-sso-modules" class="portalweave-sso-section portalweave-sso-integrations" data-integrations-editor data-integration-section="' . esc_attr($section) . '" data-enabled-label="' . esc_attr__('Enabled', 'portalweave-sso') . '" data-disabled-label="' . esc_attr__('Off', 'portalweave-sso') . '"><p class="portalweave-sso-integrations-intro">' . esc_html__('Choose an integration to configure it. Each integration starts off; enabling it keeps your existing account and access policies in place.', 'portalweave-sso') . '</p><input type="hidden" name="portalweave_sso_integration_section" value="' . esc_attr($section) . '"><div class="portalweave-sso-integrations-layout"><nav class="portalweave-sso-integrations-directory" data-integration-tabs aria-label="' . esc_attr__('Integration settings', 'portalweave-sso') . '">';
+        foreach ($groups as [$label, $keys]) {
+            echo '<div class="portalweave-sso-integration-group"><h3>' . esc_html($label) . '</h3>';
+            foreach ($keys as $key) {
+                [$title, , $icon] = $items[$key];
+                $enabled = $key === 'abilities' ? !empty($settings['abilities_enabled']) : !empty($settings['modules'][$key]);
+                echo '<a id="portalweave-sso-integration-tab-' . esc_attr($key) . '" href="#portalweave-sso-integration-panel-' . esc_attr($key) . '" data-integration-tab="' . esc_attr($key) . '"' . ($section === $key ? ' class="is-active"' : '') . '><span class="dashicons dashicons-' . esc_attr($icon) . '" aria-hidden="true"></span><span class="portalweave-sso-integration-name">' . esc_html($title) . '<span class="portalweave-sso-integration-status' . ($enabled ? ' is-enabled' : '') . '" data-integration-status>' . esc_html($enabled ? __('Enabled', 'portalweave-sso') : __('Off', 'portalweave-sso')) . '</span></span></a>';
+            }
+            echo '</div>';
+        }
+        echo '</nav><div class="portalweave-sso-integration-panels">';
+        foreach ($items as $key => [$title, $description]) {
+            echo '<section id="portalweave-sso-integration-panel-' . esc_attr($key) . '" class="portalweave-sso-integration-panel" data-integration-panel="' . esc_attr($key) . '"><h3>' . esc_html($title) . '</h3><p class="portalweave-sso-integration-description">' . esc_html($description) . '</p>';
+            if ($key === 'abilities') {
+                self::check('settings[abilities_enabled]', $settings['abilities_enabled'], __('Enable the eight AI / MCP abilities', 'portalweave-sso'), __('Requires WordPress 6.9 or later and manage_options. Install the WordPress MCP Adapter separately for MCP transport.', 'portalweave-sso'));
+                echo '<p>' . esc_html__('The adapter owns authentication and connection setup. PortalWeave SSO does not call an AI model itself. Review the client’s data handling before exposing personal audit output.', 'portalweave-sso') . '</p>';
+            } else {
+                self::check('settings[modules][' . $key . ']', $settings['modules'][$key] ?? false, __('Enable this integration', 'portalweave-sso'));
+                if ($key === 'scim') {
+                    self::secret('settings', 'scim_token', !empty($settings['scim_token']), __('SCIM bearer token', 'portalweave-sso'));
+                    echo '<p class="description">' . esc_html__('Use a dedicated cryptographically random token of at least 32 characters. Configure it in the provisioning client; it is never displayed again.', 'portalweave-sso') . '</p><p><strong>' . esc_html__('SCIM base URL', 'portalweave-sso') . '</strong><br><code class="portalweave-sso-integration-endpoint">' . esc_html(rest_url('portalweave-sso/v1/scim/v2')) . '</code></p>';
+                } elseif ($key === 'shared_sso') {
+                    self::field('settings[shared_cookie_domain]', $settings['shared_cookie_domain'], __('Shared cookie domain', 'portalweave-sso'), 'text', __('Example: .example.com. Every subdomain that can set cookies must be trusted.', 'portalweave-sso'));
+                    self::secret('settings', 'shared_secret', !empty($settings['shared_secret']), __('Shared SSO signing secret', 'portalweave-sso'));
+                    self::field('settings[shared_sites]', implode("\n", $settings['shared_sites']), __('Trusted shared SSO sites', 'portalweave-sso'), 'textarea', __('One exact HTTPS origin per line. Configure matching signing secrets and provider identities in each app.', 'portalweave-sso'));
+                } elseif ($key === 'guest') {
+                    self::field('settings[guest_ttl]', $settings['guest_ttl'] ?? 3600, __('Guest session lifetime (seconds)', 'portalweave-sso'), 'number', __('Between 300 and 86,400 seconds. Expired guests cannot sign in; scheduled cleanup retains accounts that authored content.', 'portalweave-sso'), ['min' => 300, 'max' => 86400]);
+                } elseif ($key === 'jwt_sso') {
+                    echo '<p>' . esc_html__('Use an OIDC provider that supports signed ID tokens with form_post. Configure its issuer, algorithms and trusted keys in the provider’s Security section.', 'portalweave-sso') . '</p>';
+                } elseif ($key === 'moderation') {
+                    echo '<p>' . esc_html__('Approve or block accounts under Users → Edit User → SSO account moderation. Approval does not grant roles; privileged accounts keep their recovery protections.', 'portalweave-sso') . '</p>';
+                } elseif ($key === 'avatar') {
+                    echo '<p>' . esc_html__('Set the picture attribute on each provider. Visitors’ browsers fetch the public HTTPS image from the picture host; disclose the host in your site privacy policy.', 'portalweave-sso') . '</p>';
+                } elseif ($key === 'attribute_redirect') {
+                    echo '<p>' . esc_html__('Set ordered claim, value and destination rules on each provider. Every destination must also pass the allowlist under Login & logout.', 'portalweave-sso') . '</p><p><a href="' . esc_url(self::screen_url('login', $network)) . '">' . esc_html__('Manage the redirect allowlist', 'portalweave-sso') . '</a></p>';
+                }
+                if ($key !== 'scim') {
+                    self::integration_providers($settings, $network, $key);
+                }
+            }
+            echo '</section>';
+        }
+        echo '</div></div></section>';
+    }
+
+    private static function integration_providers(array $settings, bool $network, string $integration): void {
+        echo '<div class="portalweave-sso-integration-providers"><h4>' . esc_html__('Provider settings', 'portalweave-sso') . '</h4><p>' . esc_html__('Provider options are saved separately. Save your integration changes before opening a provider.', 'portalweave-sso') . '</p>';
+        if (!$settings['apps']) {
+            echo '<p><a href="' . esc_url(self::screen_url('providers', $network)) . '">' . esc_html__('Add an identity provider', 'portalweave-sso') . '</a></p>';
+        } else {
+            echo '<ul>';
+            foreach ($settings['apps'] as $id => $app) {
+                $enabled = in_array($integration, ['avatar', 'attribute_redirect'], true) ? null : !empty($app[$integration]);
+                echo '<li><a href="' . esc_url(self::screen_url('providers', $network, ['provider' => (string) $id, 'provider_section' => 'integrations'])) . '">' . esc_html($app['name'] ?: (string) $id) . '</a>';
+                if ($enabled !== null) {
+                    echo '<span class="portalweave-sso-badge">' . esc_html($enabled ? __('Provider option on', 'portalweave-sso') : __('Provider option off', 'portalweave-sso')) . '</span>';
+                }
+                echo '</li>';
+            }
+            echo '</ul>';
+        }
+        echo '</div>';
     }
 
     private static function appearance(array $settings): void {
@@ -914,6 +1047,16 @@ final class Admin {
         echo '<p class="portalweave-sso-appearance-status" data-appearance-status role="status" aria-live="polite" aria-atomic="true"></p></aside>';
     }
 
+    private static function provider_logo(string $prefix, string $url): void {
+        echo '<div class="portalweave-sso-provider-logo" data-provider-logo data-logo-invalid="' . esc_attr__('Choose an HTTPS image URL without embedded credentials or a fragment. Media library images must also be served over HTTPS.', 'portalweave-sso') . '" data-logo-selected="' . esc_attr__('Custom logo selected. Save provider to apply it.', 'portalweave-sso') . '" data-logo-removed="' . esc_attr__('Custom logo removed. Save provider to apply it.', 'portalweave-sso') . '" data-logo-error="' . esc_attr__('The image could not be loaded. Check its URL or choose another image.', 'portalweave-sso') . '">';
+        self::field($prefix . '[icon_url]', $url, __('Custom logo URL', 'portalweave-sso'), 'url', __('Choose or upload an image, or paste an HTTPS image URL you control. This provider logo is used by shared buttons and the WordPress provider-icon option. Leave blank for the default appearance.', 'portalweave-sso'), ['maxlength' => 2048, 'pattern' => 'https://.+']);
+        echo '<div class="portalweave-sso-provider-logo-actions">';
+        if (current_user_can('upload_files')) {
+            echo '<button type="button" class="button button-secondary" data-logo-media data-media-title="' . esc_attr__('Choose a provider button logo', 'portalweave-sso') . '" data-media-button="' . esc_attr__('Use this image', 'portalweave-sso') . '" hidden>' . esc_html__('Choose or upload image', 'portalweave-sso') . '</button>';
+        }
+        echo '<button type="button" class="button button-secondary" data-logo-remove hidden>' . esc_html__('Remove custom logo', 'portalweave-sso') . '</button></div><div class="portalweave-sso-provider-logo-preview" data-logo-preview hidden><img data-logo-image alt="" referrerpolicy="no-referrer" width="64" height="64"><span>' . esc_html__('Custom logo preview', 'portalweave-sso') . '</span></div><p data-logo-status role="status" aria-live="polite" aria-atomic="true"></p></div>';
+    }
+
     private static function field(string $name, $value, string $label, string $type = 'text', string $help = '', array $attributes = []): void {
         $id = 'portalweave-sso-' . substr(md5($name), 0, 12);
         echo '<div class="portalweave-sso-field"><label for="' . esc_attr($id) . '">' . esc_html($label) . '</label>';
@@ -964,7 +1107,43 @@ final class Admin {
     }
 
     private static function json(string $name, array $value, string $label, string $help): void {
+        preg_match('/\[([a-z_]+)\]$/', $name, $match);
+        $type = $match[1] ?? '';
+        $roles = [];
+        foreach (wp_roles()->roles as $key => $role) {
+            $roles[$key] = translate_user_role($role['name']);
+        }
+        $labels = [
+            'visual' => __('Visual editor', 'portalweave-sso'), 'advanced' => __('Advanced JSON', 'portalweave-sso'),
+            'add' => __('Add rule', 'portalweave-sso'), 'remove' => __('Remove rule', 'portalweave-sso'),
+            'path' => __('Provider attribute path', 'portalweave-sso'), 'meta' => __('Profile field key', 'portalweave-sso'),
+            'group' => __('Provider group', 'portalweave-sso'), 'domain' => __('Email domain', 'portalweave-sso'),
+            'target_domain' => __('Replacement email domain', 'portalweave-sso'), 'roles' => __('WordPress roles', 'portalweave-sso'),
+            'claim' => __('Provider attribute path', 'portalweave-sso'), 'equals' => __('Matches value', 'portalweave-sso'),
+            'value_type' => __('Value type', 'portalweave-sso'), 'string' => __('Text', 'portalweave-sso'),
+            'number' => __('Number', 'portalweave-sso'), 'boolean' => __('Boolean', 'portalweave-sso'), 'null' => __('Null', 'portalweave-sso'),
+            'url' => __('Redirect URL', 'portalweave-sso'), 'target' => __('Content type', 'portalweave-sso'),
+            'posts' => __('Post or page', 'portalweave-sso'), 'categories' => __('Category', 'portalweave-sso'),
+            'id' => __('Content ID', 'portalweave-sso'), 'login' => __('Require sign-in', 'portalweave-sso'),
+            'groups' => __('Provider groups (one per line)', 'portalweave-sso'),
+            'empty' => __('No rules configured. Add a rule to get started.', 'portalweave-sso'),
+            'unsupported' => __('This JSON uses a structure the visual editor cannot represent. Continue editing JSON; your values have been kept.', 'portalweave-sso'),
+            'invalid' => __('Enter a valid JSON object or array before switching to the visual editor.', 'portalweave-sso'),
+            'duplicate' => __('Each source must be unique. Change or remove the duplicate rule.', 'portalweave-sso'),
+            'required' => __('Complete this rule or remove it.', 'portalweave-sso'),
+            'invalid_value' => __('Enter a valid value for the selected type.', 'portalweave-sso'),
+            'unsafe_number' => __('Use Advanced JSON to preserve large integer matches exactly. The visual editor accepts integers from -9007199254740991 to 9007199254740991.', 'portalweave-sso'),
+            'roles_help' => __('Select one or more roles. Existing administrator verification requirements still apply.', 'portalweave-sso'),
+            'row' => __('Rule', 'portalweave-sso'),
+        ];
+        $standard = [
+            'username' => __('Username', 'portalweave-sso'), 'email' => __('Email', 'portalweave-sso'),
+            'first_name' => __('First name', 'portalweave-sso'), 'last_name' => __('Last name', 'portalweave-sso'),
+            'display_name' => __('Display name', 'portalweave-sso'), 'groups' => __('Groups', 'portalweave-sso'),
+        ];
+        echo '<div class="portalweave-sso-mapping" data-mapping-editor="' . esc_attr($type) . '" data-mapping-config="' . esc_attr(wp_json_encode(['labels' => $labels, 'roles' => $roles, 'standard' => $standard, 'defaults' => Config::app_defaults()['mapping']])) . '">';
         self::field($name, wp_json_encode($value ?: new \stdClass(), JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES), $label, 'textarea', $help);
+        echo '</div>';
     }
 
     private static function activity_navigation(string $view, int $days, bool $network): void {
@@ -985,25 +1164,75 @@ final class Admin {
         ActivityView::render(Audit::summary($days), $provider_names, $period_urls, $days, (bool) Config::get('audit_enabled', true));
     }
 
-    private static function reports(array $settings, bool $network): void {
+    private static function reports(array $settings, bool $network, int $days = 30): array {
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- These bounded integers select read-only history; the page capability check gates all audit output.
+        $page = self::audit_number($_GET, 'audit_page', 1);
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- An integer row ceiling only stabilizes navigation through this site's retained audit events.
+        $snapshot = self::audit_number($_GET, 'audit_snapshot');
+        $history = Audit::page($page, 50, $snapshot);
         $url = wp_nonce_url(add_query_arg(['action' => 'portalweave_sso_export', 'kind' => 'audit', 'network' => $network ? 1 : 0], admin_url('admin-post.php')), 'portalweave_sso_export');
-        echo '<section id="portalweave-sso-reports" class="portalweave-sso-section"><div class="portalweave-sso-section-title"><h2>' . esc_html__('SSO transaction and login audit', 'portalweave-sso') . '</h2><a class="button" href="' . esc_url($url) . '">' . esc_html__('Export audit CSV', 'portalweave-sso') . '</a></div><p>' . esc_html__('Most recent 100 transactions for this site. Timestamps are UTC. Export contains up to 5,000 rows.', 'portalweave-sso') . '</p><div class="portalweave-sso-table-scroll"><table class="widefat striped"><thead><tr>';
+        echo '<section id="portalweave-sso-reports" class="portalweave-sso-section"><div class="portalweave-sso-section-title"><h2>' . esc_html__('SSO transaction and login audit', 'portalweave-sso') . '</h2><a class="button" href="' . esc_url($url) . '">' . esc_html__('Export audit CSV', 'portalweave-sso') . '</a></div><p>' . esc_html__('Retained events for this site, newest first, 50 per page. Timestamps are UTC. CSV exports the latest 5,000 rows independently of this page.', 'portalweave-sso') . '</p>';
+        if (is_wp_error($history)) {
+            echo '<div class="notice notice-error inline"><p>' . esc_html($history->get_error_message()) . '</p></div></section>';
+            return ['page' => $page, 'snapshot' => $snapshot];
+        }
+        self::audit_pagination($history, $network, $days, 'top');
+        echo '<div class="portalweave-sso-table-scroll" tabindex="0" role="region" aria-label="' . esc_attr__('Audit events', 'portalweave-sso') . '"><table class="widefat striped"><thead><tr>';
         foreach ([__('User', 'portalweave-sso'), __('Status', 'portalweave-sso'), __('App', 'portalweave-sso'), __('Date (UTC)', 'portalweave-sso'), __('Email', 'portalweave-sso'), __('Client IP', 'portalweave-sso'), __('Navigation URL', 'portalweave-sso'), __('Error code', 'portalweave-sso')] as $label) {
             echo '<th scope="col">' . esc_html($label) . '</th>';
         }
         echo '</tr></thead><tbody>';
-        $rows = Audit::recent(['limit' => 100]);
+        $rows = $history['rows'];
         foreach ($rows as $row) {
-            echo '<tr>';
+            echo '<tr data-audit-id="' . esc_attr((string) $row['id']) . '">';
             foreach (['username', 'status', 'app', 'created_at', 'email', 'client_ip', 'navigation', 'error_code'] as $key) {
                 echo '<td>' . esc_html((string) ($row[$key] ?? '')) . '</td>';
             }
             echo '</tr>';
         }
         if (!$rows) {
-            echo '<tr><td colspan="8">' . esc_html__('No SSO transactions recorded yet.', 'portalweave-sso') . '</td></tr>';
+            echo '<tr><td colspan="8">' . esc_html__('No retained events in this view. Refresh latest to check for new events.', 'portalweave-sso') . '</td></tr>';
         }
-        echo '</tbody></table></div></section>';
+        echo '</tbody></table></div>';
+        self::audit_pagination($history, $network, $days, 'bottom');
+        echo '</section>';
+        return ['page' => $history['page'], 'snapshot' => $history['snapshot']];
+    }
+
+    private static function audit_pagination(array $history, bool $network, int $days, string $position): void {
+        $page = $history['page'];
+        $pages = $history['pages'];
+        $total = $history['total'];
+        $first = $history['rows'] ? ($page - 1) * $history['per_page'] + 1 : 0;
+        $last = $first ? $first + count($history['rows']) - 1 : 0;
+        $args = ['activity_view' => 'audit', 'activity_days' => $days, 'audit_snapshot' => $history['snapshot']];
+        echo '<nav class="portalweave-sso-audit-pagination" data-audit-pagination="' . esc_attr($position) . '" data-audit-page="' . esc_attr((string) $page) . '" data-audit-pages="' . esc_attr((string) $pages) . '" aria-label="' . esc_attr($position === 'top' ? __('Audit pagination above events', 'portalweave-sso') : __('Audit pagination below events', 'portalweave-sso')) . '"><span class="portalweave-sso-audit-count">';
+        /* translators: 1: first event number, 2: last event number, 3: total retained events. */
+        echo esc_html(sprintf(__('%1$s–%2$s of %3$s events', 'portalweave-sso'), number_format_i18n($first), number_format_i18n($last), number_format_i18n($total)));
+        echo '</span><div class="portalweave-sso-audit-page-actions">';
+        foreach ([
+            ['first', 1, __('First', 'portalweave-sso'), $page > 1],
+            ['previous', $page - 1, __('Previous', 'portalweave-sso'), $page > 1],
+        ] as [$key, $target, $label, $enabled]) {
+            self::audit_page_link($key, $target, $label, $enabled, $network, $args);
+        }
+        /* translators: 1: current page, 2: total pages. */
+        echo '<span class="portalweave-sso-audit-page-number">' . esc_html(sprintf(__('Page %1$s of %2$s', 'portalweave-sso'), number_format_i18n($page), number_format_i18n($pages))) . '</span>';
+        foreach ([
+            ['next', $page + 1, __('Next', 'portalweave-sso'), $page < $pages],
+            ['last', $pages, __('Last', 'portalweave-sso'), $page < $pages],
+        ] as [$key, $target, $label, $enabled]) {
+            self::audit_page_link($key, $target, $label, $enabled, $network, $args);
+        }
+        echo '</div><a class="portalweave-sso-audit-refresh" href="' . esc_url(self::screen_url('reports', $network, ['activity_view' => 'audit', 'activity_days' => $days])) . '">' . esc_html__('Refresh latest', 'portalweave-sso') . '</a></nav>';
+    }
+
+    private static function audit_page_link(string $key, int $target, string $label, bool $enabled, bool $network, array $args): void {
+        if ($enabled) {
+            echo '<a class="button" data-audit-link="' . esc_attr($key) . '" href="' . esc_url(self::screen_url('reports', $network, $args + ['audit_page' => $target])) . '">' . esc_html($label) . '</a>';
+        } else {
+            echo '<span class="button disabled" aria-disabled="true">' . esc_html($label) . '</span>';
+        }
     }
 
     private static function tools(array $settings, bool $network, bool $enforced): void {

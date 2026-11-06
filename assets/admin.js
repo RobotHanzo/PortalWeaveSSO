@@ -29,6 +29,8 @@
         // Changing providers is explicit; credentials and existing endpoint values are preserved.
         if (!field.value || key === 'protocol' || key === 'scope' || key === 'subject_attribute' || key === 'verified_attribute' || key === 'mapping') {
           field.value = typeof value === 'object' ? JSON.stringify(value, null, 2) : value;
+          field.dispatchEvent(new Event('input', { bubbles: true }));
+          field.dispatchEvent(new Event('change', { bubbles: true }));
         }
       });
     });

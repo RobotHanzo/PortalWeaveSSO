@@ -1,0 +1,184 @@
+.portalweave-sso-integrations-intro {
+    max-width: 72ch;
+    margin: 0 0 24px;
+}
+
+.portalweave-sso-integrations-layout {
+    display: grid;
+    grid-template-columns: 210px minmax(0, 1fr);
+    gap: 28px;
+    align-items: start;
+}
+
+.portalweave-sso-integrations-directory {
+    border-inline-end: 1px solid var(--portalweave-sso-line);
+    padding-inline-end: 18px;
+}
+
+.portalweave-sso-integration-group + .portalweave-sso-integration-group {
+    margin-top: 20px;
+}
+
+.portalweave-sso-integration-group h3 {
+    margin: 0 0 7px;
+    font-size: 12px;
+    font-weight: 600;
+    color: var(--portalweave-sso-muted);
+}
+
+.portalweave-sso-integration-group a {
+    display: flex;
+    align-items: flex-start;
+    gap: 9px;
+    padding: 9px 8px;
+    margin: 2px 0;
+    border-radius: 3px;
+    color: var(--portalweave-sso-ink);
+    font-size: 13px;
+    line-height: 1.45;
+    text-decoration: none;
+}
+
+.portalweave-sso-integration-group a:hover {
+    background: #f6f7f7;
+}
+
+.portalweave-sso-integration-group a.is-active {
+    color: var(--portalweave-sso-accent);
+    background: var(--portalweave-sso-tint);
+    box-shadow: inset 3px 0 var(--portalweave-sso-accent);
+}
+
+[dir="rtl"] .portalweave-sso-integration-group a.is-active {
+    box-shadow: inset -3px 0 var(--portalweave-sso-accent);
+}
+
+.portalweave-sso-integration-group .dashicons {
+    flex: 0 0 18px;
+    width: 18px;
+    height: 18px;
+    font-size: 18px;
+}
+
+.portalweave-sso-integration-name {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+.portalweave-sso-integration-status {
+    display: block;
+    margin-top: 2px;
+    color: var(--portalweave-sso-muted);
+    font-size: 11px;
+    font-weight: 400;
+}
+
+.portalweave-sso-integration-status.is-enabled {
+    color: #006b3c;
+}
+
+.portalweave-sso-integration-panel {
+    min-width: 0;
+    scroll-margin-top: 48px;
+}
+
+.portalweave-sso-integration-panel[hidden] {
+    display: none;
+}
+
+.portalweave-sso-integration-panel + .portalweave-sso-integration-panel {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid var(--portalweave-sso-line);
+}
+
+.is-enhanced .portalweave-sso-integration-panel {
+    margin-top: 0;
+    padding-top: 0;
+    border-top: 0;
+}
+
+.portalweave-sso-integration-panel > h3 {
+    margin: 0 0 8px;
+    font-size: 19px;
+    line-height: 1.4;
+}
+
+.portalweave-sso-integration-description {
+    max-width: 65ch;
+    margin: 0 0 22px;
+    color: var(--portalweave-sso-muted);
+}
+
+.portalweave-sso-integration-panel .portalweave-sso-check {
+    margin-bottom: 24px;
+}
+
+.portalweave-sso-integration-endpoint {
+    display: inline-block;
+    margin-top: 6px;
+    overflow-wrap: anywhere;
+}
+
+.portalweave-sso-integration-providers {
+    margin-top: 28px;
+    padding-top: 20px;
+    border-top: 1px solid var(--portalweave-sso-line);
+}
+
+.portalweave-sso-integration-providers h4 {
+    margin: 0;
+    font-size: 14px;
+}
+
+.portalweave-sso-integration-providers p {
+    color: var(--portalweave-sso-muted);
+}
+
+.portalweave-sso-integration-providers li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px 14px;
+    margin: 0;
+    padding: 8px 0;
+}
+
+.portalweave-sso-integration-providers a {
+    overflow-wrap: anywhere;
+}
+
+@media (max-width: 1100px) {
+    .portalweave-sso-integrations-layout {
+        grid-template-columns: 175px minmax(0, 1fr);
+        gap: 20px;
+    }
+}
+
+@media (max-width: 700px) {
+    .portalweave-sso-integrations-layout {
+        display: block;
+    }
+
+    .portalweave-sso-integrations-directory {
+        border-inline-end: 0;
+        border-bottom: 1px solid var(--portalweave-sso-line);
+        padding: 0 0 20px;
+        margin-bottom: 24px;
+    }
+
+    .portalweave-sso-integration-group a {
+        padding: 8px;
+    }
+
+    .portalweave-sso-integration-name {
+        display: flex;
+        flex: 1;
+        justify-content: space-between;
+        gap: 8px;
+    }
+
+    .portalweave-sso-integration-status {
+        margin-top: 0;
+    }
+}

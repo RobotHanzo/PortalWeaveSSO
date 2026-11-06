@@ -40,9 +40,7 @@ final class Audit
             return;
         }
         $user = $user instanceof \WP_User ? $user : ($user ? get_userdata((int) $user) : null);
-        $ip = Config::get('audit_ip') && isset($_SERVER['REMOTE_ADDR']) && is_string($_SERVER['REMOTE_ADDR']) ? sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'])) : '';
-        // Proxy headers are untrusted. Configure the web server's real IP module instead.
-        $ip = filter_var($ip, FILTER_VALIDATE_IP) ? $ip : '';
+        $ip = Config::get('audit_ip') ? ClientIp::current() : '';
         $navigation = $navigation ?: Redirect::current();
         $navigation = preg_replace('/[?#].*$/', '', (string) $navigation);
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Core has no higher-level API for this plugin-owned audit table; wpdb formats the inserted values and audit rows are not cached.
@@ -75,6 +73,44 @@ final class Audit
             $wpdb->prefix . 'portalweave_sso_audit', $status, $status, $app, $app, $user_id, $user_id, $limit, $offset
         ), ARRAY_A) ?: [];
         return $rows;
+    }
+
+    /** A bounded page of this blog's retained history, stable against newly appended events. */
+    public static function page(int $page = 1, int $per_page = 50, int $snapshot = 0): array|\WP_Error
+    {
+        global $wpdb;
+        $per_page = max(1, min(100, $per_page));
+        $snapshot = max(0, $snapshot);
+        $suppressed = $wpdb->suppress_errors(true);
+        try {
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Core has no pagination API for this blog-owned audit table; count current retained rows without caching personal data. The ceiling keeps appended events from shifting later pages.
+            $totals = $wpdb->get_row($wpdb->prepare(
+                'SELECT COUNT(*) AS total, MAX(id) AS latest FROM %i WHERE (%d = 0 OR id <= %d)',
+                $wpdb->prefix . 'portalweave_sso_audit', $snapshot, $snapshot
+            ), ARRAY_A);
+            if ($wpdb->last_error !== '' || !is_array($totals)) {
+                return new \WP_Error('portalweave_sso_audit_page', __('Audit events could not be loaded. Please try again.', 'portalweave-sso'));
+            }
+            $total = (int) $totals['total'];
+            $snapshot = (int) ($totals['latest'] ?? 0);
+            $pages = max(1, (int) ceil($total / $per_page));
+            $page = max(1, min($pages, $page));
+            $offset = ($page - 1) * $per_page;
+            $rows = [];
+            if ($total > 0) {
+                // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- The protected admin viewer needs this blog's current audit fields; prepared ceiling/offset/limit bound the read and avoid an extra personal-data cache.
+                $rows = $wpdb->get_results($wpdb->prepare(
+                    'SELECT id, username, status, app, created_at, email, client_ip, navigation, error_code FROM %i WHERE id <= %d ORDER BY id DESC LIMIT %d OFFSET %d',
+                    $wpdb->prefix . 'portalweave_sso_audit', $snapshot, $per_page, $offset
+                ), ARRAY_A);
+                if ($wpdb->last_error !== '' || !is_array($rows)) {
+                    return new \WP_Error('portalweave_sso_audit_page', __('Audit events could not be loaded. Please try again.', 'portalweave-sso'));
+                }
+            }
+            return ['rows' => $rows, 'total' => $total, 'page' => $page, 'pages' => $pages, 'per_page' => $per_page, 'snapshot' => $snapshot];
+        } finally {
+            $wpdb->suppress_errors($suppressed);
+        }
     }
 
     /** Aggregate retained audit events for this blog, including in Network Admin. */

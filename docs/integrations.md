@@ -2,6 +2,8 @@
 
 Every optional module starts disabled. Enabling a module does not disable the core account rules: provider identities, verified email, administrator protections, domain restrictions and redirect allowlists still apply.
 
+Open **PortalWeave SSO → Integrations**, then choose an integration from the grouped directory. Its enable switch, configuration and provider setup links are kept together. **Save changes** saves all integration panels, including any changes made before switching panels. Provider-specific options open in their own editor and are saved separately; save integration changes before following those links. Without JavaScript, the directory links jump to the corresponding sections and every integration remains editable.
+
 The plugin's proposed directory slug/text domain is `portalweave-sso`. Protocol routes and abilities use `portalweave-sso`, commands use `wp portalweave-sso`, PHP classes use `PortalWeaveSSO`, hooks and option/meta names use `portalweave_sso_*`, and server configuration constants use `PORTALWEAVE_SSO_*`. Earlier technical names are unsupported; existing deployments must follow [the replacement procedure](provider-setup.md#replacing-an-earlier-installation). See [external-service disclosures](external-services.md) and [privacy/retention behavior](privacy.md) when deciding which integrations to enable.
 
 ## SCIM 2.0 inbound provisioning
@@ -15,6 +17,8 @@ On multisite, provisioning ownership, activity, external IDs and group membershi
 Supported filters are `userName eq "value"`, `externalId eq "value"`, `id eq "value"`, `displayName eq "value"` and `emails.value eq "value"`. Other grammar returns a SCIM invalidFilter response. Pagination uses startIndex (one based) and count (0–200). Bulk, sorting, password changes and ETags are not advertised. Collection listing remains suitable for small and medium directories; equality filtering currently scans provisioned resources in batches, so benchmark large directories before rollout.
 
 PATCH accepts add, replace and remove for userName, externalId, displayName, active, name, emails and members; `name.givenName`/`name.familyName` and `members[value eq "123"]` removal are supported. Unsupported paths fail explicitly. PUT replaces the supported mutable fields; absent optional attributes are cleared or use their standard active default. DELETE users deactivates the local account and revokes every WordPress session instead of deleting authored content. GET continues returning the retained resource with active=false. Group deletion removes memberships. Reprovision the user with active=true to restore access.
+
+Deactivated, pending, blocked and expired guest accounts also fail native WordPress Application Password authentication for REST and XML-RPC. Existing Application Password records are retained, so reactivation or approval restores their use. On multisite, site-scoped account restrictions apply only on that site and do not delete credentials shared with other sites.
 
 ### Example
 

@@ -357,7 +357,7 @@ final class Auth {
             Audit::record('test_success', $app['id'], wp_get_current_user(), '', $flow['redirect']);
             $draft = !empty($flow['test_config']);
             $message = $draft ? '<p>' . esc_html__('Connection test succeeded. Return to the setup tab to save your provider. These details have not been saved.', 'portalweave-sso') . '</p>' : '';
-            $settings_url = !empty($flow['test_network']) ? network_admin_url('admin.php?page=portalweave-sso') : admin_url('options-general.php?page=portalweave-sso');
+            $settings_url = !empty($flow['test_network']) ? network_admin_url('admin.php?page=portalweave-sso') : admin_url('admin.php?page=portalweave-sso');
             self::page(__('SSO configuration test', 'portalweave-sso'), $message . '<p>' . esc_html__('Authentication succeeded. These are the attributes returned by the configured provider. No user account was created or signed in.', 'portalweave-sso') . '</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere">' . esc_html(wp_json_encode($attributes, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)) . '</pre><p><a href="' . esc_url($settings_url) . '">' . esc_html__('Return to settings', 'portalweave-sso') . '</a></p>');
         }
         $user = Accounts::resolve($app, $attributes, $tokens);
@@ -378,7 +378,7 @@ final class Auth {
         self::remember_sid($user->ID, $app, $attributes);
         wp_set_current_user($user->ID);
         wp_set_auth_cookie($user->ID, false, true);
-        do_action('wp_login', $user->user_login, $user); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Required WordPress core login event for session integrations.
+        do_action('wp_login', $user->user_login, $user, 'portalweave-sso'); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Required core login event; internal context suppresses only its duplicate local audit event.
         do_action('portalweave_sso_authenticated', $user, $app, $attributes);
         $redirect = apply_filters('portalweave_sso_login_redirect', $flow['redirect'], $app, $attributes, $user);
         $redirect = Redirect::validate(is_string($redirect) ? $redirect : '');
@@ -519,24 +519,54 @@ final class Auth {
         if (!is_user_logged_in()) {
             self::redirect(Redirect::validate((string) Config::get('logout_redirect', home_url('/'))));
         }
-        $request = self::request_method() === 'POST' ? $_POST : $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.NonceVerification.Recommended -- Select the method-specific nonce source; the nonce is verified immediately below before reading logout fields or changing a session.
+        $method = self::request_method();
+        if (!in_array($method, ['GET', 'POST'], true)) {
+            self::fail(new \WP_Error('portalweave_sso_logout_method', __('Use the sign-out page to end your session.', 'portalweave-sso')));
+        }
+        $request = $method === 'POST' ? $_POST : $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.NonceVerification.Recommended -- Select the method-specific nonce source; the nonce is verified immediately below before reading logout fields or changing a session.
         if (!wp_verify_nonce(sanitize_text_field(self::input($request, '_wpnonce')), 'portalweave_sso_logout')) {
             self::fail(new \WP_Error('portalweave_sso_logout_nonce', __('The logout link has expired. Please try again.', 'portalweave-sso')));
         }
         $redirect = self::input($request, 'redirect_to');
         $redirect = Redirect::validate($redirect !== '' ? $redirect : (string) Config::get('logout_redirect', home_url('/')));
-        if (Config::get('logout_confirmation', true) && self::input($request, 'confirm') !== '1') {
-            $html = '<form method="post" action="' . esc_url(add_query_arg('portalweave_sso_action', 'logout', home_url('/'))) . '"><input type="hidden" name="confirm" value="1"><input type="hidden" name="_wpnonce" value="' . esc_attr(wp_create_nonce('portalweave_sso_logout')) . '"><input type="hidden" name="redirect_to" value="' . esc_attr($redirect) . '"><p>' . esc_html__('Sign out of this site and your identity provider?', 'portalweave-sso') . '</p><button type="submit">' . esc_html__('Sign out', 'portalweave-sso') . '</button></form>';
-            self::page(__('Confirm sign out', 'portalweave-sso'), $html);
-        }
         $user = wp_get_current_user();
         $app_id = get_user_meta($user->ID, self::app_meta_key(), true);
         $app = Config::app(is_string($app_id) ? $app_id : '');
-        $tokens = $app ? self::read_tokens($user->ID, $app['id']) : [];
+        $can_provider = $app && isset($app['logout_url']) && is_string($app['logout_url']) && self::https_endpoint($app['logout_url']);
+        $confirmation = Config::get('logout_confirmation', true);
+        if ($confirmation && ($method !== 'POST' || self::input($request, 'confirm') !== '1')) {
+            header('Content-Type: text/html; charset=UTF-8');
+            header('Cache-Control: no-store, private, max-age=0');
+            header("Content-Security-Policy: default-src 'none'; style-src 'self'; img-src 'self'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
+            $context = [
+                'site_name' => wp_specialchars_decode(get_bloginfo('name'), ENT_QUOTES),
+                'provider_name' => $app['name'] ?? '',
+                'action_url' => add_query_arg('portalweave_sso_action', 'logout', home_url('/')),
+                'nonce' => wp_create_nonce('portalweave_sso_logout'),
+                'redirect' => $redirect,
+                'back_url' => self::logout_back_url(),
+                'can_provider' => (bool) $can_provider,
+            ];
+            // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- LogoutView renders fixed markup with individually escaped context values.
+            echo LogoutView::render($context);
+            exit;
+        }
+        $scope = self::input($request, 'logout_scope');
+        if (!$confirmation && !array_key_exists('logout_scope', $request)) {
+            // Preserve existing nonce-bearing links when confirmation is disabled.
+            $scope = $can_provider ? 'all' : 'site';
+        }
+        if (!in_array($scope, ['all', 'site'], true) || ($scope === 'all' && !$can_provider)) {
+            self::fail(new \WP_Error('portalweave_sso_logout_scope', __('Choose an available sign-out option and try again.', 'portalweave-sso')));
+        }
+        $tokens = $scope === 'all' ? self::read_tokens($user->ID, $app['id']) : [];
         $state = '';
         $callback = add_query_arg('portalweave_sso_action', 'logout_callback', home_url('/'));
-        if ($app && !empty($app['logout_url']) && self::https_endpoint($app['logout_url'])) {
+        if ($scope === 'all') {
             $state = self::create_flow(['kind' => 'logout', 'app' => $app['id'], 'redirect' => $redirect, 'callback' => $callback]);
+            if (is_wp_error($state)) {
+                self::fail($state, $app['id']);
+            }
         }
         if ($app) {
             delete_user_meta($user->ID, self::token_meta_key($app['id']));
@@ -551,6 +581,21 @@ final class Auth {
             self::send_redirect(add_query_arg($params, $app['logout_url']));
         }
         self::redirect($redirect);
+    }
+
+    /** Cancellation stays on this site and must not re-enter a sign-out route. */
+    private static function logout_back_url(): string {
+        $referer = wp_get_referer();
+        $url = Redirect::validate(is_string($referer) ? $referer : '');
+        if (!Redirect::same_origin($url, home_url('/'))) {
+            return home_url('/');
+        }
+        $query = [];
+        wp_parse_str((string) wp_parse_url($url, PHP_URL_QUERY), $query);
+        if (isset($query['portalweave_sso_action']) || ($query['action'] ?? '') === 'logout') {
+            return home_url('/');
+        }
+        return remove_query_arg(['code', 'state', 'id_token', 'access_token', 'refresh_token', '_wpnonce'], $url);
     }
 
     private static function logout_callback() {

@@ -1,14 +1,63 @@
 # PortalWeave SSO provider setup and administrator guide
 
-Install `portalweave-sso-1.0.1.zip` through **Plugins → Add New → Upload Plugin**, activate **PortalWeave SSO**, and open **Settings → PortalWeave SSO**. On multisite, **Network Admin → PortalWeave SSO** can enforce a network-wide policy. Each WordPress network has its own network option.
+Install `portalweave-sso-1.3.0.zip` through **Plugins → Add New → Upload Plugin**, activate **PortalWeave SSO**, and open **PortalWeave SSO** in the WordPress admin sidebar. On multisite, **Network Admin → PortalWeave SSO** can enforce a network-wide policy. Each WordPress network has its own network option.
 
 The proposed directory slug and text domain are `portalweave-sso`. Use the `[sso_oauth_login]` shortcode, `PORTALWEAVE_SSO_*` server configuration constants, `PortalWeaveSSO` PHP namespace and `wp portalweave-sso` commands.
 
 SSO requires HTTPS. Configure WordPress's HTTPS detection for a trusted reverse proxy when TLS terminates there. Keep `AUTH_KEY`, `SECURE_AUTH_KEY` and the WordPress salts stable: stored secrets and tokens depend on them for encryption. Changing them requires re-entering credentials and signing in again. Include this server configuration in your protected recovery backup.
 
+## Client IPs behind Nginx and Cloudflare
+
+In **Activity**, enable **Include client IP addresses in audit events** only when needed and disclose the collection in the site's privacy policy. It remains off by default. With collection enabled, the plugin normally records the validated PHP `REMOTE_ADDR`. The deployment settings below affect new audit rows; existing rows and retention preferences are unchanged. They do not configure WordPress's HTTPS detection or change authentication policy.
+
+### Restore the address in Nginx
+
+For Cloudflare directly in front of Nginx, use Nginx's [real-IP module](https://nginx.org/en/docs/http/ngx_http_realip_module.html), trusting only the current [Cloudflare IPv4 and IPv6 ranges](https://www.cloudflare.com/ips/). For example, create an operator-managed include containing one `set_real_ip_from <CIDR>;` directive for every current Cloudflare range, then use this configuration in the existing `http` or site `server` block:
+
+```nginx
+include /etc/nginx/cloudflare-trusted-proxies.conf;
+real_ip_header CF-Connecting-IP;
+real_ip_recursive on;
+```
+
+Keep that include current; the plugin does not download proxy lists. The include contains Nginx directives, not a plain list of IPs. Follow [Cloudflare's web-server instructions](https://developers.cloudflare.com/support/troubleshooting/restoring-visitor-ips/restoring-original-visitor-ips/#web-server-instructions), validate the effective configuration before reloading, then verify the recorded address from a known client. For this example, keep Cloudflare Pseudo IPv4 **Off** or **Add Header** so the selected header retains the real address.
+
+When Nginx passes the restored address to PHP as `REMOTE_ADDR`, leave the plugin's trusted-proxy list empty. Applying a second forwarding-header interpretation could change an already restored address. If Nginx instead proxies HTTP to a separate WordPress web server, overwrite `X-Real-IP` with `$remote_addr` in that proxy location and configure the plugin to trust only that Nginx server with the `X-Real-IP` mode described below. Restrict the backend to the intended proxy. This makes Nginx responsible for validating the Cloudflare hop and emitting the canonical address.
+
+### Configure application-level proxy trust
+
+If the web server leaves a proxy address in `REMOTE_ADDR`, define the following in the protected `wp-config.php` before WordPress loads. These are fictional examples: replace them with the exact addresses or narrow ranges of proxies you operate.
+
+```php
+define('PORTALWEAVE_SSO_TRUSTED_PROXIES', ['192.0.2.10', '2001:db8:100::/64']);
+define('PORTALWEAVE_SSO_CLIENT_IP_HEADER', 'X-Forwarded-For');
+```
+
+The trust list defaults to empty and accepts at most 128 explicit IPv4/IPv6 addresses or CIDRs. Prefix lengths must be `/1` through `/32` for IPv4 or `/1` through `/128` for IPv6. Hostnames, `/0`, malformed entries or an invalid list disable forwarded-header trust for that request. Address families match strictly: an IPv4-mapped IPv6 peer needs a matching IPv6 trust entry. Keep this server policy out of plugin settings imports and exports.
+
+`PORTALWEAVE_SSO_CLIENT_IP_HEADER` accepts these names case-insensitively:
+
+| Mode | Deployment contract |
+| --- | --- |
+| `X-Forwarded-For` (default) | Every trusted proxy appends its observed peer. For a plain Nginx HTTP proxy without real-IP rewriting, use `proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;`. The plugin walks the chain from right to left, stopping at the first untrusted address. |
+| `X-Real-IP` | The trusted immediate proxy overwrites the header with one verified address, for example `proxy_set_header X-Real-IP $remote_addr;` after Nginx real-IP restoration. |
+| `CF-Connecting-IP` | The immediate peer is a configured Cloudflare edge, or a controlled relay that verifies Cloudflare provenance and strips or overwrites client-supplied Cloudflare headers. See the additional conditions below. |
+
+Nginx documents how [`$proxy_add_x_forwarded_for` appends the connecting peer](https://nginx.org/en/docs/http/ngx_http_proxy_module.html#var_proxy_add_x_forwarded_for). Preserve that socket-peer provenance across each hop; real-IP rewriting changes `$remote_addr`, so review any combined rewriting/forwarding configuration rather than copying the plain-proxy example unchanged.
+
+Only the selected header and, in Cloudflare mode, its IPv6 companion described below are considered, and only when `REMOTE_ADDR` matches the trust list. Headers must contain bare IP addresses without ports, brackets or zone identifiers. The selected header is limited to 4,096 bytes; XFF is limited to 32 hops. Invalid configuration, missing headers, malformed consumed addresses and exceeded limits fall back to the validated `REMOTE_ADDR`; an invalid `REMOTE_ADDR` produces an empty IP. XFF entries to the left of the first untrusted address are ignored, including malformed caller-supplied prefixes. Private networks and localhost are never trusted automatically.
+
+### Cloudflare header mode
+
+For a direct Cloudflare connection, populate the trust list with all current official Cloudflare IPv4 and IPv6 CIDRs and select `CF-Connecting-IP`. For Cloudflare through another relay, trusting that relay's address is safe only if it authenticates or restricts its upstream to the intended Cloudflare traffic and controls both Cloudflare IP headers. A relay that merely forwards arbitrary incoming headers can let clients forge the recorded IP. Normalizing the address in Nginx and using `X-Real-IP` is the simpler relay configuration above.
+
+In Cloudflare's **Overwrite Headers** [Pseudo IPv4 mode](https://developers.cloudflare.com/network/pseudo-ipv4/), `CF-Connecting-IP` can contain a synthetic address in `240.0.0.0/4`. In the plugin's trusted Cloudflare mode, a valid `CF-Connecting-IPv6` then supplies the actual IPv6 address; a missing or invalid IPv6 value falls back to `REMOTE_ADDR`. The plugin ignores `CF-Pseudo-IPv4`. Cloudflare Workers and other upstream proxies can change which party the address identifies; [Cloudflare documents those header semantics](https://developers.cloudflare.com/fundamentals/reference/http-headers/#cf-connecting-ip). The plugin cannot recover an original browser address that the upstream did not preserve.
+
 ## Replacing an earlier installation
 
-This release replaces the entire technical namespace. It provides no earlier-name aliases, automatic database conversion or fallback to previous storage. Treat replacement as a controlled deployment rather than an in-place compatible update:
+Upgrading from PortalWeave SSO 1.0.1 retains existing configuration. The new WordPress sign-in customization remains off until explicitly enabled, so the shared appearance continues to apply.
+
+The controlled replacement below applies to installations using the technical namespace from before 1.0.1. There are no earlier-name aliases, automatic database conversion or fallback to that previous storage. Treat such a replacement as a controlled deployment rather than an in-place compatible update:
 
 1. Restrict the site at the web server or another external access boundary before replacing the plugin. Earlier whole-site, content, moderation and provisioning blocks will not be read under the new names. Existing WordPress accounts and sessions persist; changing the plugin namespace does not revoke those sessions.
 2. Back up the complete database, WordPress salts, server configuration and private-media vault together. Retain the previous plugin version for rollback. A redacted configuration export omits credentials and cannot recover identity links, tokens, policy metadata or vault provenance.
@@ -94,6 +143,14 @@ Email verification is required by default. An OAuth-only provider without a trus
 
 Review [external services and provider policy links](external-services.md) before enabling each provider. Setup derives local configuration and links official instructions; it does not fetch discovery documents or contact an identity service. Actual authentication exchanges occur when login/test/refresh/logout flows run; optional remote icons and mapped pictures also make browser requests. Choose necessary scopes and mappings, and disclose the actual recipients to your users.
 
+### Sign-out choices
+
+With sign-out confirmation enabled, the sign-out page offers **Sign out of this site and [provider name]**, **Sign out of this site**, and **Go back**. The combined action appears only when the provider linked to the current user has a configured, valid HTTPS end-session URL. Site-only sign-out ends the current WordPress session and clears that provider's locally stored tokens; the provider session stays active. Go back returns to a safe page on this site and keeps the session active.
+
+Configure the provider's documented end-session endpoint under **Identity providers → [provider] → Endpoints**, and register the separate logout return URI if required. A configured endpoint does not establish that the provider registration is complete; test sign-out against the actual provider before rollout. Providers without browser sign-out support, and users signed in through WordPress alone, receive site-only sign-out and Go back. Signed back-channel logout alone does not enable the combined action.
+
+When confirmation is disabled, existing nonce-bearing sign-out links continue directly to provider sign-out when an endpoint is available, or site-only sign-out otherwise. The choices are shown when confirmation is enabled.
+
 For provider-initiated OIDC session revocation, enable **signed OIDC back-channel logout** on the app and register the displayed back-channel URL with your provider. The provider must send a signed logout token; the endpoint validates the provider signature and logout-token claims and rejects replays. The ordinary end-session URL is used for browser-initiated logout.
 
 Provider references: [Microsoft discovery metadata](https://learn.microsoft.com/en-us/entra/identity-platform/v2-protocols-oidc), [Cognito endpoints](https://docs.aws.amazon.com/cognito/latest/developerguide/federation-endpoints.html), [OneLogin user-info](https://developers.onelogin.com/docs/openid-connect/api/user-info/), [ClassLink user-info](https://apisandbox.classlink.com/reference/v2myinfo), and [authentik OAuth2 provider](https://docs.goauthentik.io/add-secure-apps/providers/oauth2/).
@@ -108,7 +165,7 @@ Domain allow/block policy uses exact lower-case domains. Domain mapping is an op
 
 ## Login display
 
-Insert `[sso_oauth_login]` or add the **PortalWeave SSO login** widget. WooCommerce's login form gets enabled-provider buttons. Customize global theme, shape, size, curve, spacing, shadow, and hover treatment. Each app can set text and an HTTPS icon URL. `##user##` and `##Sign Out##` are available in the logged-in message. Button assets load for the relevant login/widget/shortcode/account contexts; normal pages without those displays do not need them.
+Insert `[sso_oauth_login]` or add the **PortalWeave SSO login** widget. WooCommerce's login form gets enabled-provider buttons. Customize global theme, shape, size, curve, spacing, shadow, and hover treatment. In each provider's **Login button** section, set its text and choose or upload a custom logo using the WordPress media library, or paste an HTTPS image URL. Upload and selection require WordPress upload permission; a manual URL remains available. Selected media must be served over HTTPS. The preview and removal controls affect the current draft until **Save provider**; removing a custom logo restores the default appearance. The same provider logo is used by shared buttons and WordPress's provider-icon choice. `##user##` and `##Sign Out##` are available in the logged-in message. Button assets load for the relevant login/widget/shortcode/account contexts; normal pages without those displays do not need them.
 
 Open **Appearance → WordPress sign-in** to give the SSO buttons on `wp-login.php` their own appearance. Enable customization, then adjust text, normal and hover colors, borders, corners, font size, padding, width and shadows. The live preview follows the selected provider. Presets provide a starting point; save changes to apply your choices. The shared appearance remains in use until customization is enabled.
 

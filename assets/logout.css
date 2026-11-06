@@ -1,0 +1,179 @@
+.portalweave-sso-logout {
+    box-sizing: border-box;
+    display: grid;
+    min-height: 100vh;
+    min-height: 100svh;
+    margin: 0;
+    padding: 36px 24px;
+    place-items: center;
+    background: #f1f4f8;
+    color: #17243a;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-size: 16px;
+    line-height: 1.6;
+    color-scheme: light;
+}
+
+.portalweave-sso-logout *,
+.portalweave-sso-logout *::before,
+.portalweave-sso-logout *::after {
+    box-sizing: inherit;
+}
+
+.portalweave-sso-logout-panel {
+    width: 100%;
+    max-width: 540px;
+    padding: 40px;
+    border: 1px solid #d8e0eb;
+    border-radius: 12px;
+    background: #fff;
+    box-shadow: 0 12px 40px #17243a0a;
+    overflow-wrap: anywhere;
+}
+
+.portalweave-sso-logout-site {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.portalweave-sso-logout-site img {
+    display: block;
+    width: 44px;
+    height: 44px;
+    flex: 0 0 auto;
+}
+
+.portalweave-sso-logout-site-name {
+    margin: 0;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.portalweave-sso-logout-brand {
+    margin: 3px 0 0;
+    color: #526178;
+    font-size: 12px;
+    line-height: 1.4;
+}
+
+.portalweave-sso-logout h1 {
+    margin: 34px 0 10px;
+    font-size: 32px;
+    font-weight: 650;
+    letter-spacing: -0.025em;
+    line-height: 1.2;
+}
+
+.portalweave-sso-logout-description {
+    margin: 0;
+    color: #526178;
+}
+
+.portalweave-sso-logout-actions {
+    display: grid;
+    gap: 12px;
+    margin: 28px 0 0;
+}
+
+.portalweave-sso-logout-button {
+    width: 100%;
+    min-height: 50px;
+    margin: 0;
+    padding: 13px 18px;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    font: inherit;
+    font-size: 15px;
+    font-weight: 600;
+    line-height: 1.45;
+    overflow-wrap: anywhere;
+    text-align: center;
+    cursor: pointer;
+    transition: background-color 150ms, border-color 150ms;
+}
+
+.portalweave-sso-logout-primary {
+    border-color: #1857c5;
+    background: #1857c5;
+    color: #fff;
+}
+
+.portalweave-sso-logout-primary:hover {
+    border-color: #12449a;
+    background: #12449a;
+}
+
+.portalweave-sso-logout-secondary {
+    border-color: #adb9ca;
+    background: #fff;
+    color: #17243a;
+}
+
+.portalweave-sso-logout-secondary:hover {
+    border-color: #71829c;
+    background: #f3f6fb;
+}
+
+.portalweave-sso-logout-note {
+    margin: 16px 0 0;
+    color: #526178;
+    font-size: 13px;
+    line-height: 1.6;
+}
+
+.portalweave-sso-logout-back {
+    margin-top: 26px;
+    padding-top: 16px;
+    border-top: 1px solid #e5eaf1;
+}
+
+.portalweave-sso-logout-back a {
+    display: flex;
+    min-height: 44px;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 12px;
+    border: 1px solid #d8e0eb;
+    border-radius: 6px;
+    background: #f3f6fb;
+    color: #1857c5;
+    font-size: 14px;
+    font-weight: 600;
+    text-decoration: none;
+}
+
+.portalweave-sso-logout-back a:hover {
+    border-color: #adb9ca;
+    background: #e8eef7;
+    color: #12449a;
+    text-decoration: underline;
+    text-underline-offset: 3px;
+}
+
+.portalweave-sso-logout :is(button, a):focus-visible {
+    outline: 3px solid #d77a00;
+    outline-offset: 3px;
+}
+
+@media (max-width: 480px) {
+    .portalweave-sso-logout {
+        padding: 24px 16px;
+    }
+
+    .portalweave-sso-logout-panel {
+        padding: 28px 24px;
+    }
+
+    .portalweave-sso-logout h1 {
+        margin-top: 28px;
+        font-size: 28px;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .portalweave-sso-logout-button {
+        transition: none;
+    }
+}
