@@ -194,7 +194,7 @@ final class Admin {
 
     private static function redact(array $settings): array {
         foreach ($settings as $key => &$value) {
-            if (preg_match('/(?:client_id|secret|token|password|credential)/i', (string) $key)) {
+            if (preg_match('/(?:client_id|secret|token|password)/i', (string) $key)) {
                 unset($settings[$key]);
             } elseif (is_array($value)) {
                 $value = self::redact($value);
