@@ -15,9 +15,11 @@ The earlier source was exercised with WordPress 7.1.4, PHP 8.3.36 and MariaDB 11
 
 Current helper commands use Bash entrypoints with shared Node.js release/reporting engines and the PHP lint engine. Build with `bash scripts/build.sh --slug portalweave-sso` using Bash, Node.js 20+, `zip` and `unzip`; CI uses that builder without PowerShell. The optional Windows builder remains available. These entrypoints preserve production staging, ZIP entry and file-hash checks without changing the historical results above.
 
-## Run the multisite checks
+## Reproduce the current checks
 
-Use a separate disposable database/WordPress volume, network-install WordPress with title `PortalWeave SSO Multisite Integration`, network-activate the plugin and run `tests/multisite.php` through PHP CLI. The runner refuses unrelated networks. It creates a second fixture site and cleans up fixture users and settings. Keep the multisite Compose project and database independent from the single-site test environment.
+Use the [CI local reproduction procedure](ci.md#local-reproduction) for `bash scripts/ci.sh integration` and `bash scripts/ci.sh multisite`. It covers the current single-site/HTTPS and multisite setup rather than a hand-maintained sequence of install commands. The fixtures bind only to loopback and require Docker Compose, Bash, curl and Node.js 20+. Run them separately with fresh disposable volumes; both use host ports 8098/8448. Check port/project ownership first and never run fixture setup against a real site or an unrelated database. Keep the exact integration site and network titles required by the runners.
+
+The HTTPS harness creates a short-lived self-signed certificate and installs a guarded local test identity provider. These fixtures and their sample credentials stay outside the distribution ZIP. For a manual HTTPS run in an already initialized disposable fixture, always invoke `tests/setup-e2e.php --restore` in a `finally` block or shell trap, including when `node tests/e2e.mjs` fails. Follow [AGENTS.md](../AGENTS.md#verification) for those manual-run safeguards. Reuse initialized fixtures through their test runners rather than repeating the fresh-install procedure.
 
 ## Deployment-dependent checks
 

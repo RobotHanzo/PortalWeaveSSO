@@ -37,6 +37,14 @@ Use the `PortalWeaveSSO` PHP namespace, `portalweave_sso_*` hooks/options/errors
 
 See [architecture and hooks](docs/architecture.md), [privacy behavior](docs/privacy.md), [external services](docs/external-services.md) and [integration contracts](docs/integrations.md) for details.
 
+## Documentation and screenshots
+
+Keep `README.md` focused on installation, important features and a small screenshot gallery. Maintain protocol and deployment instructions in the [provider guide](docs/provider-setup.md), [integration contracts](docs/integrations.md) and [privacy guide](docs/privacy.md). Maintainer details belong in [architecture](docs/architecture.md), [admin design](docs/admin-design.md), [verification](docs/verification.md), [CI](docs/ci.md) and [release instructions](docs/releasing.md). Link to those sources rather than copying commands or security policy into the README.
+
+README screenshots must show the current plugin running in a disposable WordPress fixture with clearly fictional sample providers and accounts. Review each image for credentials, personal data, private attributes, nonces and server paths before saving the selected product screenshots in `docs/screenshots/`. Use descriptive filenames, useful alternative text and captions that distinguish sample configuration from a verified provider connection. Refresh affected images when their UI changes. Raw browser captures, traces, authenticated profiles and storage state remain ignored under the existing local artifact paths.
+
+Screenshots are repository documentation and must remain outside the production ZIP. The production manifest includes only four runtime guides from `docs/`: `provider-setup.md`, `integrations.md`, `external-services.md` and `privacy.md`. Keep `docs/screenshots/` excluded from secondary manual distribution tooling too; do not expand the production allowlist for the README gallery.
+
 ## Verification
 
 Choose checks appropriate to the change. Documentation-only edits normally need link/command review, `git diff --check` and any affected packaging checks; they do not require destructive database tests. Authentication, authorization, storage or privacy changes need the relevant regression suite and realistic WordPress integration evidence. Use existing checks; add tests when they demonstrate meaningful new behavior or a defect.
