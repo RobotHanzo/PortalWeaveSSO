@@ -1,5 +1,5 @@
 <?php
-namespace WPSSO;
+namespace PortalWeaveSSO;
 
 defined('ABSPATH') || exit;
 
@@ -115,7 +115,7 @@ final class Jwt {
         if (!is_string($url) || $url === '' || strlen($url) > 8192 || (isset($header['kid']) && (!is_string($header['kid']) || strlen($header['kid']) > 256))) {
             return self::error('key', __('Configure a JWKS URL and a valid key identifier.', 'portalweave-sso'));
         }
-        $cache = 'wpsso_jwks_' . hash('sha256', $url);
+        $cache = 'portalweave_sso_jwks_' . hash('sha256', $url);
         $keys = get_transient($cache);
         $fresh = false;
         if (!is_array($keys)) {
@@ -202,6 +202,6 @@ final class Jwt {
     }
 
     private static function error($code, $message) {
-        return new \WP_Error('wpsso_jwt_' . $code, $message);
+        return new \WP_Error('portalweave_sso_jwt_' . $code, $message);
     }
 }

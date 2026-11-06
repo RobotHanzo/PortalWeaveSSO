@@ -1,40 +1,40 @@
-.wpsso-admin {
-    --wpsso-ink: #1d2327;
-    --wpsso-muted: #646970;
-    --wpsso-accent: #135e96;
-    --wpsso-line: #dcdcde;
-    --wpsso-surface: #fff;
-    --wpsso-tint: #f0f6fc;
+.portalweave-sso-admin {
+    --portalweave-sso-ink: #1d2327;
+    --portalweave-sso-muted: #646970;
+    --portalweave-sso-accent: #135e96;
+    --portalweave-sso-line: #dcdcde;
+    --portalweave-sso-surface: #fff;
+    --portalweave-sso-tint: #f0f6fc;
     max-width: 1320px;
-    color: var(--wpsso-ink);
+    color: var(--portalweave-sso-ink);
 }
 
-.wpsso-admin *,
-.wpsso-admin *::before,
-.wpsso-admin *::after {
+.portalweave-sso-admin *,
+.portalweave-sso-admin *::before,
+.portalweave-sso-admin *::after {
     box-sizing: border-box;
 }
 
-.wpsso-admin a {
+.portalweave-sso-admin a {
     text-underline-offset: 3px;
 }
 
-.wpsso-admin :where(a, button, input, select, textarea, summary):focus-visible {
-    outline: 2px solid var(--wpsso-accent);
+.portalweave-sso-admin :where(a, button, input, select, textarea, summary):focus-visible {
+    outline: 2px solid var(--portalweave-sso-accent);
     outline-offset: 3px;
 }
 
-.wpsso-header {
+.portalweave-sso-header {
     display: flex;
     align-items: center;
     justify-content: space-between;
     gap: 24px;
     padding: 24px 0;
-    border-bottom: 1px solid var(--wpsso-line);
+    border-bottom: 1px solid var(--portalweave-sso-line);
     margin-bottom: 28px;
 }
 
-.wpsso-header h1 {
+.portalweave-sso-header h1 {
     margin: 0;
     padding: 0;
     font-size: 24px;
@@ -42,36 +42,36 @@
     line-height: 1.35;
 }
 
-.wpsso-header p {
+.portalweave-sso-header p {
     max-width: 68ch;
     margin: 6px 0 0;
-    color: var(--wpsso-muted);
+    color: var(--portalweave-sso-muted);
     font-size: 13px;
     line-height: 1.6;
 }
 
-.wpsso-version,
-.wpsso-badge {
+.portalweave-sso-version,
+.portalweave-sso-badge {
     display: inline-flex;
     align-items: center;
     padding: 3px 9px;
-    border: 1px solid var(--wpsso-line);
+    border: 1px solid var(--portalweave-sso-line);
     border-radius: 3px;
-    color: var(--wpsso-muted);
-    background: var(--wpsso-surface);
+    color: var(--portalweave-sso-muted);
+    background: var(--portalweave-sso-surface);
     font-size: 12px;
     line-height: 1.6;
     white-space: nowrap;
 }
 
-.wpsso-workspace {
+.portalweave-sso-workspace {
     display: grid;
     grid-template-columns: 210px minmax(0, 1fr);
     align-items: start;
     gap: 28px;
 }
 
-.wpsso-sidebar {
+.portalweave-sso-sidebar {
     position: sticky;
     top: 52px;
     display: flex;
@@ -80,13 +80,13 @@
     min-width: 0;
 }
 
-.wpsso-sidebar nav {
+.portalweave-sso-sidebar nav {
     display: flex;
     flex-direction: column;
     gap: 4px;
 }
 
-.wpsso-nav-link {
+.portalweave-sso-nav-link {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -100,35 +100,35 @@
     text-decoration: none;
 }
 
-.wpsso-nav-link .dashicons {
+.portalweave-sso-nav-link .dashicons {
     flex: 0 0 20px;
-    color: var(--wpsso-muted);
+    color: var(--portalweave-sso-muted);
 }
 
-.wpsso-nav-link:hover {
-    color: var(--wpsso-accent);
+.portalweave-sso-nav-link:hover {
+    color: var(--portalweave-sso-accent);
     background: #e8eef4;
 }
 
-.wpsso-nav-link.is-active,
-.wpsso-nav-link[aria-current="page"] {
-    border-left-color: var(--wpsso-accent);
-    color: var(--wpsso-accent);
-    background: var(--wpsso-surface);
+.portalweave-sso-nav-link.is-active,
+.portalweave-sso-nav-link[aria-current="page"] {
+    border-left-color: var(--portalweave-sso-accent);
+    color: var(--portalweave-sso-accent);
+    background: var(--portalweave-sso-surface);
     font-weight: 600;
 }
 
-.wpsso-nav-link.is-active .dashicons,
-.wpsso-nav-link[aria-current="page"] .dashicons {
-    color: var(--wpsso-accent);
+.portalweave-sso-nav-link.is-active .dashicons,
+.portalweave-sso-nav-link[aria-current="page"] .dashicons {
+    color: var(--portalweave-sso-accent);
 }
 
-.wpsso-content {
+.portalweave-sso-content {
     min-width: 0;
     padding-bottom: 28px;
 }
 
-.wpsso-page-heading {
+.portalweave-sso-page-heading {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
@@ -137,7 +137,7 @@
     margin: 0 0 24px;
 }
 
-.wpsso-page-heading h2 {
+.portalweave-sso-page-heading h2 {
     margin: 0;
     font-size: 24px;
     font-weight: 600;
@@ -145,29 +145,29 @@
     overflow-wrap: anywhere;
 }
 
-.wpsso-page-heading > div {
+.portalweave-sso-page-heading > div {
     min-width: 0;
     max-width: 100%;
 }
 
-.wpsso-page-heading p {
+.portalweave-sso-page-heading p {
     max-width: 65ch;
     margin: 7px 0 0;
-    color: var(--wpsso-muted);
+    color: var(--portalweave-sso-muted);
     font-size: 14px;
     line-height: 1.65;
 }
 
-.wpsso-page-actions,
-.wpsso-provider-actions,
-.wpsso-support-links {
+.portalweave-sso-page-actions,
+.portalweave-sso-provider-actions,
+.portalweave-sso-support-links {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
     gap: 10px;
 }
 
-.wpsso-admin .button {
+.portalweave-sso-admin .button {
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -178,60 +178,60 @@
     text-align: center;
 }
 
-.wpsso-admin .button-primary {
-    border-color: var(--wpsso-accent);
-    background: var(--wpsso-accent);
+.portalweave-sso-admin .button-primary {
+    border-color: var(--portalweave-sso-accent);
+    background: var(--portalweave-sso-accent);
 }
 
-.wpsso-admin .button-primary:hover {
+.portalweave-sso-admin .button-primary:hover {
     border-color: #0a4b78;
     background: #0a4b78;
 }
 
-.wpsso-admin .button.button-hero {
+.portalweave-sso-admin .button.button-hero {
     min-height: 44px;
     padding: 8px 19px;
     font-size: 14px;
 }
 
-.wpsso-section {
+.portalweave-sso-section {
     min-width: 0;
     padding: 26px 28px;
-    border: 1px solid var(--wpsso-line);
+    border: 1px solid var(--portalweave-sso-line);
     border-radius: 4px;
     margin: 0 0 24px;
-    background: var(--wpsso-surface);
+    background: var(--portalweave-sso-surface);
     scroll-margin-top: 52px;
 }
 
-.wpsso-section > :first-child {
+.portalweave-sso-section > :first-child {
     margin-top: 0;
 }
 
-.wpsso-section > :last-child {
+.portalweave-sso-section > :last-child {
     margin-bottom: 0;
 }
 
-.wpsso-section h2,
-.wpsso-section h3 {
+.portalweave-sso-section h2,
+.portalweave-sso-section h3 {
     margin: 0 0 18px;
     font-size: 18px;
     font-weight: 600;
     line-height: 1.4;
 }
 
-.wpsso-section h3:not(:first-child) {
+.portalweave-sso-section h3:not(:first-child) {
     margin-top: 28px;
 }
 
-.wpsso-section > p {
+.portalweave-sso-section > p {
     max-width: 72ch;
     margin: 0 0 22px;
-    color: var(--wpsso-muted);
+    color: var(--portalweave-sso-muted);
     line-height: 1.65;
 }
 
-.wpsso-section-title {
+.portalweave-sso-section-title {
     display: flex;
     align-items: center;
     justify-content: space-between;
@@ -240,184 +240,184 @@
     margin-bottom: 20px;
 }
 
-.wpsso-section-title h2,
-.wpsso-section-title h3 {
+.portalweave-sso-section-title h2,
+.portalweave-sso-section-title h3 {
     margin: 0;
 }
 
-.wpsso-section-title p {
+.portalweave-sso-section-title p {
     flex-basis: 100%;
     margin: 0;
-    color: var(--wpsso-muted);
+    color: var(--portalweave-sso-muted);
     line-height: 1.6;
 }
 
-.wpsso-summary-grid {
+.portalweave-sso-summary-grid {
     display: grid;
     grid-template-columns: repeat(3, minmax(0, 1fr));
-    border: 1px solid var(--wpsso-line);
+    border: 1px solid var(--portalweave-sso-line);
     border-radius: 4px;
     margin: 0 0 24px;
-    background: var(--wpsso-surface);
+    background: var(--portalweave-sso-surface);
 }
 
-.wpsso-stat {
+.portalweave-sso-stat {
     min-width: 0;
     padding: 22px 24px;
 }
 
-.wpsso-stat + .wpsso-stat {
-    border-left: 1px solid var(--wpsso-line);
+.portalweave-sso-stat + .portalweave-sso-stat {
+    border-left: 1px solid var(--portalweave-sso-line);
 }
 
-.wpsso-stat dt {
+.portalweave-sso-stat dt {
     display: block;
     margin: 0 0 8px;
-    color: var(--wpsso-muted);
+    color: var(--portalweave-sso-muted);
     font-size: 12px;
     font-weight: 500;
     line-height: 1.6;
 }
 
-.wpsso-stat dd {
+.portalweave-sso-stat dd {
     display: block;
     margin: 0;
-    color: var(--wpsso-ink);
+    color: var(--portalweave-sso-ink);
     font-size: 20px;
     font-weight: 600;
     line-height: 1.4;
     overflow-wrap: anywhere;
 }
 
-.wpsso-setup {
+.portalweave-sso-setup {
     margin: 0;
     padding-left: 24px;
 }
 
-.wpsso-setup li {
+.portalweave-sso-setup li {
     padding: 0 0 20px 8px;
     border-bottom: 1px solid #f0f0f1;
     margin: 0 0 20px;
 }
 
-.wpsso-setup li:last-child {
+.portalweave-sso-setup li:last-child {
     padding-bottom: 0;
     border-bottom: 0;
     margin-bottom: 0;
 }
 
-.wpsso-setup li::marker {
-    color: var(--wpsso-accent);
+.portalweave-sso-setup li::marker {
+    color: var(--portalweave-sso-accent);
     font-weight: 600;
 }
 
-.wpsso-setup h4 {
+.portalweave-sso-setup h4 {
     margin: 0 0 5px;
     font-size: 14px;
     font-weight: 600;
     line-height: 1.5;
 }
 
-.wpsso-setup p {
+.portalweave-sso-setup p {
     max-width: 68ch;
     margin: 0 0 9px;
-    color: var(--wpsso-muted);
+    color: var(--portalweave-sso-muted);
     line-height: 1.6;
 }
 
-.wpsso-empty-state {
+.portalweave-sso-empty-state {
     padding: 40px 28px;
     border: 1px dashed #a7aaad;
     border-radius: 4px;
-    background: var(--wpsso-surface);
+    background: var(--portalweave-sso-surface);
     text-align: center;
 }
 
-.wpsso-empty-state .dashicons {
+.portalweave-sso-empty-state .dashicons {
     width: 36px;
     height: 36px;
     margin-bottom: 12px;
-    color: var(--wpsso-accent);
+    color: var(--portalweave-sso-accent);
     font-size: 36px;
 }
 
-.wpsso-empty-state h3 {
+.portalweave-sso-empty-state h3 {
     margin: 0 0 10px;
     font-size: 20px;
 }
 
-.wpsso-empty-state p {
+.portalweave-sso-empty-state p {
     max-width: 54ch;
     margin: 0 auto 20px;
-    color: var(--wpsso-muted);
+    color: var(--portalweave-sso-muted);
     line-height: 1.65;
 }
 
-.wpsso-provider-list {
+.portalweave-sso-provider-list {
     width: 100%;
-    border: 1px solid var(--wpsso-line);
+    border: 1px solid var(--portalweave-sso-line);
     border-radius: 4px;
-    background: var(--wpsso-surface);
+    background: var(--portalweave-sso-surface);
     border-spacing: 0;
 }
 
-.wpsso-provider-list th,
-.wpsso-provider-list td {
+.portalweave-sso-provider-list th,
+.portalweave-sso-provider-list td {
     padding: 17px 18px;
     text-align: left;
     vertical-align: middle;
     overflow-wrap: anywhere;
 }
 
-.wpsso-provider-list th {
+.portalweave-sso-provider-list th {
     color: #50575e;
     background: #f6f7f7;
     font-size: 12px;
     font-weight: 600;
 }
 
-.wpsso-provider-list td {
+.portalweave-sso-provider-list td {
     border-top: 1px solid #e5e5e5;
     font-size: 13px;
 }
 
-.wpsso-provider-list td:first-child {
+.portalweave-sso-provider-list td:first-child {
     width: 42%;
 }
 
-.wpsso-provider-list td > strong,
-.wpsso-provider-list td > a:not(.button) {
+.portalweave-sso-provider-list td > strong,
+.portalweave-sso-provider-list td > a:not(.button) {
     font-size: 14px;
     font-weight: 600;
 }
 
-.wpsso-provider-list .wpsso-provider-actions {
+.portalweave-sso-provider-list .portalweave-sso-provider-actions {
     gap: 8px;
     padding: 0;
 }
 
-.wpsso-provider-issuer {
+.portalweave-sso-provider-issuer {
     display: block;
     max-width: 48ch;
     margin-top: 5px;
-    color: var(--wpsso-muted);
+    color: var(--portalweave-sso-muted);
     font-size: 12px;
     font-weight: 400;
     line-height: 1.5;
     overflow-wrap: anywhere;
 }
 
-.wpsso-status {
+.portalweave-sso-status {
     display: inline-flex;
     align-items: center;
     gap: 6px;
-    color: var(--wpsso-muted);
+    color: var(--portalweave-sso-muted);
     font-size: 12px;
     font-weight: 500;
     line-height: 1.6;
 }
 
-.wpsso-status::before {
+.portalweave-sso-status::before {
     width: 7px;
     height: 7px;
     border-radius: 50%;
@@ -425,27 +425,27 @@
     content: "";
 }
 
-.wpsso-status.is-enabled {
+.portalweave-sso-status.is-enabled {
     color: #216e39;
 }
 
-.wpsso-status.is-enabled::before {
+.portalweave-sso-status.is-enabled::before {
     background: #21843d;
 }
 
-.wpsso-provider {
+.portalweave-sso-provider {
     min-width: 0;
-    border: 1px solid var(--wpsso-line);
+    border: 1px solid var(--portalweave-sso-line);
     border-radius: 4px;
     margin-bottom: 24px;
-    background: var(--wpsso-surface);
+    background: var(--portalweave-sso-surface);
 }
 
-.wpsso-section.wpsso-provider {
+.portalweave-sso-section.portalweave-sso-provider {
     padding: 0;
 }
 
-.wpsso-provider > summary {
+.portalweave-sso-provider > summary {
     display: flex;
     align-items: center;
     gap: 10px;
@@ -457,11 +457,11 @@
     list-style: none;
 }
 
-.wpsso-provider > summary::-webkit-details-marker {
+.portalweave-sso-provider > summary::-webkit-details-marker {
     display: none;
 }
 
-.wpsso-provider > summary::before {
+.portalweave-sso-provider > summary::before {
     width: 7px;
     height: 7px;
     border-right: 2px solid currentColor;
@@ -471,30 +471,30 @@
     transform: rotate(-45deg);
 }
 
-.wpsso-provider[open] > summary::before {
+.portalweave-sso-provider[open] > summary::before {
     transform: rotate(45deg);
 }
 
-.wpsso-provider > summary .dashicons {
-    color: var(--wpsso-accent);
+.portalweave-sso-provider > summary .dashicons {
+    color: var(--portalweave-sso-accent);
 }
 
-.wpsso-provider > summary .wpsso-badge {
+.portalweave-sso-provider > summary .portalweave-sso-badge {
     margin-left: auto;
 }
 
-.wpsso-provider-body {
+.portalweave-sso-provider-body {
     min-width: 0;
     padding: 26px 28px;
 }
 
-.wpsso-field,
-.wpsso-check {
+.portalweave-sso-field,
+.portalweave-sso-check {
     max-width: 760px;
     margin: 0 0 24px;
 }
 
-.wpsso-field > label {
+.portalweave-sso-field > label {
     display: block;
     margin-bottom: 8px;
     font-size: 13px;
@@ -502,29 +502,29 @@
     line-height: 1.5;
 }
 
-.wpsso-field > input,
-.wpsso-field > select,
-.wpsso-field > textarea {
+.portalweave-sso-field > input,
+.portalweave-sso-field > select,
+.portalweave-sso-field > textarea {
     width: 100%;
     min-height: 44px;
     max-width: 100%;
     border-color: #a7aaad;
     border-radius: 3px;
-    background: var(--wpsso-surface);
-    color: var(--wpsso-ink);
+    background: var(--portalweave-sso-surface);
+    color: var(--portalweave-sso-ink);
     font-size: 14px;
 }
 
-.wpsso-field > input,
-.wpsso-field > textarea {
+.portalweave-sso-field > input,
+.portalweave-sso-field > textarea {
     padding: 8px 10px;
 }
 
-.wpsso-field > select {
+.portalweave-sso-field > select {
     padding-left: 10px;
 }
 
-.wpsso-field > textarea {
+.portalweave-sso-field > textarea {
     min-height: 110px;
     font-family: Consolas, Monaco, monospace;
     font-size: 12px;
@@ -532,21 +532,21 @@
     resize: vertical;
 }
 
-.wpsso-field > input[type="number"] {
+.portalweave-sso-field > input[type="number"] {
     max-width: 160px;
 }
 
-.wpsso-field .description,
-.wpsso-check .description,
-.wpsso-admin p.description {
+.portalweave-sso-field .description,
+.portalweave-sso-check .description,
+.portalweave-sso-admin p.description {
     max-width: 72ch;
     margin: 8px 0 0;
-    color: var(--wpsso-muted);
+    color: var(--portalweave-sso-muted);
     font-size: 12px;
     line-height: 1.65;
 }
 
-.wpsso-check label {
+.portalweave-sso-check label {
     display: inline-block;
     max-width: 100%;
     padding: 3px 0;
@@ -555,30 +555,30 @@
     line-height: 1.6;
 }
 
-.wpsso-check .description {
+.portalweave-sso-check .description {
     padding-left: 25px;
 }
 
-.wpsso-grid {
+.portalweave-sso-grid {
     display: grid;
     grid-template-columns: repeat(2, minmax(0, 1fr));
     gap: 0 24px;
     max-width: 760px;
 }
 
-.wpsso-grid > * {
+.portalweave-sso-grid > * {
     min-width: 0;
 }
 
-.wpsso-subsection {
+.portalweave-sso-subsection {
     padding: 0 18px;
-    border: 1px solid var(--wpsso-line);
+    border: 1px solid var(--portalweave-sso-line);
     border-radius: 3px;
     margin: 18px 0;
-    background: var(--wpsso-surface);
+    background: var(--portalweave-sso-surface);
 }
 
-.wpsso-subsection > summary {
+.portalweave-sso-subsection > summary {
     min-height: 50px;
     padding: 14px 0;
     font-size: 14px;
@@ -587,30 +587,30 @@
     cursor: pointer;
 }
 
-.wpsso-subsection[open] > summary {
+.portalweave-sso-subsection[open] > summary {
     border-bottom: 1px solid #e5e5e5;
     margin-bottom: 22px;
 }
 
-.wpsso-subsection > :last-child:not(summary) {
+.portalweave-sso-subsection > :last-child:not(summary) {
     margin-bottom: 22px;
 }
 
-.wpsso-callback {
+.portalweave-sso-callback {
     padding: 16px 18px;
-    border-left: 3px solid var(--wpsso-accent);
+    border-left: 3px solid var(--portalweave-sso-accent);
     margin: 20px 0 24px;
-    background: var(--wpsso-tint);
+    background: var(--portalweave-sso-tint);
     overflow-wrap: anywhere;
 }
 
-.wpsso-callback strong {
+.portalweave-sso-callback strong {
     display: block;
     margin-bottom: 8px;
     font-size: 13px;
 }
 
-.wpsso-callback code {
+.portalweave-sso-callback code {
     padding: 0;
     background: transparent;
     font-size: 12px;
@@ -618,24 +618,24 @@
     overflow-wrap: anywhere;
 }
 
-.wpsso-provider-actions {
+.portalweave-sso-provider-actions {
     padding: 8px 0 20px;
 }
 
-.wpsso-provider-actions > a {
+.portalweave-sso-provider-actions > a {
     display: inline-flex;
     align-items: center;
     min-height: 44px;
 }
 
-.wpsso-provider-actions > span {
+.portalweave-sso-provider-actions > span {
     max-width: 62ch;
-    color: var(--wpsso-muted);
+    color: var(--portalweave-sso-muted);
     font-size: 12px;
     line-height: 1.6;
 }
 
-.wpsso-save {
+.portalweave-sso-save {
     display: flex;
     align-items: center;
     flex-wrap: wrap;
@@ -644,190 +644,190 @@
     margin-top: 4px;
 }
 
-.wpsso-save span {
+.portalweave-sso-save span {
     max-width: 65ch;
-    color: var(--wpsso-muted);
+    color: var(--portalweave-sso-muted);
     font-size: 12px;
     line-height: 1.6;
 }
 
-.wpsso-callout {
+.portalweave-sso-callout {
     padding: 17px 20px;
     border-left: 3px solid #72aee6;
     margin: 20px 0 24px;
-    background: var(--wpsso-tint);
+    background: var(--portalweave-sso-tint);
 }
 
-.wpsso-callout strong {
+.portalweave-sso-callout strong {
     font-size: 13px;
     font-weight: 600;
 }
 
-.wpsso-callout p {
+.portalweave-sso-callout p {
     max-width: 72ch;
     margin: 7px 0 0;
     color: #3c434a;
     line-height: 1.65;
 }
 
-.wpsso-table-scroll {
+.portalweave-sso-table-scroll {
     width: 100%;
     max-width: 100%;
     overflow: auto;
 }
 
-.wpsso-table-scroll table {
+.portalweave-sso-table-scroll table {
     min-width: 860px;
 }
 
-.wpsso-table-scroll th,
-.wpsso-table-scroll td {
+.portalweave-sso-table-scroll th,
+.portalweave-sso-table-scroll td {
     padding: 12px 14px;
     font-size: 12px;
     line-height: 1.6;
     vertical-align: top;
 }
 
-.wpsso-table-scroll td {
+.portalweave-sso-table-scroll td {
     max-width: 240px;
     overflow-wrap: anywhere;
 }
 
-.wpsso-errors dt {
+.portalweave-sso-errors dt {
     margin-top: 18px;
     font-weight: 600;
 }
 
-.wpsso-errors dd {
+.portalweave-sso-errors dd {
     max-width: 72ch;
     margin: 6px 0 0;
-    color: var(--wpsso-muted);
+    color: var(--portalweave-sso-muted);
     line-height: 1.65;
 }
 
-.wpsso-support-links {
+.portalweave-sso-support-links {
     gap: 8px;
 }
 
-.wpsso-admin form > label {
+.portalweave-sso-admin form > label {
     font-weight: 600;
 }
 
-.wpsso-admin input[type="file"] {
+.portalweave-sso-admin input[type="file"] {
     max-width: 100%;
     padding: 7px 0;
 }
 
-.wpsso-admin fieldset {
+.portalweave-sso-admin fieldset {
     min-width: 0;
 }
 
 @media (max-width: 1100px) {
-    .wpsso-workspace {
+    .portalweave-sso-workspace {
         grid-template-columns: 185px minmax(0, 1fr);
         gap: 20px;
     }
 
-    .wpsso-provider-list th,
-    .wpsso-provider-list td {
+    .portalweave-sso-provider-list th,
+    .portalweave-sso-provider-list td {
         padding: 14px 12px;
     }
 }
 
 @media (max-width: 960px) {
-    .wpsso-workspace {
+    .portalweave-sso-workspace {
         grid-template-columns: minmax(0, 1fr);
         gap: 24px;
     }
 
-    .wpsso-sidebar {
+    .portalweave-sso-sidebar {
         position: static;
         flex-direction: row;
         flex-wrap: wrap;
         gap: 4px;
         padding-bottom: 18px;
-        border-bottom: 1px solid var(--wpsso-line);
+        border-bottom: 1px solid var(--portalweave-sso-line);
     }
 
-    .wpsso-sidebar nav {
+    .portalweave-sso-sidebar nav {
         flex-direction: row;
         flex-wrap: wrap;
         gap: 4px;
     }
 
-    .wpsso-nav-link {
+    .portalweave-sso-nav-link {
         min-height: 44px;
         padding: 9px 12px;
         border-left: 0;
         border-bottom: 3px solid transparent;
     }
 
-    .wpsso-nav-link.is-active,
-    .wpsso-nav-link[aria-current="page"] {
+    .portalweave-sso-nav-link.is-active,
+    .portalweave-sso-nav-link[aria-current="page"] {
         border-left-color: transparent;
-        border-bottom-color: var(--wpsso-accent);
+        border-bottom-color: var(--portalweave-sso-accent);
     }
 }
 
 @media (max-width: 600px) {
-    .wpsso-header {
+    .portalweave-sso-header {
         align-items: flex-start;
         gap: 12px;
         padding: 20px 0;
         margin-bottom: 20px;
     }
 
-    .wpsso-header h1 {
+    .portalweave-sso-header h1 {
         font-size: 22px;
     }
 
-    .wpsso-version {
+    .portalweave-sso-version {
         padding: 2px 6px;
         font-size: 11px;
     }
 
-    .wpsso-page-heading {
+    .portalweave-sso-page-heading {
         gap: 14px;
         margin-bottom: 20px;
     }
 
-    .wpsso-page-heading h2 {
+    .portalweave-sso-page-heading h2 {
         font-size: 22px;
     }
 
-    .wpsso-nav-link {
+    .portalweave-sso-nav-link {
         gap: 7px;
         padding: 9px;
         font-size: 12px;
     }
 
-    .wpsso-nav-link .dashicons {
+    .portalweave-sso-nav-link .dashicons {
         width: 18px;
         height: 18px;
         flex-basis: 18px;
         font-size: 18px;
     }
 
-    .wpsso-section,
-    .wpsso-provider-body {
+    .portalweave-sso-section,
+    .portalweave-sso-provider-body {
         padding: 22px 18px;
     }
 
-    .wpsso-summary-grid,
-    .wpsso-grid {
+    .portalweave-sso-summary-grid,
+    .portalweave-sso-grid {
         grid-template-columns: minmax(0, 1fr);
     }
 
-    .wpsso-stat {
+    .portalweave-sso-stat {
         padding: 18px 20px;
     }
 
-    .wpsso-stat + .wpsso-stat {
-        border-top: 1px solid var(--wpsso-line);
+    .portalweave-sso-stat + .portalweave-sso-stat {
+        border-top: 1px solid var(--portalweave-sso-line);
         border-left: 0;
     }
 
-    .wpsso-provider-list thead {
+    .portalweave-sso-provider-list thead {
         position: absolute;
         width: 1px;
         height: 1px;
@@ -836,77 +836,77 @@
         white-space: nowrap;
     }
 
-    .wpsso-provider-list tbody,
-    .wpsso-provider-list tr,
-    .wpsso-provider-list td {
+    .portalweave-sso-provider-list tbody,
+    .portalweave-sso-provider-list tr,
+    .portalweave-sso-provider-list td {
         display: block;
         width: 100%;
     }
 
-    .wpsso-provider-list tr {
+    .portalweave-sso-provider-list tr {
         padding: 16px;
     }
 
-    .wpsso-provider-list tr + tr {
-        border-top: 1px solid var(--wpsso-line);
+    .portalweave-sso-provider-list tr + tr {
+        border-top: 1px solid var(--portalweave-sso-line);
     }
 
-    .wpsso-provider-list td {
+    .portalweave-sso-provider-list td {
         padding: 4px 0;
         border: 0;
     }
 
-    .wpsso-provider-list td:first-child {
+    .portalweave-sso-provider-list td:first-child {
         width: 100%;
         padding-bottom: 8px;
     }
 
-    .wpsso-provider-list .wpsso-provider-actions {
+    .portalweave-sso-provider-list .portalweave-sso-provider-actions {
         padding-top: 10px;
     }
 
-    .wpsso-provider > summary {
+    .portalweave-sso-provider > summary {
         padding: 16px 18px;
     }
 
-    .wpsso-subsection {
+    .portalweave-sso-subsection {
         padding-right: 14px;
         padding-left: 14px;
     }
 
-    .wpsso-field > input,
-    .wpsso-field > select,
-    .wpsso-admin .button {
+    .portalweave-sso-field > input,
+    .portalweave-sso-field > select,
+    .portalweave-sso-admin .button {
         min-height: 44px;
     }
 
-    .wpsso-check .description {
+    .portalweave-sso-check .description {
         padding-left: 0;
     }
 
-    .wpsso-save {
+    .portalweave-sso-save {
         align-items: flex-start;
         flex-direction: column;
     }
 
-    .wpsso-callback,
-    .wpsso-callout {
+    .portalweave-sso-callback,
+    .portalweave-sso-callout {
         padding: 15px;
     }
 
-    .wpsso-setup {
+    .portalweave-sso-setup {
         padding-left: 20px;
     }
 
-    .wpsso-empty-state {
+    .portalweave-sso-empty-state {
         padding: 30px 20px;
     }
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .wpsso-admin *,
-    .wpsso-admin *::before,
-    .wpsso-admin *::after {
+    .portalweave-sso-admin *,
+    .portalweave-sso-admin *::before,
+    .portalweave-sso-admin *::after {
         scroll-behavior: auto !important;
         transition: none !important;
         animation: none !important;

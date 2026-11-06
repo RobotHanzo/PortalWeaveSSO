@@ -139,7 +139,7 @@ function inputCollision(input, directory) {
 
 function main(args) {
     let input;
-    let output = process.env.WPSSO_REPORT_DIR || 'reports/plugin-check';
+    let output = process.env.PORTALWEAVE_SSO_REPORT_DIR || 'reports/plugin-check';
     let outputGiven = false;
     let strict = false;
     let result;

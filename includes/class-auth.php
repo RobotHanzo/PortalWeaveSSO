@@ -1,5 +1,5 @@
 <?php
-namespace WPSSO;
+namespace PortalWeaveSSO;
 
 defined('ABSPATH') || exit;
 
@@ -8,24 +8,24 @@ final class Auth {
     private const TTL = 600;
 
     public static function token_meta_key($app_id) {
-        return '_wpsso_tokens_' . (is_multisite() ? get_current_blog_id() . '_' : '') . sanitize_key($app_id);
+        return '_portalweave_sso_tokens_' . (is_multisite() ? get_current_blog_id() . '_' : '') . sanitize_key($app_id);
     }
 
     public static function app_meta_key() {
-        return '_wpsso_app' . (is_multisite() ? '_' . get_current_blog_id() : '');
+        return '_portalweave_sso_app' . (is_multisite() ? '_' . get_current_blog_id() : '');
     }
 
     public static function register() {
         add_action('init', [self::class, 'dispatch'], 1);
         add_filter('logout_url', [self::class, 'filter_logout_url'], 10, 2);
-        add_action('wpsso_state_cleanup', [self::class, 'cleanup']);
-        if (!wp_next_scheduled('wpsso_state_cleanup')) {
-            wp_schedule_event(time() + 3600, 'hourly', 'wpsso_state_cleanup');
+        add_action('portalweave_sso_state_cleanup', [self::class, 'cleanup']);
+        if (!wp_next_scheduled('portalweave_sso_state_cleanup')) {
+            wp_schedule_event(time() + 3600, 'hourly', 'portalweave_sso_state_cleanup');
         }
     }
 
     public static function login_url($app_id, $redirect = '', $test = false, $popup = false) {
-        $args = ['wpsso_action' => 'login', 'app' => sanitize_key($app_id)];
+        $args = ['portalweave_sso_action' => 'login', 'app' => sanitize_key($app_id)];
         if ($redirect !== '') {
             $args['redirect_to'] = Redirect::validate($redirect);
         }
@@ -34,13 +34,13 @@ final class Auth {
         }
         if ($test) {
             $args['test'] = '1';
-            $args['_wpnonce'] = wp_create_nonce('wpsso_test_' . sanitize_key($app_id));
+            $args['_wpnonce'] = wp_create_nonce('portalweave_sso_test_' . sanitize_key($app_id));
         }
         return add_query_arg($args, home_url('/'));
     }
 
     public static function logout_url($redirect = '') {
-        $args = ['wpsso_action' => 'logout', '_wpnonce' => wp_create_nonce('wpsso_logout')];
+        $args = ['portalweave_sso_action' => 'logout', '_wpnonce' => wp_create_nonce('portalweave_sso_logout')];
         if ($redirect !== '') {
             $args['redirect_to'] = Redirect::validate($redirect);
         }
@@ -55,7 +55,7 @@ final class Auth {
     }
 
     public static function dispatch() {
-        $action = sanitize_key(self::input($_GET, 'wpsso_action')); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Routes only; each handler applies its browser-bound state, signed-token or WordPress-nonce authorization.
+        $action = sanitize_key(self::input($_GET, 'portalweave_sso_action')); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Routes only; each handler applies its browser-bound state, signed-token or WordPress-nonce authorization.
         if (!in_array($action, ['login', 'callback', 'logout', 'logout_callback', 'password', 'backchannel_logout'], true)) {
             return;
         }
@@ -64,7 +64,7 @@ final class Auth {
         header('X-Frame-Options: DENY');
         header('X-Content-Type-Options: nosniff');
         if (!is_ssl()) {
-            self::fail(new \WP_Error('wpsso_https', __('SSO requires HTTPS on the WordPress site.', 'portalweave-sso')));
+            self::fail(new \WP_Error('portalweave_sso_https', __('SSO requires HTTPS on the WordPress site.', 'portalweave-sso')));
         }
         try {
             switch ($action) {
@@ -77,7 +77,7 @@ final class Auth {
             }
         } catch (\Throwable $error) {
             // Never expose exception messages: they may contain provider payloads.
-            self::fail(new \WP_Error('wpsso_internal', __('The SSO request could not be completed. Contact the site administrator.', 'portalweave-sso')));
+            self::fail(new \WP_Error('portalweave_sso_internal', __('The SSO request could not be completed. Contact the site administrator.', 'portalweave-sso')));
         }
         exit;
     }
@@ -86,24 +86,24 @@ final class Auth {
         $id = sanitize_key(self::input($_GET, 'app')); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Public login initiator creates browser-bound OAuth state; no user is authenticated here.
         $app = Config::app($id);
         if (!$app || empty($app['enabled'])) {
-            self::fail(new \WP_Error('wpsso_app', __('The selected SSO provider is unavailable.', 'portalweave-sso')), $id);
+            self::fail(new \WP_Error('portalweave_sso_app', __('The selected SSO provider is unavailable.', 'portalweave-sso')), $id);
         }
         $test = self::input($_GET, 'test') === '1';
-        if ($test && (!current_user_can('manage_options') || !wp_verify_nonce(sanitize_text_field(self::input($_GET, '_wpnonce')), 'wpsso_test_' . $id))) {
-            self::fail(new \WP_Error('wpsso_test_permission', __('A fresh administrator test link is required.', 'portalweave-sso')), $id);
+        if ($test && (!current_user_can('manage_options') || !wp_verify_nonce(sanitize_text_field(self::input($_GET, '_wpnonce')), 'portalweave_sso_test_' . $id))) {
+            self::fail(new \WP_Error('portalweave_sso_test_permission', __('A fresh administrator test link is required.', 'portalweave-sso')), $id);
         }
         $callback = Config::callback($app);
         if (!self::https_endpoint($callback)) {
-            self::fail(new \WP_Error('wpsso_callback_https', __('The canonical callback must use HTTPS. Check the WordPress site URL.', 'portalweave-sso')), $id);
+            self::fail(new \WP_Error('portalweave_sso_callback_https', __('The canonical callback must use HTTPS. Check the WordPress site URL.', 'portalweave-sso')), $id);
         }
         // Browser binding must be created on the callback origin. login_url always
         // targets the canonical home origin, retaining the initiating redirect.
         if (self::origin($callback) !== self::origin(home_url('/'))) {
-            self::fail(new \WP_Error('wpsso_callback_origin', __('The callback must use the canonical WordPress origin.', 'portalweave-sso')), $id);
+            self::fail(new \WP_Error('portalweave_sso_callback_origin', __('The callback must use the canonical WordPress origin.', 'portalweave-sso')), $id);
         }
         $grant = $app['grant'] ?? 'authorization_code';
         if (in_array($grant, ['implicit', 'password'], true) && empty($app['legacy_grants'])) {
-            self::fail(new \WP_Error('wpsso_legacy_disabled', __('This legacy grant is disabled. Use Authorization Code with PKCE.', 'portalweave-sso')), $id);
+            self::fail(new \WP_Error('portalweave_sso_legacy_disabled', __('This legacy grant is disabled. Use Authorization Code with PKCE.', 'portalweave-sso')), $id);
         }
         $redirect = self::input($_GET, 'redirect_to');
         if ($redirect === '') {
@@ -132,20 +132,20 @@ final class Auth {
             $params['nonce'] = $flow['nonce'];
         }
         if ($grant === 'implicit' && ($app['protocol'] ?? 'oidc') !== 'oidc') {
-            self::fail(new \WP_Error('wpsso_implicit_oidc', __('Implicit login requires OpenID Connect and a signed ID token.', 'portalweave-sso')), $id);
+            self::fail(new \WP_Error('portalweave_sso_implicit_oidc', __('Implicit login requires OpenID Connect and a signed ID token.', 'portalweave-sso')), $id);
         }
         if ($grant === 'authorization_code' && !empty($app['pkce'])) {
             $params['code_challenge'] = Jwt::encode(hash('sha256', $flow['verifier'], true));
             $params['code_challenge_method'] = 'S256';
         }
         if (empty($app['authorize_url'])) {
-            self::fail(new \WP_Error('wpsso_endpoint', __('Configure an authorization endpoint.', 'portalweave-sso')), $id);
+            self::fail(new \WP_Error('portalweave_sso_endpoint', __('Configure an authorization endpoint.', 'portalweave-sso')), $id);
         }
         $url = add_query_arg($params, $app['authorize_url']);
         // Endpoint is administrator-configured, HTTPS and validated at save. A
         // provider hop is intentionally external; user redirects are separately checked.
         if (!self::https_endpoint($app['authorize_url'])) {
-            self::fail(new \WP_Error('wpsso_endpoint', __('The authorization endpoint must use HTTPS.', 'portalweave-sso')), $id);
+            self::fail(new \WP_Error('portalweave_sso_endpoint', __('The authorization endpoint must use HTTPS.', 'portalweave-sso')), $id);
         }
         self::send_redirect($url);
     }
@@ -162,30 +162,30 @@ final class Auth {
         }
         $app = Config::app($flow['app']);
         if (!$app || empty($app['enabled'])) {
-            self::fail(new \WP_Error('wpsso_app', __('The selected provider is unavailable.', 'portalweave-sso')));
+            self::fail(new \WP_Error('portalweave_sso_app', __('The selected provider is unavailable.', 'portalweave-sso')));
         }
         if (!hash_equals((string) ($flow['config_hash'] ?? ''), self::config_hash($app))) {
-            self::fail(new \WP_Error('wpsso_config_changed', __('The provider configuration changed. Start sign in again.', 'portalweave-sso')), $app['id']);
+            self::fail(new \WP_Error('portalweave_sso_config_changed', __('The provider configuration changed. Start sign in again.', 'portalweave-sso')), $app['id']);
         }
         if (!empty($flow['test_user']) && (get_current_user_id() !== (int) $flow['test_user'] || !current_user_can('manage_options'))) {
-            self::fail(new \WP_Error('wpsso_test_permission', __('The original administrator session is required to view test results.', 'portalweave-sso')), $app['id']);
+            self::fail(new \WP_Error('portalweave_sso_test_permission', __('The original administrator session is required to view test results.', 'portalweave-sso')), $app['id']);
         }
         if (self::input($request, 'error') !== '') {
-            self::fail(new \WP_Error('wpsso_provider_denied', __('The identity provider declined authentication.', 'portalweave-sso')), $app['id']);
+            self::fail(new \WP_Error('portalweave_sso_provider_denied', __('The identity provider declined authentication.', 'portalweave-sso')), $app['id']);
         }
         // OIDC authorization response issuer is optional, but if supplied is exact.
         if (self::input($request, 'iss') !== '' && !hash_equals((string) ($app['issuer'] ?? ''), self::input($request, 'iss'))) {
-            self::fail(new \WP_Error('wpsso_issuer', __('The authorization response issuer is incorrect.', 'portalweave-sso')), $app['id']);
+            self::fail(new \WP_Error('portalweave_sso_issuer', __('The authorization response issuer is incorrect.', 'portalweave-sso')), $app['id']);
         }
         if (($app['grant'] ?? 'authorization_code') === 'implicit') {
             if (empty($app['legacy_grants']) || self::request_method() !== 'POST') {
-                self::fail(new \WP_Error('wpsso_implicit', __('Invalid implicit callback.', 'portalweave-sso')), $app['id']);
+                self::fail(new \WP_Error('portalweave_sso_implicit', __('Invalid implicit callback.', 'portalweave-sso')), $app['id']);
             }
             $tokens = ['id_token' => self::input($request, 'id_token'), 'access_token' => self::input($request, 'access_token'), 'token_type' => self::input($request, 'token_type')];
         } else {
             $code = self::input($request, 'code');
             if ($code === '' || strlen($code) > 8192) {
-                self::fail(new \WP_Error('wpsso_code', __('The callback did not contain an authorization code.', 'portalweave-sso')), $app['id']);
+                self::fail(new \WP_Error('portalweave_sso_code', __('The callback did not contain an authorization code.', 'portalweave-sso')), $app['id']);
             }
             $body = ['grant_type' => 'authorization_code', 'code' => $code, 'redirect_uri' => $flow['callback']];
             if (!empty($app['pkce'])) {
@@ -216,11 +216,11 @@ final class Auth {
             return $tokens;
         }
         if (!self::valid_bearer($tokens)) {
-            return new \WP_Error('wpsso_token', __('The token endpoint returned an invalid bearer token.', 'portalweave-sso'));
+            return new \WP_Error('portalweave_sso_token', __('The token endpoint returned an invalid bearer token.', 'portalweave-sso'));
         }
         foreach (['id_token', 'refresh_token'] as $field) {
             if (array_key_exists($field, $tokens) && (!is_string($tokens[$field]) || $tokens[$field] === '' || strlen($tokens[$field]) > 65536)) {
-                return new \WP_Error('wpsso_token', __('The token endpoint returned an invalid token field.', 'portalweave-sso'));
+                return new \WP_Error('portalweave_sso_token', __('The token endpoint returned an invalid token field.', 'portalweave-sso'));
             }
         }
         return $tokens;
@@ -236,7 +236,7 @@ final class Auth {
         $attributes = [];
         $oidc = ($app['protocol'] ?? 'oidc') === 'oidc';
         if ($oidc && empty($tokens['id_token'])) {
-            return new \WP_Error('wpsso_id_token', __('OpenID Connect requires an ID token. Include openid in the scope.', 'portalweave-sso'));
+            return new \WP_Error('portalweave_sso_id_token', __('OpenID Connect requires an ID token. Include openid in the scope.', 'portalweave-sso'));
         }
         if (!empty($tokens['id_token'])) {
             $context = [
@@ -255,7 +255,7 @@ final class Auth {
         }
         if (!empty($app['userinfo_url']) || !empty($app['groupinfo_url'])) {
             if (!self::valid_bearer($tokens)) {
-                return new \WP_Error('wpsso_token', __('A valid bearer token is required for user information.', 'portalweave-sso'));
+                return new \WP_Error('portalweave_sso_token', __('A valid bearer token is required for user information.', 'portalweave-sso'));
             }
         }
         if (!empty($app['userinfo_url'])) {
@@ -264,17 +264,17 @@ final class Auth {
                 return $userinfo;
             }
             if ($oidc && (!isset($userinfo['sub']) || !is_string($userinfo['sub']) || !hash_equals($attributes['sub'], $userinfo['sub']))) {
-                return new \WP_Error('wpsso_subject', __('The UserInfo subject does not match the verified ID token.', 'portalweave-sso'));
+                return new \WP_Error('portalweave_sso_subject', __('The UserInfo subject does not match the verified ID token.', 'portalweave-sso'));
             }
             $attributes = array_merge($attributes, $userinfo);
         }
         if (!$oidc) {
             $subject = self::claim($attributes, $app['subject_attribute'] ?? 'sub');
             if (!is_string($subject) && !is_int($subject)) {
-                return new \WP_Error('wpsso_subject', __('Configure an immutable provider subject attribute.', 'portalweave-sso'));
+                return new \WP_Error('portalweave_sso_subject', __('Configure an immutable provider subject attribute.', 'portalweave-sso'));
             }
             if ((string) $subject === '') {
-                return new \WP_Error('wpsso_subject', __('The provider did not supply an immutable subject.', 'portalweave-sso'));
+                return new \WP_Error('portalweave_sso_subject', __('The provider did not supply an immutable subject.', 'portalweave-sso'));
             }
             $attributes['sub'] = (string) $subject;
         }
@@ -283,7 +283,7 @@ final class Auth {
             if (is_wp_error($groups)) {
                 return $groups;
             }
-            $attributes['_wpsso_groupinfo'] = $groups;
+            $attributes['_portalweave_sso_groupinfo'] = $groups;
             if (isset($groups['groups']) && is_array($groups['groups'])) {
                 $attributes['groups'] = $groups['groups'];
             } elseif (array_is_list($groups)) {
@@ -300,17 +300,17 @@ final class Auth {
         }
         if (!empty($flow['test_user'])) {
             Audit::record('test_success', $app['id'], wp_get_current_user(), '', $flow['redirect']);
-            self::page(__('SSO configuration test', 'portalweave-sso'), '<p>' . esc_html__('Authentication succeeded. These are the attributes returned by the configured provider. No user account was created or signed in.', 'portalweave-sso') . '</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere">' . esc_html(wp_json_encode($attributes, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)) . '</pre><p><a href="' . esc_url(admin_url('options-general.php?page=wpsso')) . '">' . esc_html__('Return to settings', 'portalweave-sso') . '</a></p>');
+            self::page(__('SSO configuration test', 'portalweave-sso'), '<p>' . esc_html__('Authentication succeeded. These are the attributes returned by the configured provider. No user account was created or signed in.', 'portalweave-sso') . '</p><pre style="white-space:pre-wrap;overflow-wrap:anywhere">' . esc_html(wp_json_encode($attributes, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES)) . '</pre><p><a href="' . esc_url(admin_url('options-general.php?page=portalweave-sso')) . '">' . esc_html__('Return to settings', 'portalweave-sso') . '</a></p>');
         }
         $user = Accounts::resolve($app, $attributes, $tokens);
         if (!is_wp_error($user)) {
-            $user = apply_filters('wpsso_pre_authenticate', $user, $app, $attributes);
+            $user = apply_filters('portalweave_sso_pre_authenticate', $user, $app, $attributes);
         }
         if (is_wp_error($user)) {
             self::fail($user, $app['id']);
         }
         if (!$user instanceof \WP_User || !$user->ID) {
-            self::fail(new \WP_Error('wpsso_account', __('The identity could not be mapped to a user account.', 'portalweave-sso')), $app['id']);
+            self::fail(new \WP_Error('portalweave_sso_account', __('The identity could not be mapped to a user account.', 'portalweave-sso')), $app['id']);
         }
         $saved = self::store_tokens($user->ID, $app['id'], $tokens, $attributes['sub'] ?? '', $flow['nonce']);
         if (is_wp_error($saved)) {
@@ -321,8 +321,8 @@ final class Auth {
         wp_set_current_user($user->ID);
         wp_set_auth_cookie($user->ID, false, true);
         do_action('wp_login', $user->user_login, $user); // phpcs:ignore WordPress.NamingConventions.PrefixAllGlobals.NonPrefixedHooknameFound -- Required WordPress core login event for session integrations.
-        do_action('wpsso_authenticated', $user, $app, $attributes);
-        $redirect = apply_filters('wpsso_login_redirect', $flow['redirect'], $app, $attributes, $user);
+        do_action('portalweave_sso_authenticated', $user, $app, $attributes);
+        $redirect = apply_filters('portalweave_sso_login_redirect', $flow['redirect'], $app, $attributes, $user);
         $redirect = Redirect::validate(is_string($redirect) ? $redirect : '');
         Audit::record('success', $app['id'], $user, '', $redirect);
         if (!empty($flow['popup'])) {
@@ -348,10 +348,10 @@ final class Auth {
             return $encrypted;
         }
         if (!is_string($encrypted) || $encrypted === '') {
-            return new \WP_Error('wpsso_token_storage', __('Encrypted token storage is unavailable.', 'portalweave-sso'));
+            return new \WP_Error('portalweave_sso_token_storage', __('Encrypted token storage is unavailable.', 'portalweave-sso'));
         }
         if (update_user_meta($user_id, self::token_meta_key($app_id), $encrypted) === false) {
-            return new \WP_Error('wpsso_token_storage', __('The encrypted session tokens could not be saved.', 'portalweave-sso'));
+            return new \WP_Error('portalweave_sso_token_storage', __('The encrypted session tokens could not be saved.', 'portalweave-sso'));
         }
         return true;
     }
@@ -359,24 +359,24 @@ final class Auth {
     public static function refresh($user_id, $app_id) {
         global $wpdb;
         if ((int) $user_id !== get_current_user_id() && !current_user_can('manage_options')) {
-            return new \WP_Error('wpsso_permission', __('You cannot refresh this user session.', 'portalweave-sso'));
+            return new \WP_Error('portalweave_sso_permission', __('You cannot refresh this user session.', 'portalweave-sso'));
         }
         $app = Config::app(sanitize_key($app_id));
         if (!$app || empty($app['enabled'])) {
-            return new \WP_Error('wpsso_app', __('The provider is unavailable.', 'portalweave-sso'));
+            return new \WP_Error('portalweave_sso_app', __('The provider is unavailable.', 'portalweave-sso'));
         }
-        $lock = 'wpsso_refresh_' . (int) $user_id . '_' . sanitize_key($app_id);
+        $lock = 'portalweave_sso_refresh_' . (int) $user_id . '_' . sanitize_key($app_id);
         // Compare and delete in SQL: a cached get/delete pair can remove a new owner's lock.
         $wpdb->query($wpdb->prepare('DELETE FROM %i WHERE option_name = %s AND CAST(option_value AS UNSIGNED) < %d', $wpdb->options, $lock, time())); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Atomic lock acquisition; option cache is invalidated below.
         wp_cache_delete($lock, 'options');
         $expires = time() + 120;
         if (!add_option($lock, $expires, '', false)) {
-            return new \WP_Error('wpsso_refresh_busy', __('A token refresh is already in progress.', 'portalweave-sso'));
+            return new \WP_Error('portalweave_sso_refresh_busy', __('A token refresh is already in progress.', 'portalweave-sso'));
         }
         try {
             $old = self::read_tokens($user_id, $app_id);
             if (empty($old['refresh_token'])) {
-                return new \WP_Error('wpsso_refresh_missing', __('No refresh token is stored for this account.', 'portalweave-sso'));
+                return new \WP_Error('portalweave_sso_refresh_missing', __('No refresh token is stored for this account.', 'portalweave-sso'));
             }
             $tokens = self::token_request($app, ['grant_type' => 'refresh_token', 'refresh_token' => $old['refresh_token']]);
             if (is_wp_error($tokens)) {
@@ -389,7 +389,7 @@ final class Auth {
                     return $claims;
                 }
                 if (!hash_equals((string) ($old['_subject'] ?? ''), $claims['sub']) || (isset($claims['nonce']) && (!is_string($claims['nonce']) || !hash_equals((string) ($old['_nonce'] ?? ''), $claims['nonce'])))) {
-                    return new \WP_Error('wpsso_refresh_subject', __('The refreshed identity differs from the stored account.', 'portalweave-sso'));
+                    return new \WP_Error('portalweave_sso_refresh_subject', __('The refreshed identity differs from the stored account.', 'portalweave-sso'));
                 }
             }
             $merged = array_merge($old, $tokens);
@@ -419,14 +419,14 @@ final class Auth {
     }
 
     private static function password_form($state, array $app) {
-        $action = add_query_arg('wpsso_action', 'password', home_url('/'));
+        $action = add_query_arg('portalweave_sso_action', 'password', home_url('/'));
         $html = '<p>' . esc_html__('This provider uses the legacy password grant. Your credentials are sent to the configured identity provider over HTTPS.', 'portalweave-sso') . '</p><form method="post" action="' . esc_url($action) . '"><input type="hidden" name="state" value="' . esc_attr($state) . '"><p><label>' . esc_html__('Provider username', 'portalweave-sso') . '<br><input name="username" autocomplete="username" required maxlength="512"></label></p><p><label>' . esc_html__('Provider password', 'portalweave-sso') . '<br><input type="password" name="password" autocomplete="current-password" required maxlength="4096"></label></p><button type="submit">' . esc_html__('Sign in', 'portalweave-sso') . '</button></form>';
         self::page($app['name'] ?? __('Sign in', 'portalweave-sso'), $html);
     }
 
     private static function password() {
         if (self::request_method() !== 'POST') {
-            self::fail(new \WP_Error('wpsso_method', __('A POST request is required.', 'portalweave-sso')));
+            self::fail(new \WP_Error('portalweave_sso_method', __('A POST request is required.', 'portalweave-sso')));
         }
         $request = $_POST; // phpcs:ignore WordPress.Security.NonceVerification.Missing -- The password form is protected by single-use state bound to its HttpOnly browser cookie, verified next.
         $flow = self::consume_flow(self::input($request, 'state'), 'login');
@@ -435,18 +435,18 @@ final class Auth {
         }
         $app = Config::app($flow['app']);
         if (!$app || empty($app['enabled']) || ($app['grant'] ?? '') !== 'password' || empty($app['legacy_grants'])) {
-            self::fail(new \WP_Error('wpsso_legacy_disabled', __('The password grant is disabled.', 'portalweave-sso')));
+            self::fail(new \WP_Error('portalweave_sso_legacy_disabled', __('The password grant is disabled.', 'portalweave-sso')));
         }
         if (!hash_equals((string) ($flow['config_hash'] ?? ''), self::config_hash($app))) {
-            self::fail(new \WP_Error('wpsso_config_changed', __('The provider configuration changed. Start sign in again.', 'portalweave-sso')), $app['id']);
+            self::fail(new \WP_Error('portalweave_sso_config_changed', __('The provider configuration changed. Start sign in again.', 'portalweave-sso')), $app['id']);
         }
         if (!empty($flow['test_user']) && (get_current_user_id() !== (int) $flow['test_user'] || !current_user_can('manage_options'))) {
-            self::fail(new \WP_Error('wpsso_test_permission', __('The original administrator session is required.', 'portalweave-sso')));
+            self::fail(new \WP_Error('portalweave_sso_test_permission', __('The original administrator session is required.', 'portalweave-sso')));
         }
         $username = self::input($request, 'username');
         $password = self::input($request, 'password');
         if ($username === '' || $password === '' || strlen($username) > 512 || strlen($password) > 4096) {
-            self::fail(new \WP_Error('wpsso_credentials', __('Enter a valid provider username and password.', 'portalweave-sso')), $app['id']);
+            self::fail(new \WP_Error('portalweave_sso_credentials', __('Enter a valid provider username and password.', 'portalweave-sso')), $app['id']);
         }
         // Endpoint credentials never enter user metadata, audit logs or error text.
         $tokens = self::token_request($app, ['grant_type' => 'password', 'username' => $username, 'password' => $password, 'scope' => $app['scope'] ?? '', 'nonce' => $flow['nonce']]);
@@ -462,13 +462,13 @@ final class Auth {
             self::redirect(Redirect::validate((string) Config::get('logout_redirect', home_url('/'))));
         }
         $request = self::request_method() === 'POST' ? $_POST : $_GET;
-        if (!wp_verify_nonce(sanitize_text_field(self::input($request, '_wpnonce')), 'wpsso_logout')) {
-            self::fail(new \WP_Error('wpsso_logout_nonce', __('The logout link has expired. Please try again.', 'portalweave-sso')));
+        if (!wp_verify_nonce(sanitize_text_field(self::input($request, '_wpnonce')), 'portalweave_sso_logout')) {
+            self::fail(new \WP_Error('portalweave_sso_logout_nonce', __('The logout link has expired. Please try again.', 'portalweave-sso')));
         }
         $redirect = self::input($request, 'redirect_to');
         $redirect = Redirect::validate($redirect !== '' ? $redirect : (string) Config::get('logout_redirect', home_url('/')));
         if (Config::get('logout_confirmation', true) && self::input($request, 'confirm') !== '1') {
-            $html = '<form method="post" action="' . esc_url(add_query_arg('wpsso_action', 'logout', home_url('/'))) . '"><input type="hidden" name="confirm" value="1"><input type="hidden" name="_wpnonce" value="' . esc_attr(wp_create_nonce('wpsso_logout')) . '"><input type="hidden" name="redirect_to" value="' . esc_attr($redirect) . '"><p>' . esc_html__('Sign out of this site and your identity provider?', 'portalweave-sso') . '</p><button type="submit">' . esc_html__('Sign out', 'portalweave-sso') . '</button></form>';
+            $html = '<form method="post" action="' . esc_url(add_query_arg('portalweave_sso_action', 'logout', home_url('/'))) . '"><input type="hidden" name="confirm" value="1"><input type="hidden" name="_wpnonce" value="' . esc_attr(wp_create_nonce('portalweave_sso_logout')) . '"><input type="hidden" name="redirect_to" value="' . esc_attr($redirect) . '"><p>' . esc_html__('Sign out of this site and your identity provider?', 'portalweave-sso') . '</p><button type="submit">' . esc_html__('Sign out', 'portalweave-sso') . '</button></form>';
             self::page(__('Confirm sign out', 'portalweave-sso'), $html);
         }
         $user = wp_get_current_user();
@@ -476,7 +476,7 @@ final class Auth {
         $app = Config::app(is_string($app_id) ? $app_id : '');
         $tokens = $app ? self::read_tokens($user->ID, $app['id']) : [];
         $state = '';
-        $callback = add_query_arg('wpsso_action', 'logout_callback', home_url('/'));
+        $callback = add_query_arg('portalweave_sso_action', 'logout_callback', home_url('/'));
         if ($app && !empty($app['logout_url']) && self::https_endpoint($app['logout_url'])) {
             $state = self::create_flow(['kind' => 'logout', 'app' => $app['id'], 'redirect' => $redirect, 'callback' => $callback]);
         }
@@ -512,7 +512,7 @@ final class Auth {
         if (empty($app['backchannel_logout']) || !isset($attributes['sid']) || !is_string($attributes['sid']) || $attributes['sid'] === '' || strlen($attributes['sid']) > 1024) {
             return;
         }
-        $key = '_wpsso_sid_' . hash('sha256', self::identity_scope($app));
+        $key = '_portalweave_sso_sid_' . hash('sha256', self::identity_scope($app));
         $digest = hash('sha256', $attributes['sid']);
         $existing = get_user_meta($user_id, $key, false);
         if (!in_array($digest, $existing, true)) {
@@ -546,7 +546,7 @@ final class Auth {
     public static function backchannel_logout($app_id, $logout_token) {
         $app = Config::app(sanitize_key($app_id));
         if (!$app || empty($app['enabled']) || empty($app['backchannel_logout']) || ($app['protocol'] ?? '') !== 'oidc') {
-            return new \WP_Error('wpsso_backchannel_disabled', __('Back-channel logout is disabled for this provider.', 'portalweave-sso'));
+            return new \WP_Error('portalweave_sso_backchannel_disabled', __('Back-channel logout is disabled for this provider.', 'portalweave-sso'));
         }
         $claims = Jwt::validate($logout_token, $app, ['profile' => 'logout']);
         if (is_wp_error($claims)) {
@@ -554,13 +554,13 @@ final class Auth {
             return $claims;
         }
         $scope = self::identity_scope($app);
-        $replay = 'wpsso_logout_' . hash('sha256', $scope . '|' . $claims['jti']);
+        $replay = 'portalweave_sso_logout_' . hash('sha256', $scope . '|' . $claims['jti']);
         if (!add_option($replay, time() + 660, '', false)) {
-            return new \WP_Error('wpsso_logout_replay', __('The logout event has already been processed.', 'portalweave-sso'));
+            return new \WP_Error('portalweave_sso_logout_replay', __('The logout event has already been processed.', 'portalweave-sso'));
         }
         $scope_hash = hash('sha256', $scope);
-        $identity_key = '_wpsso_identity_' . $scope_hash;
-        $sid_key = '_wpsso_sid_' . $scope_hash;
+        $identity_key = '_portalweave_sso_identity_' . $scope_hash;
+        $sid_key = '_portalweave_sso_sid_' . $scope_hash;
         $query = ['blog_id' => 0, 'number' => 1000];
         if (isset($claims['sid'])) {
             $query['meta_key'] = $sid_key;
@@ -577,8 +577,8 @@ final class Auth {
             \WP_Session_Tokens::get_instance($user->ID)->destroy_all();
             delete_user_meta($user->ID, self::token_meta_key($app['id']));
             delete_user_meta($user->ID, $sid_key);
-            Audit::record('logout', $app['id'], $user, 'wpsso_backchannel_logout');
-            do_action('wpsso_backchannel_logout', $user, $app, $claims);
+            Audit::record('logout', $app['id'], $user, 'portalweave_sso_backchannel_logout');
+            do_action('portalweave_sso_backchannel_logout', $user, $app, $claims);
         }
         return true;
     }
@@ -593,13 +593,13 @@ final class Auth {
         $flow['expires'] = time() + self::TTL;
         $flow['browser'] = hash('sha256', $browser);
         $flow['blog_id'] = get_current_blog_id();
-        $key = 'wpsso_state_' . hash('sha256', $state);
+        $key = 'portalweave_sso_state_' . hash('sha256', $state);
         if (!add_option($key, $flow, '', false)) {
-            return new \WP_Error('wpsso_state_store', __('The login state could not be stored.', 'portalweave-sso'));
+            return new \WP_Error('portalweave_sso_state_store', __('The login state could not be stored.', 'portalweave-sso'));
         }
         if (headers_sent() || !setcookie(self::cookie_name($state), $browser, ['expires' => time() + self::TTL, 'path' => '/', 'secure' => true, 'httponly' => true, 'samesite' => 'Lax'])) {
             delete_option($key);
-            return new \WP_Error('wpsso_cookie', __('The browser login cookie could not be created.', 'portalweave-sso'));
+            return new \WP_Error('portalweave_sso_cookie', __('The browser login cookie could not be created.', 'portalweave-sso'));
         }
         return $state;
     }
@@ -608,18 +608,18 @@ final class Auth {
     public static function consume_flow($state, $kind) {
         global $wpdb;
         if (!is_string($state) || strlen($state) > 512 || !preg_match('/^[A-Za-z0-9_-]{43}(?:\.[A-Za-z0-9_-]+)?$/D', $state)) {
-            return new \WP_Error('wpsso_state', __('The login state is missing or invalid. Start sign in again.', 'portalweave-sso'));
+            return new \WP_Error('portalweave_sso_state', __('The login state is missing or invalid. Start sign in again.', 'portalweave-sso'));
         }
-        $key = 'wpsso_state_' . hash('sha256', $state);
+        $key = 'portalweave_sso_state_' . hash('sha256', $state);
         $flow = get_option($key);
         $browser = self::input($_COOKIE, self::cookie_name($state));
         if (!is_array($flow) || ($flow['kind'] ?? '') !== $kind || ($flow['expires'] ?? 0) < time() || ($flow['blog_id'] ?? 0) !== get_current_blog_id() || $browser === '' || !hash_equals((string) ($flow['browser'] ?? ''), hash('sha256', $browser))) {
-            return new \WP_Error('wpsso_state', __('The login state expired or belongs to a different browser. Start sign in again.', 'portalweave-sso'));
+            return new \WP_Error('portalweave_sso_state', __('The login state expired or belongs to a different browser. Start sign in again.', 'portalweave-sso'));
         }
         $deleted = $wpdb->delete($wpdb->options, ['option_name' => $key], ['%s']); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery -- Atomic deletion makes OAuth state single use across concurrent requests; invalidate cache below.
         wp_cache_delete($key, 'options');
         if ($deleted !== 1) {
-            return new \WP_Error('wpsso_state_replay', __('This login state has already been used.', 'portalweave-sso'));
+            return new \WP_Error('portalweave_sso_state_replay', __('This login state has already been used.', 'portalweave-sso'));
         }
         setcookie(self::cookie_name($state), '', ['expires' => time() - 3600, 'path' => '/', 'secure' => true, 'httponly' => true, 'samesite' => 'Lax']);
         return $flow;
@@ -627,8 +627,8 @@ final class Auth {
 
     public static function cleanup() {
         global $wpdb;
-        $like = $wpdb->esc_like('wpsso_state_') . '%';
-        $logout_like = $wpdb->esc_like('wpsso_logout_') . '%';
+        $like = $wpdb->esc_like('portalweave_sso_state_') . '%';
+        $logout_like = $wpdb->esc_like('portalweave_sso_logout_') . '%';
         $rows = $wpdb->get_results($wpdb->prepare('SELECT option_name, option_value FROM %i WHERE option_name LIKE %s OR option_name LIKE %s LIMIT 2000', $wpdb->options, $like, $logout_like)); // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery,WordPress.DB.DirectDatabaseQuery.NoCaching -- Cron must inspect current expiring security records; deletion uses the option API below.
         foreach ($rows as $row) {
             $value = maybe_unserialize($row->option_value);
@@ -640,7 +640,7 @@ final class Auth {
     }
 
     private static function fragment_relay() {
-        $html = '<p id="wpsso-relay-status">' . esc_html__('Completing sign in…', 'portalweave-sso') . '</p><form id="wpsso-relay" method="post" action="' . esc_url(add_query_arg('wpsso_action', 'callback', home_url('/'))) . '"></form><noscript>' . esc_html__('JavaScript is required to complete legacy implicit sign in.', 'portalweave-sso') . '</noscript>';
+        $html = '<p id="portalweave-sso-relay-status">' . esc_html__('Completing sign in…', 'portalweave-sso') . '</p><form id="portalweave-sso-relay" method="post" action="' . esc_url(add_query_arg('portalweave_sso_action', 'callback', home_url('/'))) . '"></form><noscript>' . esc_html__('JavaScript is required to complete legacy implicit sign in.', 'portalweave-sso') . '</noscript>';
         self::page(__('Completing sign in', 'portalweave-sso'), $html, 'relay', '', __('No login response was received. Start sign in again.', 'portalweave-sso'));
     }
 
@@ -671,7 +671,7 @@ final class Auth {
     }
 
     private static function cookie_name($state) {
-        return '__Host-wpsso_' . substr(hash('sha256', $state), 0, 24);
+        return '__Host-portalweave_sso_' . substr(hash('sha256', $state), 0, 24);
     }
 
     private static function origin($url) {
@@ -724,10 +724,10 @@ final class Auth {
         header('Content-Type: text/html; charset=UTF-8');
         header('Cache-Control: no-store, private, max-age=0');
         header("Content-Security-Policy: default-src 'none'; script-src 'self'; style-src 'unsafe-inline'; form-action 'self'; base-uri 'none'; frame-ancestors 'none'");
-        echo '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>' . esc_html($title) . '</title></head><body data-wpsso-mode="' . esc_attr($mode) . '" data-wpsso-redirect="' . esc_attr($redirect) . '" data-wpsso-origin="' . esc_attr(self::origin(home_url('/'))) . '" data-wpsso-no-response="' . esc_attr($no_response) . '" style="font:16px/1.6 system-ui,sans-serif;max-width:850px;margin:3rem auto;padding:1rem"><h1>' . esc_html($title) . '</h1>' . wp_kses($html, self::page_allowed_html());
+        echo '<!doctype html><html><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><meta name="robots" content="noindex,nofollow"><title>' . esc_html($title) . '</title></head><body data-portalweave-sso-mode="' . esc_attr($mode) . '" data-portalweave-sso-redirect="' . esc_attr($redirect) . '" data-portalweave-sso-origin="' . esc_attr(self::origin(home_url('/'))) . '" data-portalweave-sso-no-response="' . esc_attr($no_response) . '" style="font:16px/1.6 system-ui,sans-serif;max-width:850px;margin:3rem auto;padding:1rem"><h1>' . esc_html($title) . '</h1>' . wp_kses($html, self::page_allowed_html());
         if (in_array($mode, ['relay', 'popup'], true)) {
-            wp_enqueue_script('wpsso-auth', PORTALWEAVE_SSO_URL . 'assets/auth.js', [], PORTALWEAVE_SSO_VERSION, true);
-            wp_print_scripts('wpsso-auth');
+            wp_enqueue_script('portalweave-sso-auth', PORTALWEAVE_SSO_URL . 'assets/auth.js', [], PORTALWEAVE_SSO_VERSION, true);
+            wp_print_scripts('portalweave-sso-auth');
         }
         echo '</body></html>';
         exit;

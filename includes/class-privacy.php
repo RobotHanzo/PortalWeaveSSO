@@ -1,5 +1,5 @@
 <?php
-namespace WPSSO;
+namespace PortalWeaveSSO;
 
 defined('ABSPATH') || exit;
 
@@ -34,13 +34,13 @@ final class Privacy
 
     public static function exporters(array $exporters): array
     {
-        $exporters['wpsso-profile'] = ['exporter_friendly_name' => __('PortalWeave SSO linked profile', 'portalweave-sso'), 'callback' => [self::class, 'export']];
+        $exporters['portalweave-sso-profile'] = ['exporter_friendly_name' => __('PortalWeave SSO linked profile', 'portalweave-sso'), 'callback' => [self::class, 'export']];
         return $exporters;
     }
 
     public static function erasers(array $erasers): array
     {
-        $erasers['wpsso-profile'] = ['eraser_friendly_name' => __('PortalWeave SSO linked profile', 'portalweave-sso'), 'callback' => [self::class, 'erase']];
+        $erasers['portalweave-sso-profile'] = ['eraser_friendly_name' => __('PortalWeave SSO linked profile', 'portalweave-sso'), 'callback' => [self::class, 'erase']];
         return $erasers;
     }
 
@@ -65,20 +65,20 @@ final class Privacy
         $keys = (array) get_user_meta($id, Accounts::identity_keys_meta_key(), true);
         foreach (Config::apps() as $app) {
             $scope = get_current_blog_id() . '|' . $app['id'] . '|' . $app['issuer'] . '|' . $app['client_id'];
-            $keys[] = '_wpsso_identity_' . hash('sha256', $scope);
-            $keys[] = '_wpsso_sid_' . hash('sha256', $scope);
+            $keys[] = '_portalweave_sso_identity_' . hash('sha256', $scope);
+            $keys[] = '_portalweave_sso_sid_' . hash('sha256', $scope);
         }
         if (!is_multisite()) {
             $keys = array_merge($keys, array_keys(get_user_meta($id)));
         }
-        return array_values(array_unique(array_filter($keys, static fn($key) => is_string($key) && preg_match('/^_wpsso_(?:identity|sid)_[a-f0-9]{64}$/D', $key))));
+        return array_values(array_unique(array_filter($keys, static fn($key) => is_string($key) && preg_match('/^_portalweave_sso_(?:identity|sid)_[a-f0-9]{64}$/D', $key))));
     }
 
     private static function profile_keys(int $id): array
     {
-        $keys = [Accounts::groups_meta_key(), Auth::app_meta_key(), '_wpsso_avatar' . self::suffix()];
+        $keys = [Accounts::groups_meta_key(), Auth::app_meta_key(), '_portalweave_sso_avatar' . self::suffix()];
         foreach (['external', 'groups', 'group_names', 'modified'] as $field) {
-            $keys[] = '_wpsso_scim_' . $field . self::suffix();
+            $keys[] = '_portalweave_sso_scim_' . $field . self::suffix();
         }
         $custom = (array) get_user_meta($id, Accounts::mapped_keys_meta_key(), true);
         foreach ($custom as $key) {
@@ -95,7 +95,7 @@ final class Privacy
         $items = [];
         foreach ($ids as $id) {
             $fields = [];
-            foreach (array_merge(self::profile_keys($id), self::identity_keys($id), ['_wpsso_moderation' . self::suffix(), '_wpsso_scim_active' . self::suffix(), '_wpsso_guest_expires']) as $key) {
+            foreach (array_merge(self::profile_keys($id), self::identity_keys($id), ['_portalweave_sso_moderation' . self::suffix(), '_portalweave_sso_scim_active' . self::suffix(), '_portalweave_sso_guest_expires']) as $key) {
                 $value = get_user_meta($id, $key, true);
                 if ($value !== '' && $value !== []) {
                     $fields[] = ['name' => $key, 'value' => is_scalar($value) ? (string) $value : wp_json_encode($value)];
@@ -116,7 +116,7 @@ final class Privacy
         foreach ($ids as $id) {
             $user_removed = false;
             $keys = array_merge(self::profile_keys($id), self::identity_keys($id), [Accounts::mapped_keys_meta_key(), Accounts::identity_keys_meta_key()]);
-            $token_prefix = '_wpsso_tokens_' . (is_multisite() ? get_current_blog_id() . '_' : '');
+            $token_prefix = '_portalweave_sso_tokens_' . (is_multisite() ? get_current_blog_id() . '_' : '');
             foreach (array_keys(get_user_meta($id)) as $key) {
                 if (str_starts_with($key, $token_prefix)) {
                     $keys[] = $key;
@@ -130,7 +130,7 @@ final class Privacy
                 \WP_Session_Tokens::get_instance($id)->destroy_all();
             }
             // Removing a block or expiry can re-enable an account; retain security policy rather than invert it.
-            foreach (['_wpsso_moderation' . self::suffix(), '_wpsso_scim_active' . self::suffix(), '_wpsso_guest_expires'] as $key) {
+            foreach (['_portalweave_sso_moderation' . self::suffix(), '_portalweave_sso_scim_active' . self::suffix(), '_portalweave_sso_guest_expires'] as $key) {
                 $retained = metadata_exists('user', $id, $key) || $retained;
             }
         }

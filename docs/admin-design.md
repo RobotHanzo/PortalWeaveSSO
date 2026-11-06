@@ -1,6 +1,6 @@
 # Admin settings design
 
-PortalWeave's administrator UI is organized around tasks, using server-rendered screens under the existing Settings entry. The route is `page=wpsso&tab=SCREEN`; network administration uses the same renderer with network capabilities and settings scope.
+PortalWeave's administrator UI is organized around tasks, using server-rendered screens under the existing Settings entry. The route is `page=portalweave-sso&tab=SCREEN`; network administration uses the same renderer with network capabilities and settings scope.
 
 | Screen | Primary task |
 | --- | --- |

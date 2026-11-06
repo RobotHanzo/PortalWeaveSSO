@@ -29,7 +29,7 @@ Open a run's **Summary** for per-suite passed/failed counts and failure details.
 
 Test artifacts are retained for 14 days and packages for 30 days. Test-report steps and artifact collection run after failures as well as success. Empty, malformed, incomplete, duplicate and missing expected reports fail the job. PHP bootstrap/early termination and unfinished Node runners produce explicit failures instead of silently returning success. Reports use fixture accounts and do not require live IdP or SVN credentials.
 
-The package artifact contains `portalweave-sso-1.0.0.zip` and its checksum for version 1.0.0. The source PHP entry filename and Docker bind remain `wordpress-sso`; those legacy development paths are deliberately separate from the proposed distribution slug/text domain `portalweave-sso`.
+The package artifact contains `portalweave-sso-1.0.0.zip` and its checksum for version 1.0.0. The PHP entry filename is `portalweave-sso.php`; the Docker source bind and production package both use the `portalweave-sso` directory.
 
 The workflow uses read-only repository permission. Native job summaries and annotations do not require `checks: write` or PR comments, so fork PRs can run without publishing permissions. It does not use `pull_request_target` to execute untrusted code. Deployment credentials are never provided to CI jobs.
 
@@ -38,22 +38,22 @@ The workflow uses read-only repository permission. Native job summaries and anno
 Docker Compose, Bash, curl and Node.js 20+ are needed; the GitHub runner uses Node.js 24. Run each disposable project in isolation because HTTPS fixtures use loopback ports 8098 and 8448:
 
 ```sh
-COMPOSE_PROJECT_NAME=wpsso-local-ci bash scripts/ci.sh integration
+COMPOSE_PROJECT_NAME=portalweave-sso-local-ci bash scripts/ci.sh integration
 node scripts/report-results.mjs reports --expect integration,https
-COMPOSE_PROJECT_NAME=wpsso-local-ci docker compose -f compose.test.yml down --volumes
+COMPOSE_PROJECT_NAME=portalweave-sso-local-ci docker compose -f compose.test.yml down --volumes
 ```
 
 For multisite use a fresh project after freeing the loopback ports:
 
 ```sh
-COMPOSE_PROJECT_NAME=wpsso-local-network bash scripts/ci.sh multisite
+COMPOSE_PROJECT_NAME=portalweave-sso-local-network bash scripts/ci.sh multisite
 node scripts/report-results.mjs reports --expect multisite
-COMPOSE_PROJECT_NAME=wpsso-local-network docker compose -f compose.test.yml down --volumes
+COMPOSE_PROJECT_NAME=portalweave-sso-local-network docker compose -f compose.test.yml down --volumes
 ```
 
-Set `WPSSO_WORDPRESS_IMAGE` and `WPSSO_CLI_IMAGE` to reproduce a matrix variant. `WPSSO_REPORT_DIR` controls JSON/JUnit output for direct PHP or Node runner invocation. Use a clean reports directory when reproducing jobs: the summarizer rejects unrelated JSON and duplicate suites instead of assuming they passed.
+Set `PORTALWEAVE_SSO_WORDPRESS_IMAGE` and `PORTALWEAVE_SSO_CLI_IMAGE` to reproduce a matrix variant. `PORTALWEAVE_SSO_REPORT_DIR` controls JSON/JUnit output for direct PHP or Node runner invocation. Use a clean reports directory when reproducing jobs: the summarizer rejects unrelated JSON and duplicate suites instead of assuming they passed.
 
-The fixture titles `WPSSO Integration` and `WPSSO Multisite Integration`, fixture account names and `/wp-content/plugins/wordpress-sso` test bind are guards used by the runners. Do not rename them to the public product name. Production bootstrap metadata uses `PORTALWEAVE_SSO_VERSION`, while compatibility CLI, shortcode, namespace and server configuration names remain documented in the [administrator guide](provider-setup.md).
+The fixture titles `PortalWeave SSO Integration` and `PortalWeave SSO Multisite Integration`, fixture account names and `/wp-content/plugins/portalweave-sso` test bind are guards used by the runners. Keep setup commands and runner guards synchronized without weakening their refusal to run against unrelated sites. Bootstrap metadata uses `PORTALWEAVE_SSO_VERSION`; CLI, shortcode, namespace and server configuration names are documented in the [administrator guide](provider-setup.md).
 
 ## WordPress.org directory checks and approval
 

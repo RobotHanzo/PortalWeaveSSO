@@ -1269,7 +1269,7 @@ msgid "Custom button CSS"
 msgstr ""
 
 #: includes/class-admin.php:648
-msgid "Scope rules to .wpsso-login to avoid affecting unrelated site elements. Only trusted administrators can configure CSS."
+msgid "Scope rules to .portalweave-sso-login to avoid affecting unrelated site elements. Only trusted administrators can configure CSS."
 msgstr ""
 
 #: includes/class-admin.php:649
