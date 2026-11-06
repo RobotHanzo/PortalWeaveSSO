@@ -16,6 +16,10 @@
 
 The integration and multisite harness downloads all three service images before starting a fixture. Registry failures get at most three attempts with 5- and 10-second waits; successful cached images are reused. Startup and one-off commands use `--pull never`, so later steps cannot trigger another registry download. Exhausted downloads, container startup, fixture setup and test failures remain failures; setup and tests are never retried.
 
+Repository helper steps use Bash entrypoints, including `scripts/build.sh` for packaging; CI does not require PowerShell. Release validation and reporting share their dependency-free Node.js engines, and `scripts/lint.sh` invokes the PHP syntax checker. The Bash builder requires Node.js 20+, `zip` and `unzip`, and verifies the same production manifest, portable entry names and file hashes as the optional Windows builder.
+
+The helper entrypoints are `release.sh` for metadata/staging, `plugin-check.sh` for complete native-output parsing, `report-results.sh` for suite summaries, `report-tooling.sh` for tooling JUnit summaries, and `check-wordpress-release.sh` for the read-only WordPress.org repository/version preflight. The existing `check-release-ref.sh` retains the remote-tag guard. All are under `scripts/`; invoking the wrappers does not change their verification or publication requirements.
+
 WordPress containers have readiness checks before WP-CLI runs. The minimum and current versions run independently with `fail-fast: false`, so both produce evidence if either fails. Each job uses a disposable database and collects logs before cleanup. Actions are pinned to full commit hashes, and Dependabot proposes updates weekly.
 
 ## Read test results
@@ -41,7 +45,7 @@ Docker Compose, Bash, curl and Node.js 20+ are needed; the GitHub runner uses No
 
 ```sh
 COMPOSE_PROJECT_NAME=portalweave-sso-local-ci bash scripts/ci.sh integration
-node scripts/report-results.mjs reports --expect integration,https
+bash scripts/report-results.sh reports --expect integration,https
 COMPOSE_PROJECT_NAME=portalweave-sso-local-ci docker compose -f compose.test.yml down --volumes
 ```
 
@@ -49,17 +53,17 @@ For multisite use a fresh project after freeing the loopback ports:
 
 ```sh
 COMPOSE_PROJECT_NAME=portalweave-sso-local-network bash scripts/ci.sh multisite
-node scripts/report-results.mjs reports --expect multisite
+bash scripts/report-results.sh reports --expect multisite
 COMPOSE_PROJECT_NAME=portalweave-sso-local-network docker compose -f compose.test.yml down --volumes
 ```
 
-Set `PORTALWEAVE_SSO_WORDPRESS_IMAGE` and `PORTALWEAVE_SSO_CLI_IMAGE` to reproduce a matrix variant. `PORTALWEAVE_SSO_REPORT_DIR` controls JSON/JUnit output for direct PHP or Node runner invocation. Use a clean reports directory when reproducing jobs: the summarizer rejects unrelated JSON and duplicate suites instead of assuming they passed.
+Set `PORTALWEAVE_SSO_WORDPRESS_IMAGE` and `PORTALWEAVE_SSO_CLI_IMAGE` to reproduce a matrix variant. `PORTALWEAVE_SSO_REPORT_DIR` controls JSON/JUnit output for the PHP/HTTPS runners and reporting entrypoints. Use a clean reports directory when reproducing jobs: the summarizer rejects unrelated JSON and duplicate suites instead of assuming they passed.
 
 The fixture titles `PortalWeave SSO Integration` and `PortalWeave SSO Multisite Integration`, fixture account names and `/wp-content/plugins/portalweave-sso` test bind are guards used by the runners. Keep setup commands and runner guards synchronized without weakening their refusal to run against unrelated sites. Bootstrap metadata uses `PORTALWEAVE_SSO_VERSION`; CLI, shortcode, namespace and server configuration names are documented in the [administrator guide](provider-setup.md).
 
 ## WordPress.org directory checks and approval
 
-The [WordPress.org directory review workflow](https://github.com/RobotHanzo/PortalWeaveSSO/actions/workflows/wordpress-review.yml) stages production files under the intended directory slug and runs the official Plugin Check action. CI calls this workflow before it can publish a package artifact; it can also be dispatched manually. The action activates the target and enables runtime checks through the checker CLI bootstrap. No category/check filters are supplied, and `include-experimental: true` includes experimental checks as well. The complete native findings are annotated, parsed by `scripts/plugin-check.mjs --strict`, and retained with JSON/JUnit reports. Every error or warning fails this gate; empty, truncated, unfamiliar or missing output also fails. There are no ignored codes or report allowlists.
+The [WordPress.org directory review workflow](https://github.com/RobotHanzo/PortalWeaveSSO/actions/workflows/wordpress-review.yml) stages production files under the intended directory slug and runs the official Plugin Check action. CI calls this workflow before it can publish a package artifact; it can also be dispatched manually. The action activates the target and enables runtime checks through the checker CLI bootstrap. No category/check filters are supplied, and `include-experimental: true` includes experimental checks as well. The complete native findings are annotated, parsed through `scripts/plugin-check.sh` with `--strict`, and retained with JSON/JUnit reports. Every error or warning fails this gate; empty, truncated, unfamiliar or missing output also fails. There are no ignored codes or report allowlists.
 
 Review legitimate protocol, custom-table, atomic-lock and private-file operations at their source. A necessary line-specific static-analysis exception must name the precise check and explain the actual authorization, validation or consistency guarantee. Do not add a browser-form nonce to OAuth callbacks, sanitize opaque credentials as text, or cache personal data solely to satisfy a heuristic. The functional suites verify these boundaries separately from static analysis.
 

@@ -6,7 +6,7 @@ An installable WordPress plugin for multiple OAuth 2.0 and OpenID Connect provid
 
 ## Installation
 
-1. Build `dist/portalweave-sso-1.0.0.zip` with `./scripts/build.ps1 -Slug portalweave-sso`, then upload it through **Plugins → Add New → Upload Plugin**.
+1. Build `dist/portalweave-sso-1.0.0.zip` with `bash scripts/build.sh --slug portalweave-sso`, then upload it through **Plugins → Add New → Upload Plugin**.
 2. Activate **PortalWeave SSO** and open **Settings → PortalWeave SSO**.
 3. Add a provider, copy its callback URL into the provider registration, and configure its issuer, credentials, endpoints and signing algorithms. The callback always uses the canonical WordPress origin; the initiating page is retained separately as the post-login destination.
 4. Run **Test SSO Config** to inspect attributes. Configure username/email/group mappings and account policies, then test a regular user before enforcing SSO.
@@ -87,7 +87,7 @@ MCP clients require WordPress 6.9+ and the official [WordPress MCP Adapter](http
 
 ## Development
 
-The disposable local environment binds only to loopback. Docker and Node.js are needed for verification:
+The disposable local environment binds only to loopback. Verification uses Bash, Docker Compose, curl and Node.js 20+. Building the ZIP also requires `zip` and `unzip`. Repository helpers use `.sh` entrypoints, with shared Node.js validation/reporting engines and a PHP lint engine; there are no npm dependencies. CI uses the Bash builder. `scripts/build.ps1` remains an optional Windows entrypoint.
 
 ```sh
 docker compose -f compose.test.yml up -d wordpress

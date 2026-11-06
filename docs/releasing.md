@@ -37,25 +37,27 @@ Before WordPress.org approval, keep `WORDPRESS_DEPLOY_ENABLED=false` and the `wo
 
 ## Local validation and packaging
 
-Node.js 20 or later is required for the release tools. They have no npm dependencies:
+Bash and Node.js 20 or later are required for the release entrypoints. They use shared validation/reporting engines with no npm dependencies. `bash scripts/lint.sh` uses PHP. Building the ZIP uses Bash, Node.js, `zip`, `unzip` and standard shell utilities including `mktemp`.
 
 ```sh
-node scripts/release.mjs validate
-node scripts/release.mjs validate --tag v1.0.0
+bash scripts/release.sh validate
+bash scripts/release.sh validate --tag v1.0.0
 node --test tests/release.test.mjs
-node scripts/release.mjs stage --output .test-runtime/release-stage --slug portalweave-sso
-node scripts/release.mjs verify --output .test-runtime/release-stage
+bash scripts/release.sh stage --output .test-runtime/release-stage --slug portalweave-sso
+bash scripts/release.sh verify --output .test-runtime/release-stage
 ```
 
 `portalweave-sso` is the proposed package directory and text domain, pending WordPress.org approval. Staging rejects a package slug that disagrees with the plugin metadata. A stage contains production files directly, ready for the deploy action's `BUILD_DIR`; a ZIP adds the slug as the containing directory. Staging refuses a nonempty output and never recursively deletes an existing destination. Use a fresh output path for each staging attempt.
 
-On Windows or a runner with PowerShell, build the installable ZIP and SHA-256 file with:
+Build the installable ZIP and SHA-256 file with the same Bash entrypoint used by CI:
 
-```powershell
-./scripts/build.ps1 -Slug portalweave-sso
+```sh
+bash scripts/build.sh --slug portalweave-sso
 ```
 
-The version comes from validated plugin metadata. An explicitly supplied `-Version` must match that metadata. Version 1.0.0 produces `dist/portalweave-sso-1.0.0.zip` and its `.zip.sha256` checksum. Packaging includes `portalweave-sso.php`, `uninstall.php`, `readme.txt`, `LICENSE`, `includes/`, runtime `assets/`, `languages/` and exactly four user guides: `docs/provider-setup.md`, `docs/integrations.md`, `docs/external-services.md` and `docs/privacy.md`. The main filename, containing directory and text domain match the proposed `portalweave-sso` slug, and the release validator enforces that relationship.
+The slug and version come from validated plugin metadata. Explicit `--slug` or `--version` values must match that metadata. Version 1.0.0 produces `dist/portalweave-sso-1.0.0.zip` and its `.zip.sha256` checksum. Packaging includes `portalweave-sso.php`, `uninstall.php`, `readme.txt`, `LICENSE`, `includes/`, runtime `assets/`, `languages/` and exactly four user guides: `docs/provider-setup.md`, `docs/integrations.md`, `docs/external-services.md` and `docs/privacy.md`. The main filename, containing directory and text domain match the proposed `portalweave-sso` slug, and the release validator enforces that relationship.
+
+`scripts/build.ps1` remains an optional Windows builder with its existing `-Slug` and `-Version` parameters. CI does not require PowerShell. Both builders use the same Node.js metadata and production-staging engine, and retain the same ZIP entry, manifest and hash verification requirements.
 
 Repository `README.md`, architecture/verification/CI/release/review documents, development code, fixture IdPs, Git configuration, environment files, logs and private key material are excluded or rejected. Symlinks are refused. Verification compares both the file set and SHA-256 digest of every staged file against source. Fresh package extraction is checked independently before using its contents.
 
