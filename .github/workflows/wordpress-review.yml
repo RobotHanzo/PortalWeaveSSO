@@ -40,7 +40,7 @@ jobs:
         env:
           PLUGIN_SLUG: ${{ inputs.slug }}
         run: node scripts/release.mjs stage --output ".test-runtime/directory/$PLUGIN_SLUG" --slug "$PLUGIN_SLUG"
-      - name: Run official directory review without suppressing errors
+      - name: Run all official static and runtime checks, including experimental checks
         id: native-check
         uses: WordPress/plugin-check-action@10857da14b6c2246d15402b3e69f777edcf8c12e # v1.1.9
         with:
@@ -49,6 +49,10 @@ jobs:
           build-dir: .test-runtime/directory/${{ inputs.slug }}
           slug: ${{ inputs.slug }}
           wp-version: latest
+          # No category/check filters: retain the complete native review. This
+          # action activates the target and requires cli.php before WordPress
+          # loads so the official checker can initialize its runtime checks.
+          include-experimental: true
       - name: Preserve the complete native review output
         if: always()
         shell: bash
@@ -57,9 +61,9 @@ jobs:
           if [[ -f "$RUNNER_TEMP/plugin-check-results.txt" ]]; then
             cp -- "$RUNNER_TEMP/plugin-check-results.txt" reports/plugin-check/plugin-check.txt
           fi
-      - name: Parse complete native findings and fail closed on missing output
+      - name: Gate every error and advisory, failing closed on missing output
         if: always()
-        run: node scripts/plugin-check.mjs "$RUNNER_TEMP/plugin-check-results.txt" --output reports/plugin-check
+        run: node scripts/plugin-check.mjs "$RUNNER_TEMP/plugin-check-results.txt" --output reports/plugin-check --strict
       - name: Report directory results, including failures
         if: always()
         run: node scripts/report-results.mjs reports/plugin-check --expect plugin-check

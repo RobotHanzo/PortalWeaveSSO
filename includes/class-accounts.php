@@ -152,6 +152,7 @@ final class Accounts
             if ($app['require_verified_email'] && !$verified) {
                 return new \WP_Error('portalweave_sso_unverified', __('Your identity provider must verify your account before sign-in.', 'portalweave-sso'));
             }
+            // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key,WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Exact digest lookup on the indexed blog/provider key must detect duplicate identities before linking; the cached WordPress query fetches at most two users.
             $matches = get_users(['meta_key' => $identity_key, 'meta_value' => $identity, 'number' => 2, 'blog_id' => 0]);
             if (count($matches) > 1) {
                 return new \WP_Error('portalweave_sso_identity_conflict', __('The provider identity is linked to more than one local account.', 'portalweave-sso'));

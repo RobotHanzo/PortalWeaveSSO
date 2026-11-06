@@ -88,7 +88,7 @@ final class Auth {
         if (!$app || empty($app['enabled'])) {
             self::fail(new \WP_Error('portalweave_sso_app', __('The selected SSO provider is unavailable.', 'portalweave-sso')), $id);
         }
-        $test = self::input($_GET, 'test') === '1';
+        $test = self::input($_GET, 'test') === '1'; // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Public login mode selection only; administrator test mode requires its capability and provider-specific nonce below.
         if ($test && (!current_user_can('manage_options') || !wp_verify_nonce(sanitize_text_field(self::input($_GET, '_wpnonce')), 'portalweave_sso_test_' . $id))) {
             self::fail(new \WP_Error('portalweave_sso_test_permission', __('A fresh administrator test link is required.', 'portalweave-sso')), $id);
         }
@@ -461,7 +461,7 @@ final class Auth {
         if (!is_user_logged_in()) {
             self::redirect(Redirect::validate((string) Config::get('logout_redirect', home_url('/'))));
         }
-        $request = self::request_method() === 'POST' ? $_POST : $_GET;
+        $request = self::request_method() === 'POST' ? $_POST : $_GET; // phpcs:ignore WordPress.Security.NonceVerification.Missing,WordPress.Security.NonceVerification.Recommended -- Select the method-specific nonce source; the nonce is verified immediately below before reading logout fields or changing a session.
         if (!wp_verify_nonce(sanitize_text_field(self::input($request, '_wpnonce')), 'portalweave_sso_logout')) {
             self::fail(new \WP_Error('portalweave_sso_logout_nonce', __('The logout link has expired. Please try again.', 'portalweave-sso')));
         }
@@ -563,11 +563,11 @@ final class Auth {
         $sid_key = '_portalweave_sso_sid_' . $scope_hash;
         $query = ['blog_id' => 0, 'number' => 1000];
         if (isset($claims['sid'])) {
-            $query['meta_key'] = $sid_key;
-            $query['meta_value'] = hash('sha256', $claims['sid']);
+            $query['meta_key'] = $sid_key; // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- The signed logout must find session digests by the indexed, blog/provider-scoped metadata key; results are bounded to 1000 through the cached WordPress user-query API.
+            $query['meta_value'] = hash('sha256', $claims['sid']); // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Exact SHA-256 equality under the scoped key limits revocation to this verified provider session.
         } else {
-            $query['meta_key'] = $identity_key;
-            $query['meta_value'] = hash('sha256', $claims['sub']);
+            $query['meta_key'] = $identity_key; // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_key -- Subject-only signed logout requires the indexed, blog/provider-scoped identity key; results are bounded to 1000 through the cached WordPress user-query API.
+            $query['meta_value'] = hash('sha256', $claims['sub']); // phpcs:ignore WordPress.DB.SlowDBQuery.slow_db_query_meta_value -- Exact SHA-256 equality under the scoped key prevents revoking another provider identity.
         }
         foreach (get_users($query) as $user) {
             // When the provider supplies both values, both must match.
