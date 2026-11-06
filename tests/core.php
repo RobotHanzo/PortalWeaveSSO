@@ -328,3 +328,19 @@ wpsso_test('core: protected attachments leave public uploads, rewrite URLs, and 
         wpsso_assert(hash_file('sha256', $upload['file']) === $hash && !get_post_meta($attachment, '_wpsso_private_files', true), 'Restoration changed bytes or retained private metadata.');
     });
 });
+
+wpsso_test('core: rejected settings cannot restore protected media to a public URL', function (): void {
+    wpsso_core_fixture(function (&$users, &$posts, &$terms, $prefix): void {
+        $upload = wp_upload_bits($prefix . '-policy.txt', null, 'Protected policy fixture');
+        wpsso_assert(empty($upload['error']), 'Policy upload fixture failed.');
+        $attachment = wp_insert_attachment(['post_title' => $prefix, 'post_status' => 'inherit', 'post_mime_type' => 'text/plain'], $upload['file']);
+        wpsso_assert(!is_wp_error($attachment) && $attachment > 0, 'Policy attachment fixture failed.');
+        $posts[] = $attachment;
+        wpsso_assert(\WPSSO\Config::save(['protected_media' => [$attachment]]) === true, 'Config media protection failed.');
+        wpsso_assert(!file_exists($upload['file']), 'Configured protection left public bytes accessible.');
+        $result = \WPSSO\Config::save(['protected_media' => [], 'shared_cookie_domain' => 'invalid']);
+        wpsso_error($result, 'wpsso_shared_domain');
+        wpsso_assert(in_array($attachment, \WPSSO\Config::get('protected_media'), true), 'Rejected policy lost its media restriction.');
+        wpsso_assert(!file_exists($upload['file']), 'Rejected settings restored protected bytes to a public static URL.');
+    });
+});
