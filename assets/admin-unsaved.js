@@ -13,7 +13,7 @@
         : control.multiple ? Array.from(control.options).filter(option => option.selected).map(option => option.value)
           : control.value;
       const initial = new Map(controls().map(control => [control, value(control)]));
-      const snapshot = () => JSON.stringify(controls().map(control => [control.name, value(control)]));
+      const snapshot = () => JSON.stringify(controls().map(control => [control.name, value(control), control.dataset?.unsavedDraft === 'true']));
       const original = snapshot();
       let dirty = false;
       let submitting = false;
@@ -66,12 +66,15 @@
           if (control.type === 'checkbox' || control.type === 'radio') control.checked = saved;
           else if (control.multiple) Array.from(control.options).forEach(option => { option.selected = saved.includes(option.value); });
           else control.value = saved;
+          if (control.dataset) delete control.dataset.unsavedDraft;
           control.setCustomValidity?.('');
         });
         // Mapping editors and media previews rebuild from their restored,
         // authoritative fields. This event contains no configuration or secrets.
         form.dispatchEvent(new Event('portalweave-sso:reverted', { bubbles: true }));
         refresh();
+        // Enhanced editors may finish rebuilding their rows in a microtask.
+        window.setTimeout(refresh, 0);
       });
       save.addEventListener('click', () => {
         if (submitting) return;

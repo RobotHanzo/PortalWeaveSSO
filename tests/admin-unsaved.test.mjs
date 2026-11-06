@@ -13,7 +13,7 @@ function fixture({ readOnly = false } = {}) {
   class Element {
     constructor() {
       this.listeners = new Map(); this.children = []; this.attributes = new Map();
-      this.classes = new Set(); this.textContent = ''; this.disabled = false;
+      this.classes = new Set(); this.textContent = ''; this.disabled = false; this.dataset = {};
       this.classList = { toggle: (name, enabled) => enabled ? this.classes.add(name) : this.classes.delete(name) };
     }
     addEventListener(type, handler) {
@@ -116,6 +116,21 @@ test('Revert restores every settings section and opaque draft secret, then notif
   assert.deepEqual(restored, ['Continue with {app}', false, '', '{"email":"email"}']);
   assert.equal(page.visible(), false);
   assert.equal(page.document.activeElement, page.text);
+  assert.equal(page.leave().defaultPrevented, false);
+});
+
+test('Incomplete GUI drafts count as edits even when authoritative JSON is unchanged', () => {
+  const page = fixture();
+  const savedJson = page.json.value;
+  page.json.dataset.unsavedDraft = 'true';
+  page.emit(page.form, 'input');
+  assert.equal(page.json.value, savedJson);
+  assert.equal(page.visible(), true);
+  assert.equal(page.leave().defaultPrevented, true);
+  page.emit(page.revert, 'click');
+  assert.equal(page.json.value, savedJson);
+  assert.equal(page.json.dataset.unsavedDraft, undefined);
+  assert.equal(page.visible(), false);
   assert.equal(page.leave().defaultPrevented, false);
 });
 
