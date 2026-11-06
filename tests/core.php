@@ -447,8 +447,14 @@ portalweave_sso_test('core: admin navigation renders one task screen and keeps p
             ob_start();
             \PortalWeaveSSO\Admin::page();
             $html = ob_get_clean();
-            portalweave_sso_assert(str_contains($html, 'settings[new_app][backchannel_logout]'), 'The provider editor lost its back-channel setting');
+            portalweave_sso_assert(str_contains($html, 'portalweave-sso-provider-options') && str_contains($html, 'setup_provider=authentik') && str_contains($html, 'setup_provider=discord'), 'New providers must start with the guided provider choice');
             portalweave_sso_assert(!str_contains($html, 'name="settings[default_app]"'), 'Provider editing rendered site-wide login settings');
+            portalweave_sso_assert(\PortalWeaveSSO\Config::save(['apps' => ['fixture' => portalweave_sso_core_app(['id' => 'fixture'])]]) === true, 'Provider editor fixture failed');
+            $_GET = ['page' => 'portalweave-sso', 'tab' => 'providers', 'provider' => 'fixture'];
+            ob_start();
+            \PortalWeaveSSO\Admin::page();
+            $html = ob_get_clean();
+            portalweave_sso_assert(str_contains($html, 'settings[apps][fixture][backchannel_logout]'), 'The advanced editor lost its back-channel setting');
             $_GET = ['page' => 'portalweave-sso', 'tab' => ['malformed']];
             ob_start();
             \PortalWeaveSSO\Admin::page();

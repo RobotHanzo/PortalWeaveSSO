@@ -132,7 +132,7 @@ portalweave_sso_test('Provider groups remain local while privileged network iden
         wpmu_delete_user($id);
     }
 });
-foreach (['multisite-auth', 'multisite-extensions', 'compliance-multisite', 'admin-settings'] as $suite) {
+foreach (['multisite-auth', 'multisite-extensions', 'compliance-multisite', 'admin-settings', 'provider-setup'] as $suite) {
     if (is_file(__DIR__ . '/' . $suite . '.php')) { require __DIR__ . '/' . $suite . '.php'; }
     else { $portalweave_sso_results[] = ['pass' => false, 'name' => $suite, 'error' => 'Missing test suite']; }
 }
