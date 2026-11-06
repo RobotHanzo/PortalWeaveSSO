@@ -7,6 +7,14 @@ defined('ABSPATH') || exit;
 final class Auth {
     private const TTL = 600;
 
+    public static function token_meta_key($app_id) {
+        return '_wpsso_tokens_' . (is_multisite() ? get_current_blog_id() . '_' : '') . sanitize_key($app_id);
+    }
+
+    public static function app_meta_key() {
+        return '_wpsso_app' . (is_multisite() ? '_' . get_current_blog_id() : '');
+    }
+
     public static function register() {
         add_action('init', [self::class, 'dispatch'], 1);
         add_filter('logout_url', [self::class, 'filter_logout_url'], 10, 2);
@@ -40,7 +48,7 @@ final class Auth {
     }
 
     public static function filter_logout_url($url, $redirect) {
-        if (is_user_logged_in() && get_user_meta(get_current_user_id(), '_wpsso_app', true)) {
+        if (is_user_logged_in() && get_user_meta(get_current_user_id(), self::app_meta_key(), true)) {
             return self::logout_url(is_string($redirect) ? $redirect : '');
         }
         return $url;
@@ -299,7 +307,7 @@ final class Auth {
         if (is_wp_error($saved)) {
             self::fail($saved, $app['id']);
         }
-        update_user_meta($user->ID, '_wpsso_app', $app['id']);
+        update_user_meta($user->ID, self::app_meta_key(), $app['id']);
         self::remember_sid($user->ID, $app, $attributes);
         wp_set_current_user($user->ID);
         wp_set_auth_cookie($user->ID, false, true);
@@ -333,7 +341,7 @@ final class Auth {
         if (!is_string($encrypted) || $encrypted === '') {
             return new \WP_Error('wpsso_token_storage', __('Encrypted token storage is unavailable.', 'wpsso'));
         }
-        if (update_user_meta($user_id, '_wpsso_tokens_' . sanitize_key($app_id), $encrypted) === false) {
+        if (update_user_meta($user_id, self::token_meta_key($app_id), $encrypted) === false) {
             return new \WP_Error('wpsso_token_storage', __('The encrypted session tokens could not be saved.', 'wpsso'));
         }
         return true;
@@ -388,7 +396,7 @@ final class Auth {
     }
 
     private static function read_tokens($user_id, $app_id) {
-        $encrypted = get_user_meta($user_id, '_wpsso_tokens_' . sanitize_key($app_id), true);
+        $encrypted = get_user_meta($user_id, self::token_meta_key($app_id), true);
         if (!is_string($encrypted) || $encrypted === '') {
             return [];
         }
@@ -453,7 +461,7 @@ final class Auth {
             self::page(__('Confirm sign out', 'wpsso'), $html);
         }
         $user = wp_get_current_user();
-        $app_id = get_user_meta($user->ID, '_wpsso_app', true);
+        $app_id = get_user_meta($user->ID, self::app_meta_key(), true);
         $app = Config::app(is_string($app_id) ? $app_id : '');
         $tokens = $app ? self::read_tokens($user->ID, $app['id']) : [];
         $state = '';
@@ -462,7 +470,7 @@ final class Auth {
             $state = self::create_flow(['kind' => 'logout', 'app' => $app['id'], 'redirect' => $redirect, 'callback' => $callback]);
         }
         if ($app) {
-            delete_user_meta($user->ID, '_wpsso_tokens_' . $app['id']);
+            delete_user_meta($user->ID, self::token_meta_key($app['id']));
         }
         Audit::record('logout', $app['id'] ?? '', $user, '', $redirect);
         wp_logout();
@@ -557,7 +565,7 @@ final class Auth {
                 continue;
             }
             \WP_Session_Tokens::get_instance($user->ID)->destroy_all();
-            delete_user_meta($user->ID, '_wpsso_tokens_' . $app['id']);
+            delete_user_meta($user->ID, self::token_meta_key($app['id']));
             delete_user_meta($user->ID, $sid_key);
             Audit::record('logout', $app['id'], $user, 'wpsso_backchannel_logout');
             do_action('wpsso_backchannel_logout', $user, $app, $claims);

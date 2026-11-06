@@ -96,7 +96,7 @@ wpsso_test('Signed back-channel logout revokes only matching app identities and 
         update_user_meta($second, '_wpsso_identity_' . hash('sha256', get_current_blog_id() . '|different-app|' . $app['issuer'] . '|' . $app['client_id']), hash('sha256', $subject));
         \WPSSO\Auth::remember_sid($first, $app, ['sid' => 'sid-for-first']);
         \WPSSO\Auth::remember_sid($second, array_merge($app, ['id' => 'different-app']), ['sid' => 'sid-for-first']);
-        update_user_meta($first, '_wpsso_tokens_' . $app['id'], \WPSSO\Secrets::encrypt('{"refresh_token":"sensitive"}'));
+        update_user_meta($first, \WPSSO\Auth::token_meta_key($app['id']), \WPSSO\Secrets::encrypt('{"refresh_token":"sensitive"}'));
         $one = \WP_Session_Tokens::get_instance($first);
         $two = \WP_Session_Tokens::get_instance($second);
         $first_token = $one->create(time() + 3600);
@@ -106,7 +106,7 @@ wpsso_test('Signed back-channel logout revokes only matching app identities and 
         wpsso_assert(\WPSSO\Auth::backchannel_logout($app['id'], $jwt) === true, 'Valid signed logout failed');
         wpsso_assert($one->get($first_token) === null, 'Matching WordPress session survived logout');
         wpsso_assert(is_array($two->get($second_token)), 'Other app session was incorrectly revoked');
-        wpsso_assert(get_user_meta($first, '_wpsso_tokens_' . $app['id'], true) === '', 'Provider tokens survived logout');
+        wpsso_assert(get_user_meta($first, \WPSSO\Auth::token_meta_key($app['id']), true) === '', 'Provider tokens survived logout');
         wpsso_error(\WPSSO\Auth::backchannel_logout($app['id'], $jwt), 'wpsso_logout_replay');
         // Subject-only events do not require a sid index or an exp claim.
         $fresh_session = $one->create(time() + 3600);
@@ -152,7 +152,7 @@ wpsso_test('Refresh rotates encrypted credentials, binds identity and requires a
         wpsso_assert($saved === true, 'Unable to save refresh fixture: ' . (is_wp_error($saved) ? $saved->get_error_message() : 'unknown error'));
         $user_id = wp_insert_user(['user_login' => 'refresh_' . wp_generate_password(10, false), 'user_pass' => wp_generate_password(32), 'user_email' => wp_generate_password(12, false) . '@example.org', 'role' => 'subscriber']);
         wpsso_assert(is_int($user_id), 'Unable to create refresh user');
-        $meta = '_wpsso_tokens_' . $app['id'];
+        $meta = \WPSSO\Auth::token_meta_key($app['id']);
         update_user_meta($user_id, $meta, \WPSSO\Secrets::encrypt(json_encode(['refresh_token' => 'original-refresh', '_subject' => 'original-subject', '_nonce' => 'original-nonce'])));
         wp_set_current_user(0);
         wpsso_error(\WPSSO\Auth::refresh($user_id, $app['id']), 'wpsso_permission');
