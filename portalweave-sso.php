@@ -3,7 +3,7 @@
  * Plugin Name: PortalWeave SSO
  * Plugin URI: https://github.com/RobotHanzo/PortalWeaveSSO
  * Description: Multi-provider OAuth/OIDC sign-in, provisioning, access control and audit tools.
- * Version: 1.2.1
+ * Version: 1.3.0
  * Requires at least: 6.5
  * Requires PHP: 8.1
  * Author: RobotHanzo
@@ -16,7 +16,7 @@
 
 defined('ABSPATH') || exit;
 
-define('PORTALWEAVE_SSO_VERSION', '1.2.1');
+define('PORTALWEAVE_SSO_VERSION', '1.3.0');
 define('PORTALWEAVE_SSO_FILE', __FILE__);
 define('PORTALWEAVE_SSO_DIR', plugin_dir_path(__FILE__));
 define('PORTALWEAVE_SSO_URL', plugin_dir_url(__FILE__));
@@ -28,7 +28,7 @@ if (!function_exists('openssl_encrypt') || !function_exists('openssl_verify')) {
     return;
 }
 
-foreach (['config', 'client-ip', 'audit', 'http', 'jwt', 'accounts', 'auth', 'access', 'privacy', 'cleanup', 'display', 'provider-setup', 'provider-wizard', 'admin-settings', 'activity-view', 'admin', 'extensions', 'abilities', 'cli'] as $portalweave_sso_class) {
+foreach (['config', 'client-ip', 'audit', 'http', 'jwt', 'accounts', 'logout-view', 'auth', 'access', 'privacy', 'cleanup', 'display', 'provider-setup', 'provider-wizard', 'admin-settings', 'activity-view', 'admin', 'extensions', 'abilities', 'cli'] as $portalweave_sso_class) {
     require_once PORTALWEAVE_SSO_DIR . 'includes/class-' . $portalweave_sso_class . '.php';
 }
 unset($portalweave_sso_class);

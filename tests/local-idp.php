@@ -69,6 +69,7 @@ add_action('init', static function () {
     header('Content-Type: application/json');
     $user = wp_get_current_user();
     echo wp_json_encode(['id' => $user->ID, 'login' => $user->user_login, 'roles' => $user->roles,
+        'logout_url' => $user->ID ? \PortalWeaveSSO\Auth::logout_url(home_url('/after-signout/')) : null,
         'test_url' => current_user_can('manage_options') ? \PortalWeaveSSO\Auth::login_url('e2e', home_url('/origin-login-initiator/'), true) : null]);
     exit;
 }, 0);

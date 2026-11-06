@@ -35,7 +35,8 @@ $app = array_replace(\PortalWeaveSSO\Config::app_defaults(), [
     'jwks_url' => '', 'algorithms' => ['HS256'], 'jwt_secret' => 'portalweave-sso-local-integration-signing-key-only-64-characters-long-fixture',
     'auto_register' => true, 'link_existing' => false, 'require_verified_email' => true,
 ]);
-$result = \PortalWeaveSSO\Config::save(array_replace(\PortalWeaveSSO\Config::defaults(), ['apps' => ['e2e' => $app], 'default_app' => 'e2e']));
+$logout_app = array_replace($app, ['id' => 'e2e-logout', 'name' => 'Northstar Identity', 'logout_url' => 'https://example.org/portalweave-sso-test-logout']);
+$result = \PortalWeaveSSO\Config::save(array_replace(\PortalWeaveSSO\Config::defaults(), ['apps' => ['e2e' => $app, 'e2e-logout' => $logout_app], 'default_app' => 'e2e']));
 if (is_wp_error($result)) { fwrite(STDERR, $result->get_error_message() . "\n"); exit(1); }
 $username = 'portalweave_sso_e2e_admin';
 $id = username_exists($username);
