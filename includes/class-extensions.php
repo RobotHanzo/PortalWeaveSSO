@@ -19,6 +19,7 @@ final class Extensions {
         add_filter('portalweave_sso_account_allowed', [self::class, 'account_allowed'], 10, 4);
         add_filter('portalweave_sso_pre_authenticate', [self::class, 'account_check'], 10, 3);
         add_filter('authenticate', [self::class, 'local_account_check'], 99, 3);
+        add_action('wp_authenticate_application_password_errors', [self::class, 'application_password_check'], 10, 2);
         add_filter('portalweave_sso_login_redirect', [self::class, 'attribute_redirect'], 10, 4);
         add_filter('get_avatar_data', [self::class, 'avatar'], 10, 2);
         add_action('show_user_profile', [self::class, 'moderation_profile']);
@@ -588,6 +589,15 @@ final class Extensions {
 
     public static function local_account_check($user, $username = '', $password = '') {
         return self::account_check($user);
+    }
+
+    public static function application_password_check(\WP_Error $error, \WP_User $user): void {
+        // Native API authentication bypasses the browser authenticate filter.
+        // Check the current blog's policy without deleting global credentials.
+        $checked = self::account_check($user);
+        if (is_wp_error($checked)) {
+            $error->merge_from($checked);
+        }
     }
 
     public static function moderation_profile($user): void {

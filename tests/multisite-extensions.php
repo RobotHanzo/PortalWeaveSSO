@@ -101,3 +101,37 @@ portalweave_sso_test('multisite: moderation and avatar updates remain local to t
         wpmu_delete_user($id);
     }
 });
+
+portalweave_sso_test('multisite: Application Password admission follows blog policy and preserves global credentials', function () {
+    global $portalweave_sso_blog_a, $portalweave_sso_blog_b;
+    $depth = count($GLOBALS['_wp_switched_stack'] ?? []);
+    $api_request = static fn() => true;
+    $id = wp_insert_user(['user_login' => 'api_network_' . bin2hex(random_bytes(5)), 'user_pass' => wp_generate_password(32), 'role' => 'subscriber']);
+    portalweave_sso_assert(!is_wp_error($id), 'Network API fixture failed');
+    add_filter('application_password_is_api_request', $api_request);
+    try {
+        foreach ([$portalweave_sso_blog_a, $portalweave_sso_blog_b] as $blog) {
+            add_user_to_blog($blog, $id, 'subscriber');
+        }
+        $credential = WP_Application_Passwords::create_new_application_password($id, ['name' => 'Disposable network API regression']);
+        portalweave_sso_assert(is_array($credential), 'Application Password creation failed');
+        $authenticate = static fn() => wp_authenticate_application_password(null, get_userdata($id)->user_login, $credential[0]);
+        foreach (['pending', 'blocked', 'inactive'] as $state) {
+            $key = $state === 'inactive' ? '_portalweave_sso_scim_active_' : '_portalweave_sso_moderation_';
+            update_user_meta($id, $key . $portalweave_sso_blog_a, $state === 'inactive' ? '0' : $state);
+            switch_to_blog($portalweave_sso_blog_a);
+            $denied = $authenticate();
+            portalweave_sso_error($denied, ['pending' => 'portalweave_sso_approval_pending', 'blocked' => 'portalweave_sso_account_blocked', 'inactive' => 'portalweave_sso_account_inactive'][$state]);
+            restore_current_blog();
+            switch_to_blog($portalweave_sso_blog_b);
+            portalweave_sso_assert($authenticate() instanceof WP_User, 'Site A account policy blocked site B API authentication');
+            restore_current_blog();
+            delete_user_meta($id, $key . $portalweave_sso_blog_a);
+        }
+        portalweave_sso_assert(count(WP_Application_Passwords::get_user_application_passwords($id)) === 1, 'Site-local policy deleted a global credential');
+    } finally {
+        while (count($GLOBALS['_wp_switched_stack'] ?? []) > $depth) { restore_current_blog(); }
+        remove_filter('application_password_is_api_request', $api_request);
+        wpmu_delete_user($id);
+    }
+});
