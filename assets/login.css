@@ -1,21 +1,26 @@
 .portalweave-sso-login{display:flex;flex-direction:column;align-items:stretch;gap:var(--portalweave-sso-spacing,12px);margin:20px 0;font-size:var(--portalweave-sso-size,16px);line-height:1.4;box-sizing:border-box}
 .portalweave-sso-login .portalweave-sso-label,.portalweave-sso-login .portalweave-sso-session{margin:0;color:inherit}
-.portalweave-sso-login a.portalweave-sso-button{display:flex;justify-content:center;align-items:center;gap:.7em;min-height:44px;padding:.75em 1.1em;box-sizing:border-box;border:1px solid transparent;border-radius:var(--portalweave-sso-radius,8px);background:#1857c5;color:#fff;text-decoration:none;font-family:inherit;font-size:inherit;font-weight:600;line-height:1.4;transition:background .15s,box-shadow .15s,transform .15s;cursor:pointer}
-.portalweave-sso-login a.portalweave-sso-button:focus-visible{outline:3px solid #d77a00;outline-offset:3px}
-.portalweave-sso-login a.portalweave-sso-button:hover{background:#12449a;color:#fff}
-.portalweave-sso-login a.portalweave-sso-theme-white{background:#fff;border-color:#b4bcc9;color:#17243a}
-.portalweave-sso-login a.portalweave-sso-theme-white:hover{background:#eef3fa;color:#17243a}
-.portalweave-sso-login a.portalweave-sso-theme-hover{background:#edf3ff;color:#154dae;border-color:#c5d7f7}
-.portalweave-sso-login a.portalweave-sso-theme-hover:hover{background:#1857c5;color:#fff}
-.portalweave-sso-login a.portalweave-sso-theme-smart{background:#17243a;color:#fff}
-.portalweave-sso-login a.portalweave-sso-theme-custom{background:var(--portalweave-sso-button-bg,#1857c5);color:var(--portalweave-sso-button-color,#fff);border-color:var(--portalweave-sso-button-border,transparent)}
-.portalweave-sso-login a.portalweave-sso-shape-round{border-radius:999px}
-.portalweave-sso-login a.portalweave-sso-shape-square{border-radius:0}
-.portalweave-sso-login a.portalweave-sso-shape-long{width:100%;border-radius:var(--portalweave-sso-radius,4px)}
-.portalweave-sso-login a.portalweave-sso-shadow{box-shadow:0 3px 10px #17243a20}
-.portalweave-sso-login a.portalweave-sso-transform:hover{transform:translateY(-2px)}
+.portalweave-sso-login :is(a,button).portalweave-sso-button{display:flex;justify-content:center;align-items:center;gap:.7em;min-height:44px;padding:.75em 1.1em;box-sizing:border-box;border:1px solid transparent;border-radius:var(--portalweave-sso-radius,8px);background:#1857c5;color:#fff;text-decoration:none;font-family:inherit;font-size:inherit;font-weight:600;line-height:1.4;transition:background .15s,box-shadow .15s,transform .15s;cursor:pointer}
+.portalweave-sso-login :is(a,button).portalweave-sso-button:focus-visible{outline:3px solid #d77a00;outline-offset:3px}
+.portalweave-sso-login :is(a,button).portalweave-sso-button:hover{background:#12449a;color:#fff}
+.portalweave-sso-login :is(a,button).portalweave-sso-theme-white{background:#fff;border-color:#b4bcc9;color:#17243a}
+.portalweave-sso-login :is(a,button).portalweave-sso-theme-white:hover{background:#eef3fa;color:#17243a}
+.portalweave-sso-login :is(a,button).portalweave-sso-theme-hover{background:#edf3ff;color:#154dae;border-color:#c5d7f7}
+.portalweave-sso-login :is(a,button).portalweave-sso-theme-hover:hover{background:#1857c5;color:#fff}
+.portalweave-sso-login :is(a,button).portalweave-sso-theme-smart{background:#17243a;color:#fff}
+.portalweave-sso-login :is(a,button).portalweave-sso-theme-custom{background:var(--portalweave-sso-button-bg,#1857c5);color:var(--portalweave-sso-button-color,#fff);border-color:var(--portalweave-sso-button-border,transparent)}
+.portalweave-sso-login :is(a,button).portalweave-sso-shape-round{border-radius:999px}
+.portalweave-sso-login :is(a,button).portalweave-sso-shape-square{border-radius:0}
+.portalweave-sso-login :is(a,button).portalweave-sso-shape-long{width:100%;border-radius:var(--portalweave-sso-radius,4px)}
+.portalweave-sso-login :is(a,button).portalweave-sso-shadow{box-shadow:0 3px 10px #17243a20}
+.portalweave-sso-login :is(a,button).portalweave-sso-transform:hover{transform:translateY(-2px)}
 .portalweave-sso-icon,.portalweave-sso-mark{width:1.5em;height:1.5em;object-fit:contain;flex:0 0 auto}
 .portalweave-sso-mark{display:inline-flex;align-items:center;justify-content:center;border:1px solid currentColor;border-radius:4px;font-size:.85em}
 .portalweave-sso-login .portalweave-sso-logout{color:inherit;text-decoration:underline}
-@media(prefers-reduced-motion:reduce){.portalweave-sso-login a.portalweave-sso-button{transition:none}.portalweave-sso-login a.portalweave-sso-transform:hover{transform:none}}
-@media(prefers-color-scheme:dark){.portalweave-sso-login a.portalweave-sso-theme-smart{background:#edf3ff;color:#17243a}}
+.portalweave-sso-login.portalweave-sso-login-screen{font-size:var(--portalweave-sso-wp-size,14px)}
+.portalweave-sso-login.portalweave-sso-login-screen :is(a,button).portalweave-sso-button{width:var(--portalweave-sso-wp-width,100%);max-width:100%;min-width:0;align-self:center;padding:var(--portalweave-sso-wp-padding-y,12px) var(--portalweave-sso-wp-padding-x,16px);border:1px solid var(--portalweave-sso-wp-border,#c3c4c7);border-radius:var(--portalweave-sso-wp-radius,4px);background:var(--portalweave-sso-wp-background,#fff);color:var(--portalweave-sso-wp-color,#1d2327);font-size:inherit;overflow-wrap:anywhere}
+.portalweave-sso-login.portalweave-sso-login-screen :is(a,button).portalweave-sso-button:hover{background:var(--portalweave-sso-wp-hover-background,#f0f6fc);color:var(--portalweave-sso-wp-hover-color,#135e96)}
+.portalweave-sso-login.portalweave-sso-login-screen .portalweave-sso-icon,.portalweave-sso-login.portalweave-sso-login-screen .portalweave-sso-mark{width:var(--portalweave-sso-wp-icon-size,20px);height:var(--portalweave-sso-wp-icon-size,20px)}
+.portalweave-sso-login.portalweave-sso-login-screen .portalweave-sso-icon-right{flex-direction:row-reverse}
+@media(prefers-reduced-motion:reduce){.portalweave-sso-login :is(a,button).portalweave-sso-button{transition:none}.portalweave-sso-login :is(a,button).portalweave-sso-transform:hover{transform:none}}
+@media(prefers-color-scheme:dark){.portalweave-sso-login :is(a,button).portalweave-sso-theme-smart{background:#edf3ff;color:#17243a}}

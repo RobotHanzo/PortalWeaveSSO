@@ -105,10 +105,10 @@ final class ProviderWizard
 
     private static function logo(string $provider): void
     {
-        $files = ['custom' => 'custom.svg', 'authentik' => 'authentik.svg', 'discord' => 'discord.svg', 'keycloak' => 'keycloak.svg', 'auth0' => 'auth0.svg', 'okta' => 'okta.svg', 'entra' => 'entra.svg', 'office365' => 'office365.svg', 'cognito' => 'cognito.svg', 'google' => 'google.svg', 'salesforce' => 'salesforce.svg', 'onelogin' => 'onelogin.png', 'b2c' => 'b2c.svg', 'classlink' => 'classlink.png'];
+        $url = ProviderSetup::logo_url($provider);
         echo '<span class="portalweave-sso-provider-logo" aria-hidden="true">';
-        if (isset($files[$provider])) {
-            echo '<img src="' . esc_url(plugins_url('assets/providers/' . $files[$provider], PORTALWEAVE_SSO_FILE)) . '" width="40" height="40" alt="" decoding="async">';
+        if ($url !== '') {
+            echo '<img src="' . esc_url($url) . '" width="40" height="40" alt="" decoding="async">';
         }
         echo '</span>';
     }

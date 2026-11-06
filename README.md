@@ -66,13 +66,17 @@ Use a shortcode or widget to place provider buttons on a member page.
 <details>
 <summary>WordPress login and appearance settings</summary>
 
-Provider buttons also appear on the WordPress login form.
+Provider buttons also appear on the WordPress login form, with their own optional styling.
 
 <img src="docs/screenshots/wordpress-login.png" alt="WordPress login form with provider sign-in buttons" width="400">
 
 Adjust button themes, shapes, labels and spacing in Appearance.
 
 ![Login button themes, shapes, labels and spacing settings](docs/screenshots/appearance.png)
+
+Use **Appearance → WordPress sign-in** to customize colors, hover states, text, size and corners with a live preview. Choose provider logos, a custom image from your media library, or no icon.
+
+![WordPress sign-in button appearance controls with colors, sizing, icon choices and a live preview](docs/screenshots/wordpress-button-style.png)
 
 Choose a default provider, popup behavior and post-login destinations.
 

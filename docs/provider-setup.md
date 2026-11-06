@@ -110,6 +110,12 @@ Domain allow/block policy uses exact lower-case domains. Domain mapping is an op
 
 Insert `[sso_oauth_login]` or add the **PortalWeave SSO login** widget. WooCommerce's login form gets enabled-provider buttons. Customize global theme, shape, size, curve, spacing, shadow, and hover treatment. Each app can set text and an HTTPS icon URL. `##user##` and `##Sign Out##` are available in the logged-in message. Button assets load for the relevant login/widget/shortcode/account contexts; normal pages without those displays do not need them.
 
+Open **Appearance → WordPress sign-in** to give the SSO buttons on `wp-login.php` their own appearance. Enable customization, then adjust text, normal and hover colors, borders, corners, font size, padding, width and shadows. The live preview follows the selected provider. Presets provide a starting point; save changes to apply your choices. The shared appearance remains in use until customization is enabled.
+
+Choose provider icons, a custom HTTPS image or no icon, then set the icon size and position. Provider icons use each provider's configured custom image first, its bundled service logo next, and the bundled generic icon otherwise. The media chooser is available to administrators with upload permission; a direct HTTPS image URL also works. Keep the visible button label meaningful. Custom WordPress text expands `{app}` and overrides that page's provider label; leaving it blank keeps the existing provider-specific text or shared template. Website shortcodes, widgets and WooCommerce keep the shared appearance. Turning customization off restores the shared WordPress styling choice, including its existing styling-off setting.
+
+Remote icon images are loaded by the visitor's browser when the sign-in page is displayed. Prefer an image hosted on your own site, and disclose any external image host in your site's privacy notice. Icons are decorative; they do not replace the button's text label.
+
 ## Content restrictions and media
 
 On multisite, network enforcement overrides site configuration only within the current network; other networks retain their own settings. Configure site-local post, category and attachment rules through their individual editors. Network settings do not accept those site-local content IDs. Provider identities, groups and tokens are site-scoped even though WordPress users and sessions can be global; see the [multisite integration boundaries](integrations.md#scim-20-inbound-provisioning) before provisioning shared accounts.

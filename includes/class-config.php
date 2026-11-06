@@ -43,6 +43,66 @@ final class Secrets
 
 final class Config
 {
+    public static function wp_login_button_defaults(): array
+    {
+        return [
+            'enabled' => false, 'text' => '', 'background' => '#ffffff', 'text_color' => '#1d2327',
+            'border_color' => '#c3c4c7', 'hover_background' => '#f0f6fc', 'hover_text_color' => '#135e96',
+            'radius' => 4, 'font_size' => 14, 'padding_y' => 12, 'padding_x' => 16,
+            'full_width' => true, 'shadow' => false, 'icon_source' => 'provider', 'icon_url' => '',
+            'icon_size' => 20, 'icon_position' => 'left',
+        ];
+    }
+
+    /** Structured appearance values never become arbitrary CSS or image markup. */
+    public static function validate_wp_login_button($input)
+    {
+        $defaults = self::wp_login_button_defaults();
+        if (!is_array($input) || array_diff(array_keys($input), array_keys($defaults))) {
+            return new \WP_Error('portalweave_sso_button_type', __('The WordPress sign-in appearance contains unexpected fields.', 'portalweave-sso'));
+        }
+        $style = array_replace($defaults, $input);
+        foreach (['enabled', 'full_width', 'shadow'] as $key) {
+            if (!in_array($style[$key], [true, false, 0, 1, '0', '1'], true)) {
+                return new \WP_Error('portalweave_sso_button_type', __('Button switches must be true or false.', 'portalweave-sso'));
+            }
+            $style[$key] = in_array($style[$key], [true, 1, '1'], true);
+        }
+        foreach (['text', 'background', 'text_color', 'border_color', 'hover_background', 'hover_text_color', 'icon_source', 'icon_url', 'icon_position'] as $key) {
+            if (!is_string($style[$key])) {
+                return new \WP_Error('portalweave_sso_button_type', __('Button text, colors and icon choices must be strings.', 'portalweave-sso'));
+            }
+        }
+        if (strlen($style['text']) > 200) {
+            return new \WP_Error('portalweave_sso_button_text', __('Keep the WordPress sign-in button text within 200 characters.', 'portalweave-sso'));
+        }
+        $style['text'] = sanitize_text_field($style['text']);
+        foreach (['background', 'text_color', 'border_color', 'hover_background', 'hover_text_color'] as $key) {
+            $color = sanitize_hex_color($style[$key]);
+            if (!$color) {
+                return new \WP_Error('portalweave_sso_button_color', __('Choose a valid hexadecimal color for each button color.', 'portalweave-sso'));
+            }
+            $style[$key] = strtolower($color);
+        }
+        foreach (['radius' => [0, 50], 'font_size' => [10, 32], 'padding_y' => [8, 24], 'padding_x' => [8, 40], 'icon_size' => [12, 48]] as $key => $bounds) {
+            if ((!is_int($style[$key]) && !is_string($style[$key])) || filter_var($style[$key], FILTER_VALIDATE_INT) === false) {
+                return new \WP_Error('portalweave_sso_button_type', __('Button dimensions must be whole numbers.', 'portalweave-sso'));
+            }
+            $style[$key] = max($bounds[0], min($bounds[1], (int) $style[$key]));
+        }
+        if (!in_array($style['icon_source'], ['provider', 'custom', 'none'], true) || !in_array($style['icon_position'], ['left', 'right'], true)) {
+            return new \WP_Error('portalweave_sso_button_icon', __('Choose a supported icon source and position.', 'portalweave-sso'));
+        }
+        $parts = $style['icon_url'] !== '' ? wp_parse_url($style['icon_url']) : [];
+        if (strlen($style['icon_url']) > 2048 || ($style['icon_url'] !== '' && (!self::https_url($style['icon_url']) || !is_array($parts) || isset($parts['user']) || isset($parts['pass']) || isset($parts['fragment']) || preg_match('/[\x00-\x20\x7f]/', $style['icon_url'])))) {
+            return new \WP_Error('portalweave_sso_button_icon', __('The button icon must use an HTTPS image URL without embedded credentials or a fragment.', 'portalweave-sso'));
+        }
+        if ($style['enabled'] && $style['icon_source'] === 'custom' && $style['icon_url'] === '') {
+            return new \WP_Error('portalweave_sso_button_icon', __('Choose a custom icon image or select provider icons.', 'portalweave-sso'));
+        }
+        return $style;
+    }
+
     public static function defaults(): array
     {
         return [
@@ -56,6 +116,7 @@ final class Config
                 'above_text' => '', 'logout_message' => 'Signed in as ##user##. ##Sign Out##', 'logout_link' => true,
                 'size' => 16, 'radius' => 8, 'spacing' => 12, 'shadow' => true, 'transform' => true,
                 'custom_css' => '', 'admin_style' => true],
+            'wp_login_button' => self::wp_login_button_defaults(),
             'support' => ['email' => '', 'booking_url' => '', 'forum_url' => '', 'demo_url' => ''],
             'modules' => ['scim' => false, 'jwt_sso' => false, 'shared_sso' => false, 'guest' => false,
                 'moderation' => false, 'avatar' => false, 'attribute_redirect' => false],
@@ -324,6 +385,14 @@ final class Config
         }
         $settings['button'] = self::bools($settings['button'], ['shadow', 'transform', 'logout_link', 'admin_style']);
         $settings['button']['custom_css'] = wp_strip_all_tags((string) $settings['button']['custom_css']);
+        $wp_button = $settings['wp_login_button'];
+        if (is_array($wp_button)) {
+            $wp_button = array_replace(is_array($old['wp_login_button'] ?? null) ? $old['wp_login_button'] : [], $wp_button);
+        }
+        $settings['wp_login_button'] = self::validate_wp_login_button($wp_button);
+        if (is_wp_error($settings['wp_login_button'])) {
+            return $settings['wp_login_button'];
+        }
         $settings['support'] = array_replace(self::defaults()['support'], (array) $settings['support']);
         $settings['support']['email'] = sanitize_email($settings['support']['email']);
         foreach (['booking_url', 'forum_url', 'demo_url'] as $key) {
@@ -448,6 +517,7 @@ final class Config
         $settings['shared_secret'] = '';
         // Arbitrary CSS and custom claim values may contain personal information.
         $settings['button']['custom_css'] = '';
+        $settings['wp_login_button']['icon_url'] = preg_replace('/[?#].*$/', '', $settings['wp_login_button']['icon_url']);
         return apply_filters('portalweave_sso_redacted_configuration', $settings);
     }
 }
