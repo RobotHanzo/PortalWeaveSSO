@@ -1,0 +1,21 @@
+.wpsso-login{display:flex;flex-direction:column;align-items:stretch;gap:var(--wpsso-spacing,12px);margin:20px 0;font-size:var(--wpsso-size,16px);line-height:1.4;box-sizing:border-box}
+.wpsso-login .wpsso-label,.wpsso-login .wpsso-session{margin:0;color:inherit}
+.wpsso-login a.wpsso-button{display:flex;justify-content:center;align-items:center;gap:.7em;min-height:44px;padding:.75em 1.1em;box-sizing:border-box;border:1px solid transparent;border-radius:var(--wpsso-radius,8px);background:#1857c5;color:#fff;text-decoration:none;font-family:inherit;font-size:inherit;font-weight:600;line-height:1.4;transition:background .15s,box-shadow .15s,transform .15s;cursor:pointer}
+.wpsso-login a.wpsso-button:focus-visible{outline:3px solid #d77a00;outline-offset:3px}
+.wpsso-login a.wpsso-button:hover{background:#12449a;color:#fff}
+.wpsso-login a.wpsso-theme-white{background:#fff;border-color:#b4bcc9;color:#17243a}
+.wpsso-login a.wpsso-theme-white:hover{background:#eef3fa;color:#17243a}
+.wpsso-login a.wpsso-theme-hover{background:#edf3ff;color:#154dae;border-color:#c5d7f7}
+.wpsso-login a.wpsso-theme-hover:hover{background:#1857c5;color:#fff}
+.wpsso-login a.wpsso-theme-smart{background:#17243a;color:#fff}
+.wpsso-login a.wpsso-theme-custom{background:var(--wpsso-button-bg,#1857c5);color:var(--wpsso-button-color,#fff);border-color:var(--wpsso-button-border,transparent)}
+.wpsso-login a.wpsso-shape-round{border-radius:999px}
+.wpsso-login a.wpsso-shape-square{border-radius:0}
+.wpsso-login a.wpsso-shape-long{width:100%;border-radius:var(--wpsso-radius,4px)}
+.wpsso-login a.wpsso-shadow{box-shadow:0 3px 10px #17243a20}
+.wpsso-login a.wpsso-transform:hover{transform:translateY(-2px)}
+.wpsso-icon,.wpsso-mark{width:1.5em;height:1.5em;object-fit:contain;flex:0 0 auto}
+.wpsso-mark{display:inline-flex;align-items:center;justify-content:center;border:1px solid currentColor;border-radius:4px;font-size:.85em}
+.wpsso-login .wpsso-logout{color:inherit;text-decoration:underline}
+@media(prefers-reduced-motion:reduce){.wpsso-login a.wpsso-button{transition:none}.wpsso-login a.wpsso-transform:hover{transform:none}}
+@media(prefers-color-scheme:dark){.wpsso-login a.wpsso-theme-smart{background:#edf3ff;color:#17243a}}
