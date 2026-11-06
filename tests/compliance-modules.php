@@ -37,12 +37,12 @@ wpsso_test('compliance: CLI backups create a private local file and never replac
         wpsso_assert(\WPSSO\Cli::write_backup($file, $contents) === true, 'Exclusive backup creation failed.');
         wpsso_assert(file_get_contents($file) === $contents, 'Backup bytes were incomplete.');
         wpsso_assert(umask() === $original_mask, 'Backup creation changed the process permission mask.');
-        if (DIRECTORY_SEPARATOR === '/') {
+        if (PHP_OS_FAMILY !== 'Windows') {
             wpsso_assert((fileperms($file) & 0777) === 0600, 'Backup must only be readable and writable by its owner.');
         }
         wpsso_error(\WPSSO\Cli::write_backup($file, 'replacement'), 'wpsso_backup_exists');
         wpsso_assert(file_get_contents($file) === $contents, 'A backup invocation overwrote an existing file.');
-        if (function_exists('symlink') && DIRECTORY_SEPARATOR === '/') {
+        if (function_exists('symlink') && PHP_OS_FAMILY !== 'Windows') {
             wpsso_assert(symlink($directory . '/missing-target', $link), 'Unable to create dangling-symlink fixture.');
             wpsso_error(\WPSSO\Cli::write_backup($link, 'replacement'), 'wpsso_backup_exists');
             wpsso_assert(is_link($link) && !file_exists($directory . '/missing-target'), 'Backup followed a pre-existing dangling symlink.');
@@ -85,9 +85,14 @@ wpsso_test('compliance: direct ability execution validates the declared input sc
     $before = get_option('wpsso_settings');
     foreach ([
         ['configure-provider', ['id' => 'invalid<script>', 'settings' => []]],
+        ['configure-provider', ['id' => 123, 'settings' => []]],
+        ['configure-provider', ['id' => 'fixture', 'settings' => ['a list']]],
         ['configure-provider', ['id' => 'fixture', 'settings' => [], 'unexpected' => true]],
         ['fix-common-error', ['id' => 'fixture', 'fix' => ['enable-pkce']]],
         ['login-audit', ['limit' => 201]],
+        ['login-audit', ['limit' => '25']],
+        ['login-audit', ['limit' => 25.0]],
+        ['support-query', ['subject' => true, 'message' => 'Do not send', 'send' => false]],
         ['support-query', ['subject' => 'A draft', 'message' => 'Do not send', 'send' => 'true']],
     ] as [$ability, $input]) {
         wpsso_assert(is_wp_error(\WPSSO\Abilities::execute($ability, $input)), 'Direct ability execution accepted malformed input for ' . $ability);
@@ -95,6 +100,9 @@ wpsso_test('compliance: direct ability execution validates the declared input sc
     }
     $result = \WPSSO\Abilities::execute('list-providers');
     wpsso_assert(is_array($result) && array_key_exists('providers', $result), 'Schema validation rejected an empty optional input object.');
+    $draft = \WPSSO\Abilities::execute('support-query', ['subject' => 'Strict JSON fixture', 'message' => 'Create a local draft only.', 'send' => false]);
+    wpsso_assert(is_array($draft) && $draft['status'] === 'draft', 'Schema validation rejected a real boolean false.');
+    delete_transient('wpsso_support_draft_' . $draft['draft']['id']);
 });
 
 wpsso_test('compliance: moderation ignores malformed fields even with a valid administrator nonce', function (): void {

@@ -62,7 +62,25 @@ final class Abilities {
         if (!$definition) {
             return new \WP_Error('wpsso_ability', 'Unknown SSO ability.');
         }
-        // Keep direct PHP execution subject to the same schema as the REST/MCP adapter.
+        // Core's REST validator accepts coercible values such as "true" for a boolean.
+        // Require the declared JSON types before validation so direct PHP and MCP calls cannot silently change meaning.
+        foreach ($definition[2] as $property => $schema) {
+            if (!array_key_exists($property, $input)) {
+                continue;
+            }
+            $value = $input[$property];
+            $matches = match ($schema['type']) {
+                'string' => is_string($value),
+                'integer' => is_int($value),
+                'boolean' => is_bool($value),
+                'object' => is_array($value) && ($value === [] || !array_is_list($value)),
+                default => false,
+            };
+            if (!$matches) {
+                return new \WP_Error('wpsso_input_type', 'Input ' . $property . ' must have JSON type ' . $schema['type'] . '.', ['status' => 400]);
+            }
+        }
+        // Keep direct PHP execution subject to the remaining REST/MCP schema constraints.
         $valid = rest_validate_value_from_schema($input, ['type' => 'object', 'properties' => $definition[2],
             'required' => $definition[3], 'additionalProperties' => false], 'input');
         if (is_wp_error($valid)) {

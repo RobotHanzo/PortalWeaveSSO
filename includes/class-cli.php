@@ -89,10 +89,10 @@ final class Cli {
         }
         $success = false;
         try {
-            // Set permissions on the descriptor we exclusively created, rather than a replaceable path.
-            // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fchmod -- WordPress has no API for permissions on an already-open exclusive file descriptor.
-            if (!@fchmod($stream, 0600)) {
-                return new \WP_Error('wpsso_backup_permissions', 'Cannot secure the backup permissions. An incomplete file may remain at the requested path.');
+            // Verify the descriptor created under the private umask. Windows uses ACLs instead of POSIX modes.
+            $created = fstat($stream);
+            if (PHP_OS_FAMILY !== 'Windows' && (!is_array($created) || ($created['mode'] & 0777) !== 0600)) {
+                return new \WP_Error('wpsso_backup_permissions', 'Cannot verify private backup permissions. An incomplete file may remain at the requested path.');
             }
             $offset = 0;
             $length = strlen($contents);
