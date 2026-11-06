@@ -23,7 +23,7 @@ final class Admin {
     }
 
     public static function menu(): void {
-        add_options_page(__('PortalWeave SSO', 'portalweave-sso'), __('PortalWeave SSO', 'portalweave-sso'), 'manage_options', 'portalweave-sso', [self::class, 'page']);
+        add_menu_page(__('PortalWeave SSO', 'portalweave-sso'), __('PortalWeave SSO', 'portalweave-sso'), 'manage_options', 'portalweave-sso', [self::class, 'page'], 'dashicons-shield');
     }
 
     public static function network_menu(): void {
@@ -186,7 +186,7 @@ final class Admin {
 
     private static function screen_url(string $screen, bool $network, array $args = []): string {
         $screen = isset(self::screens()[$screen]) ? $screen : 'overview';
-        $base = $network ? network_admin_url('admin.php') : admin_url('options-general.php');
+        $base = $network ? network_admin_url('admin.php') : admin_url('admin.php');
         return add_query_arg(array_merge(['page' => 'portalweave-sso', 'tab' => $screen], $args), $base);
     }
 

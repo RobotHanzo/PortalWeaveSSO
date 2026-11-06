@@ -117,7 +117,7 @@ async function administrator() {
 const authenticationCookies = jar => [...jar.values].filter(([name]) => /^wordpress_(?:logged_in|sec)_/.test(name)).sort();
 
 async function draftForm(jar) {
-    const response = await request('/wp-admin/options-general.php?page=portalweave-sso&tab=providers&new_provider=1&setup_provider=custom', jar);
+    const response = await request('/wp-admin/admin.php?page=portalweave-sso&tab=providers&new_provider=1&setup_provider=custom', jar);
     assert.equal(response.status, 200, response.body.slice(0, 1000));
     const form = response.body.match(/<form\b[^>]*\bdata-setup-form\b[^>]*>([\s\S]*?)<\/form>/i)?.[1];
     assert.ok(form, 'The administrator guided setup form is missing');
@@ -164,7 +164,7 @@ async function startDraft(jar, form) {
 }
 
 async function providerIds(jar) {
-    const response = await request('/wp-admin/options-general.php?page=portalweave-sso&tab=providers', jar);
+    const response = await request('/wp-admin/admin.php?page=portalweave-sso&tab=providers', jar);
     assert.equal(response.status, 200, response.body.slice(0, 1000));
     assert.ok(response.body.includes('portalweave-sso-provider-list'), 'Saved provider list is missing');
     const ids = new Set();
@@ -249,6 +249,18 @@ await test('Test configuration requires an authenticated administrator and a fre
     noAuthCookies(result);
 });
 
+await test('The administrator sidebar opens PortalWeave SSO and existing Settings bookmarks still work', async () => {
+    const { jar } = await administrator();
+    for (const route of ['admin.php', 'options-general.php']) {
+        const response = await request(`/wp-admin/${route}?page=portalweave-sso&tab=providers`, jar);
+        assert.equal(response.status, 200, response.body.slice(0, 1000));
+        assert.match(response.body, /id=["']toplevel_page_portalweave-sso["']/);
+        assert.match(response.body, /href=["']admin\.php\?page=portalweave-sso["']/);
+        assert.match(response.body, /portalweave-sso-provider-list/);
+        assert.doesNotMatch(response.body, /href=["'][^"']*options-general\.php\?page=portalweave-sso/);
+    }
+});
+
 await test('Administrator Test SSO Config displays attributes and preserves the original administrator session', async () => {
     const jar = new Cookies();
     await request('/wp-login.php', jar);
@@ -264,6 +276,7 @@ await test('Administrator Test SSO Config displays attributes and preserves the 
     assert.equal(result.status, 200, result.body);
     assert.match(result.body, /email_verified/);
     assert.match(result.body, /e2e-test-only-/);
+    assert.ok(result.body.includes(`${origin}/wp-admin/admin.php?page=portalweave-sso`), 'Configuration test returned to the previous Settings route');
     noAuthCookies(result);
     const after = JSON.parse((await request('/?portalweave_sso_test_inspect=1', jar)).body);
     assert.equal(after.id, before.id, 'Test configuration impersonated the provider user');

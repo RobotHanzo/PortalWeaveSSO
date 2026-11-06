@@ -65,7 +65,7 @@ Deactivation preserves data. Uninstall preserves settings unless the administrat
 Upgrades from PortalWeave SSO 1.0.1 retain existing configuration. Replacing an installation that uses the earlier technical namespace requires the controlled procedure in docs/provider-setup.md; there are no earlier-name aliases or automatic conversion of that stored data. Restrict access externally during that replacement, including settings, identity links, access rules, provider URLs and private-media metadata.
 
 1. Upload portalweave-sso-1.1.0.zip or copy the portalweave-sso directory into wp-content/plugins.
-2. Activate PortalWeave SSO and open Settings > PortalWeave SSO.
+2. Activate PortalWeave SSO and open PortalWeave SSO in the WordPress admin sidebar.
 3. Add a provider, register the displayed callback URL and enter its details. Use Test connection on the final review step before saving the provider.
 4. Saved providers also offer Test SSO Config to inspect returned attributes. Configure mappings and test an ordinary user before enforcing login.
 5. Add [sso_oauth_login], the PortalWeave SSO login widget or use the WordPress/WooCommerce login form integration.

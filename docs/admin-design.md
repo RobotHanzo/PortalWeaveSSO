@@ -1,6 +1,6 @@
 # Admin settings design
 
-PortalWeave's administrator UI is organized around tasks, using server-rendered screens under the existing Settings entry. The route is `page=portalweave-sso&tab=SCREEN`; network administration uses the same renderer with network capabilities and settings scope.
+PortalWeave's administrator UI is organized around tasks, using server-rendered screens under its own **PortalWeave SSO** entry in the WordPress admin sidebar. Site administration requires `manage_options`; Network Admin retains its separate entry and `manage_network_options` requirement. The canonical route is `admin.php?page=portalweave-sso&tab=SCREEN`; network administration uses the same renderer with network capabilities and settings scope. Previously bookmarked `options-general.php?page=portalweave-sso` URLs still resolve through WordPress's registered top-level page hook, while new navigation, save redirects and configuration-test return links use `admin.php`.
 
 | Screen | Primary task |
 | --- | --- |
