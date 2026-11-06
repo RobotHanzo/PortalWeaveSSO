@@ -42,6 +42,11 @@ final class Admin {
         $script_version = $version . '-' . (is_file($script) ? (string) filemtime($script) : '0');
         wp_enqueue_style('portalweave-sso-admin', plugins_url('../assets/admin.css', __FILE__), [], $style_version);
         wp_enqueue_script('portalweave-sso-admin', plugins_url('../assets/admin.js', __FILE__), [], $script_version, ['in_footer' => true, 'strategy' => 'defer']);
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- An allowlisted screen loads local presentation assets; all writes retain their own permission and nonce checks.
+        if (self::request_key($_GET, 'tab') === 'modules') {
+            wp_enqueue_style('portalweave-sso-integrations', plugins_url('../assets/integrations.css', __FILE__), ['portalweave-sso-admin'], $version . '-' . (string) filemtime(dirname(__DIR__) . '/assets/integrations.css'));
+            wp_enqueue_script('portalweave-sso-integrations', plugins_url('../assets/integrations.js', __FILE__), [], $version . '-' . (string) filemtime(dirname(__DIR__) . '/assets/integrations.js'), ['in_footer' => true, 'strategy' => 'defer']);
+        }
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Read-only navigation decides whether to load the local setup interface; saves retain their own nonce and capability checks.
         if (self::request_key($_GET, 'tab') === 'providers' && self::request_key($_GET, 'new_provider') === '1') {
             $setup_style = dirname(__DIR__) . '/assets/provider-setup.css';
@@ -131,6 +136,10 @@ final class Admin {
             // phpcs:ignore WordPress.Security.NonceVerification.Missing -- An allowlisted presentation tab is retained only after the action's nonce checks.
             $args['appearance_section'] = self::appearance_section($_POST, 'portalweave_sso_appearance_section');
         }
+        if ($screen === 'modules') {
+            // phpcs:ignore WordPress.Security.NonceVerification.Missing -- Only a known integration panel is retained after the action's nonce checks.
+            $args['integration_section'] = self::integration_section($_POST, 'portalweave_sso_integration_section');
+        }
         $url = self::screen_url($screen ?: 'overview', $network, $args);
         return $notice === '' ? $url : add_query_arg('portalweave_sso_notice', $notice, $url);
     }
@@ -174,6 +183,11 @@ final class Admin {
         return in_array($section, ['shared', 'wordpress'], true) ? $section : 'shared';
     }
 
+    private static function integration_section(array $values, string $key): string {
+        $section = self::request_key($values, $key);
+        return in_array($section, ['scim', 'jwt_sso', 'shared_sso', 'guest', 'moderation', 'avatar', 'attribute_redirect', 'abilities'], true) ? $section : 'scim';
+    }
+
     private static function activity_view(array $values, string $key, string $default = 'overview'): string {
         $view = self::request_key($values, $key);
         return in_array($view, ['overview', 'audit'], true) ? $view : $default;
@@ -212,7 +226,7 @@ final class Admin {
         if (!$input) {
             self::fail(__('No settings were submitted. Check the server POST size limit.', 'portalweave-sso'), $network);
         }
-        foreach (['portalweave_sso_screen', 'portalweave_sso_provider', 'portalweave_sso_creating', 'portalweave_sso_provider_section', 'portalweave_sso_activity_view', 'portalweave_sso_activity_days', 'portalweave_sso_appearance_section'] as $key) {
+        foreach (['portalweave_sso_screen', 'portalweave_sso_provider', 'portalweave_sso_creating', 'portalweave_sso_provider_section', 'portalweave_sso_activity_view', 'portalweave_sso_activity_days', 'portalweave_sso_appearance_section', 'portalweave_sso_integration_section'] as $key) {
             if (isset($_POST[$key]) && !is_string($_POST[$key])) {
                 self::fail(__('The settings screen is invalid. Reload the page and try again.', 'portalweave-sso'), $network);
             }
@@ -768,17 +782,8 @@ final class Admin {
             self::appearance($settings);
             return;
         } elseif ($screen === 'modules') {
-        echo '<section id="portalweave-sso-modules" class="portalweave-sso-section"><h3>' . esc_html__('Provisioning and add-on modules', 'portalweave-sso') . '</h3><p>' . esc_html__('Modules are bundled and opt in. Each endpoint enforces the corresponding toggle and its own authentication.', 'portalweave-sso') . '</p>';
-        foreach (['scim' => __('SCIM user provisioning', 'portalweave-sso'), 'jwt_sso' => __('JWT Single Sign-On', 'portalweave-sso'), 'shared_sso' => __('SSO into multiple subdomain apps', 'portalweave-sso'), 'guest' => __('Guest User Login', 'portalweave-sso'), 'moderation' => __('User Moderation', 'portalweave-sso'), 'avatar' => __('Profile Picture / Gravatar mapping', 'portalweave-sso'), 'attribute_redirect' => __('Attribute Based Redirection', 'portalweave-sso')] as $key => $label) {
-            self::check('settings[modules][' . $key . ']', $settings['modules'][$key] ?? false, $label);
-        }
-        self::secret('settings', 'scim_token', !empty($settings['scim_token']), __('SCIM bearer token', 'portalweave-sso'));
-        echo '<p class="description">' . esc_html__('Use a cryptographically random token of at least 32 characters. Configure it in the provisioning client; it is never displayed again.', 'portalweave-sso') . '</p>';
-        self::field('settings[guest_ttl]', $settings['guest_ttl'] ?? 3600, __('Guest session lifetime (seconds)', 'portalweave-sso'), 'number');
-        self::field('settings[shared_cookie_domain]', $settings['shared_cookie_domain'], __('Shared cookie domain', 'portalweave-sso'), 'text', __('Example: .example.com. Every subdomain that can set cookies must be trusted.', 'portalweave-sso'));
-        self::secret('settings', 'shared_secret', !empty($settings['shared_secret']), __('Shared SSO signing secret', 'portalweave-sso'));
-        self::field('settings[shared_sites]', implode("\n", $settings['shared_sites']), __('Trusted shared SSO sites', 'portalweave-sso'), 'textarea', __('One exact HTTPS origin per line. Configure matching signing secrets and provider identities in each app.', 'portalweave-sso'));
-        self::check('settings[abilities_enabled]', $settings['abilities_enabled'], __('Enable the eight AI / MCP abilities', 'portalweave-sso'), __('Off by default. Execution requires manage_options; MCP transport requires the WordPress MCP Adapter.', 'portalweave-sso'));
+            self::integrations($settings, $network);
+            return;
         } elseif ($screen === 'reports') {
             echo '<section class="portalweave-sso-section"><h3>' . esc_html__('Audit collection and retention', 'portalweave-sso') . '</h3>';
         self::check('settings[debug]', $settings['debug'], __('Enable diagnostic debug events', 'portalweave-sso'), __('No bearer tokens, client secrets, or raw provider attributes are logged. Debug events are removed weekly.', 'portalweave-sso'));
@@ -796,6 +801,89 @@ final class Admin {
             echo '</details>';
         }
         echo '</section>';
+    }
+
+    private static function integrations(array $settings, bool $network): void {
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- A bounded section selects local presentation only; all integrations remain in the protected scoped form.
+        $section = self::integration_section($_GET, 'integration_section');
+        $groups = [
+            [__('Provisioning', 'portalweave-sso'), ['scim']],
+            [__('Sign-in and sessions', 'portalweave-sso'), ['jwt_sso', 'shared_sso', 'guest']],
+            [__('Account experience', 'portalweave-sso'), ['moderation', 'avatar', 'attribute_redirect']],
+            [__('Automation', 'portalweave-sso'), ['abilities']],
+        ];
+        $items = [
+            'scim' => [__('SCIM provisioning', 'portalweave-sso'), __('Create and manage site-owned directory users and groups through an authenticated SCIM client.', 'portalweave-sso'), 'networking'],
+            'jwt_sso' => [__('JWT single sign-on', 'portalweave-sso'), __('Accept signed ID tokens through the browser-bound JWT sign-in flow.', 'portalweave-sso'), 'shield'],
+            'shared_sso' => [__('Shared subdomain SSO', 'portalweave-sso'), __('Hand off sign-in between trusted HTTPS sites on the same parent domain.', 'portalweave-sso'), 'admin-multisite'],
+            'guest' => [__('Guest accounts', 'portalweave-sso'), __('Create temporary subscriber accounts through selected identity providers.', 'portalweave-sso'), 'clock'],
+            'moderation' => [__('User moderation', 'portalweave-sso'), __('Hold new nonprivileged identities for administrator approval before sign-in.', 'portalweave-sso'), 'admin-users'],
+            'avatar' => [__('Profile pictures', 'portalweave-sso'), __('Use a provider picture attribute for WordPress avatars.', 'portalweave-sso'), 'format-image'],
+            'attribute_redirect' => [__('Attribute redirects', 'portalweave-sso'), __('Choose a destination after sign-in using ordered provider claim rules.', 'portalweave-sso'), 'randomize'],
+            'abilities' => [__('AI / MCP abilities', 'portalweave-sso'), __('Expose eight administrator abilities to an authenticated automation client.', 'portalweave-sso'), 'admin-tools'],
+        ];
+        echo '<section id="portalweave-sso-modules" class="portalweave-sso-section portalweave-sso-integrations" data-integrations-editor data-integration-section="' . esc_attr($section) . '" data-enabled-label="' . esc_attr__('Enabled', 'portalweave-sso') . '" data-disabled-label="' . esc_attr__('Off', 'portalweave-sso') . '"><p class="portalweave-sso-integrations-intro">' . esc_html__('Choose an integration to configure it. Each integration starts off; enabling it keeps your existing account and access policies in place.', 'portalweave-sso') . '</p><input type="hidden" name="portalweave_sso_integration_section" value="' . esc_attr($section) . '"><div class="portalweave-sso-integrations-layout"><nav class="portalweave-sso-integrations-directory" data-integration-tabs aria-label="' . esc_attr__('Integration settings', 'portalweave-sso') . '">';
+        foreach ($groups as [$label, $keys]) {
+            echo '<div class="portalweave-sso-integration-group"><h3>' . esc_html($label) . '</h3>';
+            foreach ($keys as $key) {
+                [$title, , $icon] = $items[$key];
+                $enabled = $key === 'abilities' ? !empty($settings['abilities_enabled']) : !empty($settings['modules'][$key]);
+                echo '<a id="portalweave-sso-integration-tab-' . esc_attr($key) . '" href="#portalweave-sso-integration-panel-' . esc_attr($key) . '" data-integration-tab="' . esc_attr($key) . '"' . ($section === $key ? ' class="is-active"' : '') . '><span class="dashicons dashicons-' . esc_attr($icon) . '" aria-hidden="true"></span><span class="portalweave-sso-integration-name">' . esc_html($title) . '<span class="portalweave-sso-integration-status' . ($enabled ? ' is-enabled' : '') . '" data-integration-status>' . esc_html($enabled ? __('Enabled', 'portalweave-sso') : __('Off', 'portalweave-sso')) . '</span></span></a>';
+            }
+            echo '</div>';
+        }
+        echo '</nav><div class="portalweave-sso-integration-panels">';
+        foreach ($items as $key => [$title, $description]) {
+            echo '<section id="portalweave-sso-integration-panel-' . esc_attr($key) . '" class="portalweave-sso-integration-panel" data-integration-panel="' . esc_attr($key) . '"><h3>' . esc_html($title) . '</h3><p class="portalweave-sso-integration-description">' . esc_html($description) . '</p>';
+            if ($key === 'abilities') {
+                self::check('settings[abilities_enabled]', $settings['abilities_enabled'], __('Enable the eight AI / MCP abilities', 'portalweave-sso'), __('Requires WordPress 6.9 or later and manage_options. Install the WordPress MCP Adapter separately for MCP transport.', 'portalweave-sso'));
+                echo '<p>' . esc_html__('The adapter owns authentication and connection setup. PortalWeave SSO does not call an AI model itself. Review the client’s data handling before exposing personal audit output.', 'portalweave-sso') . '</p>';
+            } else {
+                self::check('settings[modules][' . $key . ']', $settings['modules'][$key] ?? false, __('Enable this integration', 'portalweave-sso'));
+                if ($key === 'scim') {
+                    self::secret('settings', 'scim_token', !empty($settings['scim_token']), __('SCIM bearer token', 'portalweave-sso'));
+                    echo '<p class="description">' . esc_html__('Use a dedicated cryptographically random token of at least 32 characters. Configure it in the provisioning client; it is never displayed again.', 'portalweave-sso') . '</p><p><strong>' . esc_html__('SCIM base URL', 'portalweave-sso') . '</strong><br><code class="portalweave-sso-integration-endpoint">' . esc_html(rest_url('portalweave-sso/v1/scim/v2')) . '</code></p>';
+                } elseif ($key === 'shared_sso') {
+                    self::field('settings[shared_cookie_domain]', $settings['shared_cookie_domain'], __('Shared cookie domain', 'portalweave-sso'), 'text', __('Example: .example.com. Every subdomain that can set cookies must be trusted.', 'portalweave-sso'));
+                    self::secret('settings', 'shared_secret', !empty($settings['shared_secret']), __('Shared SSO signing secret', 'portalweave-sso'));
+                    self::field('settings[shared_sites]', implode("\n", $settings['shared_sites']), __('Trusted shared SSO sites', 'portalweave-sso'), 'textarea', __('One exact HTTPS origin per line. Configure matching signing secrets and provider identities in each app.', 'portalweave-sso'));
+                } elseif ($key === 'guest') {
+                    self::field('settings[guest_ttl]', $settings['guest_ttl'] ?? 3600, __('Guest session lifetime (seconds)', 'portalweave-sso'), 'number', __('Between 300 and 86,400 seconds. Expired guests cannot sign in; scheduled cleanup retains accounts that authored content.', 'portalweave-sso'), ['min' => 300, 'max' => 86400]);
+                } elseif ($key === 'jwt_sso') {
+                    echo '<p>' . esc_html__('Use an OIDC provider that supports signed ID tokens with form_post. Configure its issuer, algorithms and trusted keys in the provider’s Security section.', 'portalweave-sso') . '</p>';
+                } elseif ($key === 'moderation') {
+                    echo '<p>' . esc_html__('Approve or block accounts under Users → Edit User → SSO account moderation. Approval does not grant roles; privileged accounts keep their recovery protections.', 'portalweave-sso') . '</p>';
+                } elseif ($key === 'avatar') {
+                    echo '<p>' . esc_html__('Set the picture attribute on each provider. Visitors’ browsers fetch the public HTTPS image from the picture host; disclose the host in your site privacy policy.', 'portalweave-sso') . '</p>';
+                } elseif ($key === 'attribute_redirect') {
+                    echo '<p>' . esc_html__('Set ordered claim, value and destination rules on each provider. Every destination must also pass the allowlist under Login & logout.', 'portalweave-sso') . '</p><p><a href="' . esc_url(self::screen_url('login', $network)) . '">' . esc_html__('Manage the redirect allowlist', 'portalweave-sso') . '</a></p>';
+                }
+                if ($key !== 'scim') {
+                    self::integration_providers($settings, $network, $key);
+                }
+            }
+            echo '</section>';
+        }
+        echo '</div></div></section>';
+    }
+
+    private static function integration_providers(array $settings, bool $network, string $integration): void {
+        echo '<div class="portalweave-sso-integration-providers"><h4>' . esc_html__('Provider settings', 'portalweave-sso') . '</h4><p>' . esc_html__('Provider options are saved separately. Save your integration changes before opening a provider.', 'portalweave-sso') . '</p>';
+        if (!$settings['apps']) {
+            echo '<p><a href="' . esc_url(self::screen_url('providers', $network)) . '">' . esc_html__('Add an identity provider', 'portalweave-sso') . '</a></p>';
+        } else {
+            echo '<ul>';
+            foreach ($settings['apps'] as $id => $app) {
+                $enabled = in_array($integration, ['avatar', 'attribute_redirect'], true) ? null : !empty($app[$integration]);
+                echo '<li><a href="' . esc_url(self::screen_url('providers', $network, ['provider' => (string) $id, 'provider_section' => 'integrations'])) . '">' . esc_html($app['name'] ?: (string) $id) . '</a>';
+                if ($enabled !== null) {
+                    echo '<span class="portalweave-sso-badge">' . esc_html($enabled ? __('Provider option on', 'portalweave-sso') : __('Provider option off', 'portalweave-sso')) . '</span>';
+                }
+                echo '</li>';
+            }
+            echo '</ul>';
+        }
+        echo '</div>';
     }
 
     private static function appearance(array $settings): void {
