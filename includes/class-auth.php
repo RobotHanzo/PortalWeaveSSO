@@ -333,6 +333,7 @@ final class Auth {
     }
 
     public static function refresh($user_id, $app_id) {
+        global $wpdb;
         if ((int) $user_id !== get_current_user_id() && !current_user_can('manage_options')) {
             return new \WP_Error('wpsso_permission', __('You cannot refresh this user session.', 'wpsso'));
         }
@@ -341,11 +342,10 @@ final class Auth {
             return new \WP_Error('wpsso_app', __('The provider is unavailable.', 'wpsso'));
         }
         $lock = 'wpsso_refresh_' . (int) $user_id . '_' . sanitize_key($app_id);
-        $previous = get_option($lock);
-        if ($previous && (int) $previous < time() - 60) {
-            delete_option($lock);
-        }
-        if (!add_option($lock, time(), '', false)) {
+        $wpdb->query($wpdb->prepare("DELETE FROM {$wpdb->options} WHERE option_name = %s AND CAST(option_value AS UNSIGNED) < %d", $lock, time()));
+        wp_cache_delete($lock, 'options');
+        $expires = time() + 120;
+        if (!add_option($lock, $expires, '', false)) {
             return new \WP_Error('wpsso_refresh_busy', __('A token refresh is already in progress.', 'wpsso'));
         }
         try {
@@ -375,7 +375,8 @@ final class Auth {
             Audit::record('refresh', $app_id, get_user_by('id', $user_id));
             return $merged;
         } finally {
-            delete_option($lock);
+            $wpdb->delete($wpdb->options, ['option_name' => $lock, 'option_value' => (string) $expires], ['%s', '%s']);
+            wp_cache_delete($lock, 'options');
         }
     }
 
