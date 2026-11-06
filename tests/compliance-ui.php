@@ -102,3 +102,35 @@ wpsso_test('Compliance: content policy writes require a scalar nonce, permission
         wp_delete_term($term_id, 'category');
     }
 });
+
+wpsso_test('Compliance: every admin action rejects missing, nested and forged security tokens', function () {
+    $old_post = $_POST;
+    $old_request = $_REQUEST;
+    $old_get = $_GET;
+    $handler = static fn() => static function () { throw new RuntimeException('wpsso_expected_security_rejection'); };
+    add_filter('wp_die_handler', $handler);
+    try {
+        wp_set_current_user(get_user_by('login', 'wpsso_test_admin')->ID);
+        $prior = get_option('wpsso_settings');
+        foreach (['save', 'export', 'import', 'support'] as $action) {
+            foreach ([null, ['nested'], 'forged'] as $nonce) {
+                $_POST = ['settings' => ['apps' => 'malformed'], 'wpsso_complete' => '1'];
+                $_GET = [];
+                $_REQUEST = $nonce === null ? [] : ['_wpnonce' => $nonce];
+                $rejected = false;
+                try {
+                    \WPSSO\Admin::$action();
+                } catch (RuntimeException $error) {
+                    $rejected = $error->getMessage() === 'wpsso_expected_security_rejection';
+                }
+                wpsso_assert($rejected, 'Admin action accepted an invalid nonce: ' . $action);
+                wpsso_assert(get_option('wpsso_settings') === $prior, 'Rejected admin action changed configuration');
+            }
+        }
+    } finally {
+        remove_filter('wp_die_handler', $handler);
+        $_POST = $old_post;
+        $_GET = $old_get;
+        $_REQUEST = $old_request;
+    }
+});

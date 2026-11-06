@@ -52,6 +52,14 @@ final class Admin {
         return $network;
     }
 
+    /** Core checks the nonce after this type guard, without casting arrays to strings. */
+    private static function require_nonce_type(): void {
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Each caller immediately verifies this nonce with check_admin_referer().
+        if (!isset($_REQUEST['_wpnonce']) || !is_string($_REQUEST['_wpnonce'])) {
+            wp_die(esc_html__('The form security token is invalid. Reload the settings page and try again.', 'stsa-identity-sso'), '', ['response' => 403]);
+        }
+    }
+
     private static function settings(bool $network): array {
         if (!$network) {
             return Config::all();
@@ -78,6 +86,7 @@ final class Admin {
 
     public static function save(): void {
         $network = self::require_access();
+        self::require_nonce_type();
         check_admin_referer('wpsso_save');
         if (!isset($_POST['wpsso_complete']) || !is_string($_POST['wpsso_complete']) || sanitize_text_field(wp_unslash($_POST['wpsso_complete'])) !== '1') {
             self::fail(__('The settings form was truncated. Increase PHP max_input_vars for this number of providers, then retry.', 'stsa-identity-sso'), $network);
@@ -213,6 +222,7 @@ final class Admin {
 
     public static function export(): void {
         $network = self::require_access();
+        self::require_nonce_type();
         check_admin_referer('wpsso_export');
         $kind = isset($_REQUEST['kind']) && is_string($_REQUEST['kind']) ? sanitize_key(wp_unslash($_REQUEST['kind'])) : 'configuration';
         nocache_headers();
@@ -262,6 +272,7 @@ final class Admin {
 
     public static function import(): void {
         $network = self::require_access();
+        self::require_nonce_type();
         check_admin_referer('wpsso_import');
         if (empty($_FILES['configuration']) || !is_array($_FILES['configuration'])) {
             self::fail(__('Choose a configuration JSON file.', 'stsa-identity-sso'), $network);
@@ -290,6 +301,7 @@ final class Admin {
 
     public static function support(): void {
         $network = self::require_access();
+        self::require_nonce_type();
         check_admin_referer('wpsso_support');
         $support = self::settings($network)['support'] ?? [];
         $recipient = sanitize_email($support['email'] ?? '');
@@ -492,7 +504,9 @@ final class Admin {
         self::field('settings[shared_cookie_domain]', $settings['shared_cookie_domain'], __('Shared cookie domain', 'stsa-identity-sso'), 'text', __('Example: .example.com. Every subdomain that can set cookies must be trusted.', 'stsa-identity-sso'));
         self::secret('settings', 'shared_secret', !empty($settings['shared_secret']), __('Shared SSO signing secret', 'stsa-identity-sso'));
         self::field('settings[shared_sites]', implode("\n", $settings['shared_sites']), __('Trusted shared SSO sites', 'stsa-identity-sso'), 'textarea', __('One exact HTTPS origin per line. Configure matching signing secrets and provider identities in each app.', 'stsa-identity-sso'));
-        echo '<div class="wpsso-callout"><strong>' . esc_html__('Protected media delivery', 'stsa-identity-sso') . '</strong><p>' . esc_html__('Protecting an attachment relocates its original and derivatives outside the web document root. WordPress URLs then use the authenticated delivery endpoint. Configure a writable ', 'stsa-identity-sso') . '<code>WPSSO_PRIVATE_MEDIA_DIR</code>' . esc_html__(' in wp-config.php; the default is a private sibling directory of ABSPATH. Purge previously cached files from web-server and CDN caches. Restoring public access moves files back to their original upload paths.', 'stsa-identity-sso') . '</p></div>';
+        /* translators: %s: private media directory configuration constant, displayed as code. */
+        $media_help = sprintf(__('Protecting an attachment relocates its original and derivatives outside the web document root. WordPress URLs then use the authenticated delivery endpoint. Configure a writable %s in wp-config.php; the default is a private sibling directory of ABSPATH. Purge previously cached files from web-server and CDN caches. Restoring public access moves files back to their original upload paths.', 'stsa-identity-sso'), '<code>WPSSO_PRIVATE_MEDIA_DIR</code>');
+        echo '<div class="wpsso-callout"><strong>' . esc_html__('Protected media delivery', 'stsa-identity-sso') . '</strong><p>' . wp_kses($media_help, ['code' => []]) . '</p></div>';
         echo '</section><section class="wpsso-section"><h2>' . esc_html__('Automation and reporting settings', 'stsa-identity-sso') . '</h2>';
         self::check('settings[abilities_enabled]', $settings['abilities_enabled'], __('Enable the eight AI / MCP abilities', 'stsa-identity-sso'), __('Off by default. Execution requires manage_options; MCP transport requires the WordPress MCP Adapter.', 'stsa-identity-sso'));
         self::check('settings[debug]', $settings['debug'], __('Enable diagnostic debug events', 'stsa-identity-sso'), __('No bearer tokens, client secrets, or raw provider attributes are logged. Debug events are removed weekly.', 'stsa-identity-sso'));
@@ -590,7 +604,11 @@ final class Admin {
             echo '<dt>' . esc_html($title) . '</dt><dd>' . esc_html($answer) . '</dd>';
         }
         echo '</dl><h3>' . esc_html__('FAQs', 'stsa-identity-sso') . '</h3><details class="wpsso-subsection"><summary>' . esc_html__('Which provider endpoint URLs should I use?', 'stsa-identity-sso') . '</summary><p>' . esc_html__('Use your provider’s tenant-specific OpenID discovery document to copy issuer, authorization_endpoint, token_endpoint, userinfo_endpoint, jwks_uri, and end_session_endpoint. The templates are starting points; the provider registration is authoritative.', 'stsa-identity-sso') . '</p></details><details class="wpsso-subsection"><summary>' . esc_html__('How are direct media URLs protected?', 'stsa-identity-sso') . '</summary><p>' . esc_html__('Protected originals and derivatives are moved into a writable private directory outside the web document root, and WordPress generates authenticated delivery URLs. Purge old web-server and CDN cached copies when protecting a file. Attachment-page rules alone do not relocate files; use the protected attachment control or the protected-ID list.', 'stsa-identity-sso') . '</p></details><details class="wpsso-subsection"><summary>' . esc_html__('Will this create user accounts automatically?', 'stsa-identity-sso') . '</summary><p>' . esc_html__('Only when the provider’s automatic registration setting is enabled. Existing-account linking is a separate opt-in and requires a verified, unique email.', 'stsa-identity-sso') . '</p></details>';
-        echo '<h3>' . esc_html__('AI / MCP setup', 'stsa-identity-sso') . '</h3><ol><li>' . esc_html__('Use WordPress 6.9 or later and install the official WordPress MCP Adapter for MCP transport.', 'stsa-identity-sso') . '</li><li>' . esc_html__('Enable AI / MCP abilities above. Authenticate your MCP client with an administrator who has ', 'stsa-identity-sso') . '<code>manage_options</code>.</li><li>' . esc_html__('Connect Claude Desktop, Cursor, ChatGPT, or another MCP client to your adapter’s authenticated endpoint. Follow the adapter’s current transport and authentication setup.', 'stsa-identity-sso') . '</li><li>' . esc_html__('Discover the eight ', 'stsa-identity-sso') . '<code>wpsso/*</code>' . esc_html__(' abilities for status, provider configuration, validation, diagnosis, repair, audit, support preparation, and support submission. Review configuration changes before asking a client to execute them.', 'stsa-identity-sso') . '</li></ol><p>' . esc_html__('Disabling the abilities setting removes execution access. Abilities never return client IDs, secrets, access tokens, or refresh tokens.', 'stsa-identity-sso') . '</p>';
+        /* translators: %s: required WordPress capability, displayed as code. */
+        $mcp_auth = sprintf(__('Enable AI / MCP abilities above. Authenticate your MCP client with an administrator who has %s.', 'stsa-identity-sso'), '<code>manage_options</code>');
+        /* translators: %s: ability namespace, displayed as code. */
+        $mcp_discovery = sprintf(__('Discover the eight %s abilities for status, provider configuration, validation, diagnosis, repair, audit, support preparation, and support submission. Review configuration changes before asking a client to execute them.', 'stsa-identity-sso'), '<code>wpsso/*</code>');
+        echo '<h3>' . esc_html__('AI / MCP setup', 'stsa-identity-sso') . '</h3><ol><li>' . esc_html__('Use WordPress 6.9 or later and install the official WordPress MCP Adapter for MCP transport.', 'stsa-identity-sso') . '</li><li>' . wp_kses($mcp_auth, ['code' => []]) . '</li><li>' . esc_html__('Connect Claude Desktop, Cursor, ChatGPT, or another MCP client to your adapter’s authenticated endpoint. Follow the adapter’s current transport and authentication setup.', 'stsa-identity-sso') . '</li><li>' . wp_kses($mcp_discovery, ['code' => []]) . '</li></ol><p>' . esc_html__('Disabling the abilities setting removes execution access. Abilities never return client IDs, secrets, access tokens, or refresh tokens.', 'stsa-identity-sso') . '</p>';
         $export = wp_nonce_url(add_query_arg(['action' => 'wpsso_export', 'kind' => 'configuration', 'network' => $network ? 1 : 0], admin_url('admin-post.php')), 'wpsso_export');
         echo '<h3>' . esc_html__('Configuration backup', 'stsa-identity-sso') . '</h3><p><a class="button" href="' . esc_url($export) . '">' . esc_html__('Download configuration backup', 'stsa-identity-sso') . '</a></p><p class="description">' . esc_html__('Credential-free JSON includes mappings and policy. Client IDs, all secrets, and tokens are excluded. Restore retains existing credentials by app ID; on a clean installation, incomplete providers and login enforcement remain disabled until credentials are entered. Retain an independent WordPress database backup for complete recovery.', 'stsa-identity-sso') . '</p>';
         if (!$enforced) {
