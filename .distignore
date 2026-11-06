@@ -1,0 +1,25 @@
+# Defense in depth for tools that deploy the repository rather than the staged BUILD_DIR.
+# scripts/release.mjs uses an explicit production allowlist for automated releases.
+/.git
+/.github
+/.gitattributes
+/.gitignore
+/.distignore
+/.test-runtime
+/.tools
+/.phpunit.cache
+/tests
+/scripts
+/dist
+/reports
+/node_modules
+/vendor
+/compose.test.yml
+/compose.ci.yml
+*.log
+.env
+.env.*
+*.pem
+*.key
+*.p12
+*.pfx

@@ -1,18 +1,29 @@
-param([string]$Version = '1.0.0')
+param([string]$Version = '', [string]$Slug = 'wordpress-sso')
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
-if ($Version -notmatch '^\d+\.\d+\.\d+(?:-[a-zA-Z0-9.]+)?$') { throw 'Invalid package version.' }
+$releaseScript = Join-Path $PSScriptRoot 'release.mjs'
+$metadataJson = & node $releaseScript validate
+if ($LASTEXITCODE -ne 0) { throw 'Release metadata validation failed.' }
+$metadata = ($metadataJson -join "`n") | ConvertFrom-Json
+if ($Version -and $Version -ne $metadata.version) { throw 'Requested package version must match plugin headers, constant, and readme Stable tag.' }
+$Version = $metadata.version
+if ($Slug -notmatch '^[a-z0-9]+(?:-[a-z0-9]+)*$' -or $Slug.Length -gt 100) { throw 'Invalid package slug.' }
 $dist = Join-Path $repo 'dist'
 $scratch = Join-Path $repo '.test-runtime'
+foreach ($directory in @($dist,$scratch)) {
+    if ((Test-Path -LiteralPath $directory) -and ((Get-Item -LiteralPath $directory -Force).Attributes -band [IO.FileAttributes]::ReparsePoint)) {
+        throw 'Package directories must not be symbolic links or junctions.'
+    }
+}
 New-Item -ItemType Directory -Path $dist,$scratch -Force | Out-Null
 $stage = Join-Path $scratch ('package-' + [guid]::NewGuid().ToString('N'))
-$plugin = Join-Path $stage 'wordpress-sso'
-New-Item -ItemType Directory -Path $plugin -Force | Out-Null
+$plugin = Join-Path $stage $Slug
 try {
-    foreach ($name in @('wordpress-sso.php','uninstall.php','README.md','readme.txt','LICENSE','includes','assets','docs')) {
-        Copy-Item -LiteralPath (Join-Path $repo $name) -Destination $plugin -Recurse
-    }
-    $zip = Join-Path $dist ('wordpress-sso-' + $Version + '.zip')
+    $stageJson = & node $releaseScript stage --output $plugin --slug $Slug
+    if ($LASTEXITCODE -ne 0) { throw 'Release staging failed.' }
+    $verifyJson = & node $releaseScript verify --output $plugin
+    if ($LASTEXITCODE -ne 0) { throw 'Release staging verification failed.' }
+    $zip = Join-Path $dist ($Slug + '-' + $Version + '.zip')
     if (Test-Path -LiteralPath $zip) { Remove-Item -LiteralPath $zip -Force }
     Add-Type -AssemblyName System.IO.Compression.FileSystem
     [System.IO.Compression.ZipFile]::CreateFromDirectory($stage, $zip)
@@ -21,8 +32,10 @@ try {
     Write-Output $zip
     Write-Output ('SHA256 ' + $checksum)
 } finally {
-    $resolved = (Resolve-Path -LiteralPath $stage).Path
-    $boundary = (Resolve-Path -LiteralPath $scratch).Path.TrimEnd([char[]]@('/','\')) + [IO.Path]::DirectorySeparatorChar
-    if (!$resolved.StartsWith($boundary, [StringComparison]::OrdinalIgnoreCase)) { throw 'Unsafe staging cleanup path.' }
-    Remove-Item -LiteralPath $resolved -Recurse -Force
+    if (Test-Path -LiteralPath $stage) {
+        $resolved = (Resolve-Path -LiteralPath $stage).Path
+        $boundary = (Resolve-Path -LiteralPath $scratch).Path.TrimEnd([char[]]@('/','\')) + [IO.Path]::DirectorySeparatorChar
+        if (!$resolved.StartsWith($boundary, [StringComparison]::OrdinalIgnoreCase)) { throw 'Unsafe staging cleanup path.' }
+        Remove-Item -LiteralPath $resolved -Recurse -Force
+    }
 }
