@@ -14,6 +14,8 @@
 | Build verified plugin ZIP | Runs only after every verification job succeeds; stages allowlisted files, verifies hashes, builds the version-matched ZIP and checksum |
 | CI required | Stable branch-protection check that fails if any preceding required job fails, is cancelled or is skipped |
 
+The integration and multisite harness downloads all three service images before starting a fixture. Registry failures get at most three attempts with 5- and 10-second waits; successful cached images are reused. Startup and one-off commands use `--pull never`, so later steps cannot trigger another registry download. Exhausted downloads, container startup, fixture setup and test failures remain failures; setup and tests are never retried.
+
 WordPress containers have readiness checks before WP-CLI runs. The minimum and current versions run independently with `fail-fast: false`, so both produce evidence if either fails. Each job uses a disposable database and collects logs before cleanup. Actions are pinned to full commit hashes, and Dependabot proposes updates weekly.
 
 ## Read test results
