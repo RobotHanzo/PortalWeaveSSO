@@ -22,6 +22,7 @@ Open a run's **Summary** for per-suite passed/failed counts and failure details.
 - `tests-minimum`: integration and HTTPS JUnit XML, JSON and service logs for the compatibility baseline.
 - `tests-current`: the same reports for the current runtime.
 - `tests-multisite`: multisite/multinetwork JUnit XML, JSON and service logs.
+- `tests-tooling`: native Node.js JUnit report for release validation, report handling and deployment safeguards, with its own job summary.
 - `plugin-package`: installable ZIP and SHA-256 checksum; available only after required verification succeeds.
 
 Test artifacts are retained for 14 days and packages for 30 days. Test-report steps and artifact collection run after failures as well as success. Empty, malformed, incomplete, duplicate and missing expected reports fail the job. PHP bootstrap/early termination and unfinished Node runners produce explicit failures instead of silently returning success. Reports use fixture accounts and do not require live IdP or SVN credentials.

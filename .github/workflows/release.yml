@@ -39,7 +39,7 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.tag || github.ref }}
+          ref: ${{ inputs.tag || github.sha }}
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
@@ -116,6 +116,7 @@ jobs:
           PACKAGE_SLUG: ${{ needs.resolve.outputs.slug }}
         run: |
           (cd dist && sha256sum --check "$PACKAGE_SLUG-$VERSION.zip.sha256")
+          mkdir -p .test-runtime
           unzip -q "dist/$PACKAGE_SLUG-$VERSION.zip" -d .test-runtime/candidate
           node scripts/release.mjs verify --output ".test-runtime/candidate/$PACKAGE_SLUG"
           printf '### Verified release candidate\n\nVersion: **%s**. Checksums and packaged files match the tested commit.\n\n' "$VERSION" >> "$GITHUB_STEP_SUMMARY"
@@ -167,6 +168,7 @@ jobs:
         run: |
           [[ -n "$WPORG_USERNAME" && -n "$WPORG_PASSWORD" ]] || { echo '::error::Configure WPORG_USERNAME and WPORG_PASSWORD in the wordpress-org environment.'; exit 1; }
           (cd dist && sha256sum --check "$PLUGIN_SLUG-$VERSION.zip.sha256")
+          mkdir -p .test-runtime
           unzip -q "dist/$PLUGIN_SLUG-$VERSION.zip" -d .test-runtime/deploy
           node scripts/release.mjs verify --output ".test-runtime/deploy/$PLUGIN_SLUG"
           node scripts/check-wordpress-release.mjs --slug "$PLUGIN_SLUG" --version "$VERSION"

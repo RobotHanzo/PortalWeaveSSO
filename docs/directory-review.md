@@ -19,6 +19,8 @@ Warnings include direct-query/caching advice, nonce and input-sanitization analy
 
 This snapshot may differ from later staged-package scans or a newer Plugin Check release. Treat the current workflow artifact as authoritative for a release candidate.
 
+The first [hosted staged-package review](https://github.com/RobotHanzo/WordPressSSO/actions/runs/42169165192) ran successfully as a checker and correctly failed its review gate with **89 errors and 142 warnings**. Its artifact is available from the run. The source-only hidden-file finding and missing compatibility header are absent. Remaining errors comprise 71 text-domain mismatches, nine output-escaping findings, eight filesystem-operation findings and one translator-comment finding. These require a follow-up plugin review before enabling publication; they are not suppressed by the workflow.
+
 ## Run the check locally
 
 In the disposable WordPress environment:

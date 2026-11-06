@@ -67,13 +67,29 @@ jobs:
           for php in 8.1 8.3; do
             docker run --rm -v "$GITHUB_WORKSPACE:/workspace:ro" -w /workspace "php:$php-cli" php scripts/lint.php
           done
-      - name: Check JavaScript and CI tooling
+      - name: Check JavaScript and shell syntax
         run: |
           node --check assets/admin.js
           node --check assets/login.js
           node --check tests/e2e.mjs
-          node --test tests/*.test.mjs
           bash -n scripts/*.sh tests/setup-tls.sh
+      - name: Run release, reporting and deployment tooling tests
+        run: |
+          mkdir -p reports
+          node --test --test-reporter=spec --test-reporter=junit \
+            --test-reporter-destination=stdout --test-reporter-destination=reports/tooling.xml \
+            tests/*.test.mjs
+      - name: Summarize tooling tests even after failure
+        if: always()
+        run: node scripts/report-tooling.mjs reports/tooling.xml
+      - name: Upload tooling JUnit report
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: tests-tooling
+          path: reports/tooling.xml
+          if-no-files-found: error
+          retention-days: 14
       - name: Validate GitHub workflow syntax
         run: |
           curl --fail --silent --show-error --location --retry 3 \

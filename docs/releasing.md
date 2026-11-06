@@ -29,7 +29,7 @@ Use a new version for each directory update. Never move a published Git tag or o
 
 If SVN publication succeeds and only the GitHub release job fails, rerun that failed job rather than the full workflow: the duplicate-version guard intentionally prevents publishing the same SVN tag again. Release publishing is serialized to prevent two jobs committing to the same plugin concurrently. The deployed files come from the artifact verified by CI, not from a fresh unverified build.
 
-The remote release tag is checked again against the tested commit immediately before SVN and GitHub publication. Protect `v*` tags from updates and deletion to keep release history immutable as well.
+The remote release tag is checked again against the tested commit immediately before SVN and GitHub publication. The repository's active `Immutable release tags` ruleset blocks updates and deletion of `v*` tags to keep release history immutable as well.
 
 The repository is configured with `WORDPRESS_DEPLOY_ENABLED=false` and a `wordpress-org` environment permitting `v*` tags. No SVN secrets or approved slug are configured before WordPress.org approval. To prepare a candidate now, use `gh workflow run release.yml --ref main -f dry_run=true`; the optional tag input may remain empty. To inspect marketplace-specific findings, run `gh workflow run wordpress-review.yml --ref main -f checkout_ref=main -f slug=wordpress-sso` with the approved slug substituted once assigned.
 
