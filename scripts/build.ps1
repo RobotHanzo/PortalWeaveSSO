@@ -1,4 +1,4 @@
-param([string]$Version = '', [string]$Slug = 'wordpress-sso')
+param([string]$Version = '', [string]$Slug = '')
 $ErrorActionPreference = 'Stop'
 $repo = (Resolve-Path -LiteralPath (Join-Path $PSScriptRoot '..')).Path
 $releaseScript = Join-Path $PSScriptRoot 'release.mjs'
@@ -7,7 +7,8 @@ if ($LASTEXITCODE -ne 0) { throw 'Release metadata validation failed.' }
 $metadata = ($metadataJson -join "`n") | ConvertFrom-Json
 if ($Version -and $Version -ne $metadata.version) { throw 'Requested package version must match plugin headers, constant, and readme Stable tag.' }
 $Version = $metadata.version
-if ($Slug -notmatch '^[a-z0-9]+(?:-[a-z0-9]+)*$' -or $Slug.Length -gt 100) { throw 'Invalid package slug.' }
+if ($Slug -and $Slug -ne $metadata.slug) { throw 'Package slug must match the plugin Text Domain.' }
+$Slug = $metadata.slug
 $dist = Join-Path $repo 'dist'
 $scratch = Join-Path $repo '.test-runtime'
 foreach ($directory in @($dist,$scratch)) {
