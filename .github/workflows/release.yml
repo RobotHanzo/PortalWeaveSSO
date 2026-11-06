@@ -81,7 +81,7 @@ jobs:
         run: |
           tag_args=()
           if [[ -n "$RELEASE_TAG" ]]; then tag_args=(--tag "$RELEASE_TAG"); fi
-          node scripts/release.mjs validate "${tag_args[@]}" --github-output "$GITHUB_OUTPUT"
+          bash scripts/release.sh validate "${tag_args[@]}" --github-output "$GITHUB_OUTPUT"
 
   verify:
     name: Verify exact release commit
@@ -118,7 +118,7 @@ jobs:
           (cd dist && sha256sum --check "$PACKAGE_SLUG-$VERSION.zip.sha256")
           mkdir -p .test-runtime
           unzip -q "dist/$PACKAGE_SLUG-$VERSION.zip" -d .test-runtime/candidate
-          node scripts/release.mjs verify --output ".test-runtime/candidate/$PACKAGE_SLUG"
+          bash scripts/release.sh verify --output ".test-runtime/candidate/$PACKAGE_SLUG"
           printf '### Verified release candidate\n\nVersion: **%s**. Checksums and packaged files match the tested commit.\n\n' "$VERSION" >> "$GITHUB_STEP_SUMMARY"
           if [[ "$WILL_PUBLISH" != true ]]; then
             printf 'Artifacts are ready for review. No WordPress.org or GitHub release will be published. Directory approval, a clean Plugin Check, repository variables and environment secrets are required for publication.\n' >> "$GITHUB_STEP_SUMMARY"
@@ -163,8 +163,8 @@ jobs:
           (cd dist && sha256sum --check "$PLUGIN_SLUG-$VERSION.zip.sha256")
           mkdir -p .test-runtime
           unzip -q "dist/$PLUGIN_SLUG-$VERSION.zip" -d .test-runtime/deploy
-          node scripts/release.mjs verify --output ".test-runtime/deploy/$PLUGIN_SLUG"
-          node scripts/check-wordpress-release.mjs --slug "$PLUGIN_SLUG" --version "$VERSION"
+          bash scripts/release.sh verify --output ".test-runtime/deploy/$PLUGIN_SLUG"
+          bash scripts/check-wordpress-release.sh --slug "$PLUGIN_SLUG" --version "$VERSION"
           bash scripts/check-release-ref.sh "$RELEASE_TAG" "$RELEASE_SHA"
       - name: Publish the exact tested files to SVN trunk and immutable version tag
         uses: 10up/action-wordpress-plugin-deploy@54bd289b8525fd23a5c365ec369185f2966529c2 # 2.3.0

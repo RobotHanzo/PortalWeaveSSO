@@ -115,7 +115,7 @@ test('Directory review retains native failures and always publishes complete par
   const native = steps.find(step => step.includes('uses: WordPress/plugin-check-action@'));
   assert.ok(native, 'The official WordPress check is missing');
   assert.doesNotMatch(review, /continue-on-error:\s*true|ignore-errors:\s*['"]?true|ignore-warnings:\s*['"]?true/);
-  for (const marker of ['node scripts/plugin-check.mjs', 'node scripts/report-results.mjs', 'name: tests-plugin-check']) {
+  for (const marker of ['bash scripts/plugin-check.sh', 'bash scripts/report-results.sh', 'name: tests-plugin-check']) {
     const step = steps.find(candidate => candidate.includes(marker));
     assert.ok(step, `Missing reporting step ${marker}`);
     assert.match(step, /if: always\(\)/, `Reports would be skipped on native failure: ${marker}`);
@@ -123,7 +123,7 @@ test('Directory review retains native failures and always publishes complete par
   assert.match(review, /\$RUNNER_TEMP\/plugin-check-results\.txt/);
   assert.match(review, /--expect plugin-check/);
   assert.match(review, /if-no-files-found: error/);
-  const parser = steps.find(step => step.includes('node scripts/plugin-check.mjs'));
+  const parser = steps.find(step => step.includes('bash scripts/plugin-check.sh'));
   assert.match(parser, /--strict\b/, 'Unresolved advisories must fail the directory gate');
 });
 
@@ -150,4 +150,29 @@ test('Release and directory defaults use the public PortalWeave package slug', (
     assert.equal(fallback[1], 'portalweave-sso', 'CI package consumers disagree with the public slug');
   }
   assert.match(ci, /node --check assets\/auth\.js/);
+});
+
+test('Every CI helper uses Bash entrypoints with complete shell syntax coverage', () => {
+  for (const name of ['verify', 'wordpress-review', 'release']) {
+    const source = workflow(name);
+    assert.doesNotMatch(source, /\bpwsh\b|\.ps1\b/i, `${name} still requires PowerShell`);
+    assert.doesNotMatch(source, /\b(?:node|php)\s+scripts\/[\w-]+\.(?:mjs|php)\b/,
+      `${name} bypasses a Bash helper entrypoint`);
+    assert.match(source, /^defaults:\r?\n  run:\r?\n    shell: bash\s*$/m, `${name} lost its Bash shell default`);
+    assert.match(source, /bash scripts\/release\.sh\b/, `${name} lost release manifest validation`);
+  }
+  const ci = workflow('verify');
+  assert.match(ci, /for script in scripts\/\*\.sh tests\/setup-tls\.sh; do bash -n "\$script"; done/,
+    'New helper entrypoints could escape shell syntax validation');
+  assert.match(ci, /"php:\$php-cli" bash scripts\/lint\.sh\b/, 'PHP image syntax checks bypass lint.sh');
+  assert.match(ci, /run: bash scripts\/build\.sh --slug "\$PACKAGE_SLUG"/);
+  const toolingReport = ci.split(/^      - /m).find(step => step.includes('bash scripts/report-tooling.sh reports/tooling.xml'));
+  assert.ok(toolingReport, 'Missing Bash tooling report entrypoint');
+  assert.match(toolingReport, /if: always\(\)/, 'Tooling reporting would be skipped after failure');
+  for (const suite of ['integration,https', 'multisite']) {
+    const step = ci.split(/^      - /m).find(candidate => candidate.includes(`bash scripts/report-results.sh reports --expect ${suite}`));
+    assert.ok(step, `Missing Bash report entrypoint for ${suite}`);
+    assert.match(step, /if: always\(\)/, `${suite} reporting would be skipped after failure`);
+  }
+  assert.match(workflow('release'), /bash scripts\/check-wordpress-release\.sh --slug "\$PLUGIN_SLUG" --version "\$VERSION"/);
 });

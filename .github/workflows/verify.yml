@@ -61,11 +61,11 @@ jobs:
         run: |
           tag_args=()
           if [[ -n "$RELEASE_TAG" ]]; then tag_args=(--tag "$RELEASE_TAG"); fi
-          node scripts/release.mjs validate "${tag_args[@]}" --github-output "$GITHUB_OUTPUT"
+          bash scripts/release.sh validate "${tag_args[@]}" --github-output "$GITHUB_OUTPUT"
       - name: Check PHP 8.1 and 8.3 syntax
         run: |
           for php in 8.1 8.3; do
-            docker run --rm -v "$GITHUB_WORKSPACE:/workspace:ro" -w /workspace "php:$php-cli" php scripts/lint.php
+            docker run --rm -v "$GITHUB_WORKSPACE:/workspace:ro" -w /workspace "php:$php-cli" bash scripts/lint.sh
           done
       - name: Check JavaScript and shell syntax
         run: |
@@ -74,7 +74,7 @@ jobs:
           node --check assets/login.js
           node --check assets/provider-setup.js
           node --check tests/e2e.mjs
-          bash -n scripts/*.sh tests/setup-tls.sh
+          for script in scripts/*.sh tests/setup-tls.sh; do bash -n "$script"; done
       - name: Run release, reporting and deployment tooling tests
         run: |
           mkdir -p reports
@@ -83,7 +83,7 @@ jobs:
             tests/*.test.mjs
       - name: Summarize tooling tests even after failure
         if: always()
-        run: node scripts/report-tooling.mjs reports/tooling.xml
+        run: bash scripts/report-tooling.sh reports/tooling.xml
       - name: Upload tooling JUnit report
         if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
@@ -131,7 +131,7 @@ jobs:
         run: bash scripts/ci.sh integration
       - name: Report every test, including failures
         if: always()
-        run: node scripts/report-results.mjs reports --expect integration,https
+        run: bash scripts/report-results.sh reports --expect integration,https
       - name: Collect service logs
         if: always()
         run: |
@@ -167,7 +167,7 @@ jobs:
         run: bash scripts/ci.sh multisite
       - name: Report every test, including failures
         if: always()
-        run: node scripts/report-results.mjs reports --expect multisite
+        run: bash scripts/report-results.sh reports --expect multisite
       - name: Collect service logs
         if: always()
         run: |
@@ -209,10 +209,9 @@ jobs:
         with:
           node-version: '24'
       - name: Build allowlisted version-matched ZIP
-        shell: pwsh
         env:
           PACKAGE_SLUG: ${{ inputs.package_slug || 'portalweave-sso' }}
-        run: ./scripts/build.ps1 -Slug $env:PACKAGE_SLUG
+        run: bash scripts/build.sh --slug "$PACKAGE_SLUG"
       - name: Upload installable plugin and checksum
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

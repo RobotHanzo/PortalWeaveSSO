@@ -45,14 +45,14 @@ Useful commands from the repository root:
 ```sh
 git diff --check
 node --test tests/*.test.mjs
-node scripts/release.mjs validate
-php scripts/lint.php
+bash scripts/release.sh validate
+bash scripts/lint.sh
 ```
 
 If PHP is available only in a running disposable WordPress container:
 
 ```sh
-docker compose -f compose.test.yml exec -T wordpress php /var/www/html/wp-content/plugins/portalweave-sso/scripts/lint.php
+docker compose -f compose.test.yml exec -T wordpress bash /var/www/html/wp-content/plugins/portalweave-sso/scripts/lint.sh
 docker compose -f compose.test.yml exec -T wordpress php /var/www/html/wp-content/plugins/portalweave-sso/tests/run.php
 ```
 
@@ -70,17 +70,19 @@ For manual HTTPS testing, run `tests/setup-tls.sh` and `tests/setup-e2e.php` in 
 CI verifies minimum/current WordPress/PHP combinations, multisite, syntax, tooling, directory compliance and the package. Preserve failure exits, complete JSON/JUnit reports and summaries. Native Plugin Check can return exit zero despite error findings; process its complete output with:
 
 ```sh
-node scripts/plugin-check.mjs RAW_OUTPUT_FILE --output reports/plugin-check --strict
-node scripts/report-results.mjs reports/plugin-check --expect plugin-check
+bash scripts/plugin-check.sh RAW_OUTPUT_FILE --output reports/plugin-check --strict
+bash scripts/report-results.sh reports/plugin-check --expect plugin-check
 ```
 
 CI runs all official Plugin Check categories and runtime checks, includes experimental checks, and treats warnings/advisories as failures through the strict parser. Do not ignore findings or skip categories to make CI green. Review warnings in context and retain complete raw findings and JSON/JUnit reports, including failing scans. Explain any necessary operation-specific static-analysis exception at the source; never use a file-wide security exemption. See [CI guidance](docs/ci.md) and [directory review](docs/directory-review.md).
 
 ## Packaging and publishing
 
-```powershell
-./scripts/build.ps1 -Slug portalweave-sso
+```sh
+bash scripts/build.sh --slug portalweave-sso
 ```
+
+Use the Bash entrypoints in `scripts/` for repository helpers and CI. They share the dependency-free Node.js release/reporting engines and PHP syntax checker. Packaging requires Bash, Node.js 20+, `zip` and `unzip`; local lint requires PHP, or the disposable container command above. `scripts/build.ps1` remains available for optional Windows use, while CI packaging uses `scripts/build.sh`.
 
 The builder validates metadata, stages an explicit production allowlist and verifies portable ZIP entry names and file hashes. The plugin version, `PORTALWEAVE_SSO_VERSION`, readme stable tag/changelog, translation template and any release tag must agree. Use a fresh empty directory for manual staging; the staging tool deliberately refuses to overwrite existing contents.
 

@@ -6,12 +6,14 @@ The earlier source was exercised with WordPress 7.1.4, PHP 8.3.36 and MariaDB 11
 
 | Check | Evidence |
 | --- | --- |
-| PHP syntax | `php scripts/lint.php` checks plugin, scripts and test files |
+| PHP syntax | The shared `scripts/lint.php` engine checks plugin, scripts and test files; the current entrypoint is `bash scripts/lint.sh` |
 | JavaScript syntax | `node --check` on both production scripts and protocol harness |
 | Real WordPress integration | `php tests/run.php`: 48 checks covering crypto, state, refresh, mappings, registration/linking, administrator policy, domains, duplicate emails, REST/content/oEmbed, media vault/restore, audit/privacy, backups, SCIM, moderation, native abilities and lifecycle cleanup |
 | HTTPS authorization flow | `node tests/e2e.mjs`: 7 protocol checks using actual HTTPS WordPress requests and cookies with a guarded local test IdP; PKCE, initiating redirect, bad state/browser/verifier, replay, external redirect rejection and admin test isolation |
 | Real WordPress multisite | `php tests/multisite.php`: 9 checks covering new-site schema, independent networks, enforced network configuration, global privileged identities, provider groups, OAuth token isolation/refresh, scoped back-channel logout, SCIM ownership, moderation and avatar isolation |
 | Packaging | All 25 historical packaged files were compared with their source. The extracted ZIP activated and deactivated successfully in WordPress and passed the same 48 integration checks. It used a single plugin directory and excluded git history, tests, Docker fixtures, credentials and development caches. Current packages use the `portalweave-sso` directory |
+
+Current helper commands use Bash entrypoints with shared Node.js release/reporting engines and the PHP lint engine. Build with `bash scripts/build.sh --slug portalweave-sso` using Bash, Node.js 20+, `zip` and `unzip`; CI uses that builder without PowerShell. The optional Windows builder remains available. These entrypoints preserve production staging, ZIP entry and file-hash checks without changing the historical results above.
 
 ## Run the multisite checks
 

@@ -44,11 +44,13 @@ The workflow stages only production files and passes that directory to the offic
 The official action annotates findings and retains its native report. The repository additionally validates that complete native output, fails on errors or invalid/missing output, and creates structured JSON/JUnit results:
 
 ```sh
-node scripts/plugin-check.mjs reports/plugin-check/plugin-check.txt --output reports/plugin-check --strict
-node scripts/report-results.mjs reports/plugin-check --expect plugin-check
+bash scripts/plugin-check.sh reports/plugin-check/plugin-check.txt --output reports/plugin-check --strict
+bash scripts/report-results.sh reports/plugin-check --expect plugin-check
 ```
 
 CI always supplies `--strict`: every error or warning fails. The parser's non-strict mode remains available for historical report inspection, but does not establish a passing CI gate. The action runs all static/runtime categories and includes experimental checks, with no ignored codes or category exclusions. The `tests-plugin-check` artifact contains the complete native report plus `plugin-check.json` and `plugin-check.xml`, including reporting failures. The official action can also upload its own `plugin-check-results` artifact. Never enable `ignore-errors` or filter a category to make a release pass.
+
+These Bash entrypoints invoke the shared Node.js parser and report engine; they process the native output rather than replacing the official checker. CI stages and builds through Bash as well. `bash scripts/build.sh --slug portalweave-sso` requires Bash, Node.js 20+, `zip` and `unzip`, and retains manifest, canonical ZIP entry and per-file hash verification. `scripts/build.ps1` is an optional Windows entrypoint; the Windows measurements below remain historical evidence.
 
 ## Supplied advisories and security review
 
