@@ -18,7 +18,7 @@ This document describes the bundled plugin's behavior so a site administrator ca
 
 The plugin sends no usage analytics or telemetry to its developer. Authentication/profile/key requests go to configured identity endpoints. Optional images are fetched by the browser, optional support uses the configured mail service, and enabled MCP abilities return data to the authenticated client through the separately installed adapter. The complete destination and trigger inventory is in [external services](external-services.md).
 
-**Test SSO Config** displays the raw returned attribute set to the initiating authenticated administrator. Review it privately. A screenshot, copied result, CSV download, WordPress personal-data export or support message can create another copy of personal data outside the plugin's retention controls.
+**Test connection** in guided setup and **Test SSO Config** for saved providers display the raw returned attribute set to the initiating authenticated administrator. Review it privately. An unsaved connection test keeps an encrypted snapshot of the entered provider details, including credentials, in its ten-minute OAuth flow, bound to that administrator's session and site/network scope. It does not save a provider, create an account or store returned tokens in user metadata. Consuming the flow deletes the snapshot; expired flows cannot be used and are removed by hourly cleanup. A screenshot, copied result, CSV download, WordPress personal-data export or support message can create another copy of personal data outside the plugin's retention controls.
 
 ### Local activity statistics
 
