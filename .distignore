@@ -2,6 +2,7 @@
 # scripts/release.mjs uses an explicit production allowlist for automated releases.
 /.git
 /.github
+/.wordpress-org
 /.gitattributes
 /.gitignore
 /.distignore
@@ -15,6 +16,7 @@
 /reports
 /output/playwright
 /docs/screenshots
+/docs/branding
 /.playwright-cli
 /node_modules
 /vendor
