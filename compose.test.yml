@@ -1,7 +1,7 @@
 name: ${COMPOSE_PROJECT_NAME:-portalweave-sso-test}
 services:
   db:
-    image: mariadb:11.4
+    image: mariadb:13.0
     environment:
       MARIADB_DATABASE: wordpress
       MARIADB_USER: wordpress
