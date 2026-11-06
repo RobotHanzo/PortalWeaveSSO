@@ -59,7 +59,7 @@ function wpsso_test(string $name, callable $test): void {
 
 try {
     \WPSSO\Audit::install();
-    foreach (['jwt', 'auth', 'core', 'extensions', 'smoke'] as $suite) {
+    foreach (['jwt', 'auth', 'core', 'extensions', 'smoke', 'compliance-auth', 'compliance-ui', 'compliance-modules', 'compliance-privacy'] as $suite) {
         if (!is_file(__DIR__ . '/' . $suite . '.php')) {
             throw new RuntimeException('Required test suite missing: ' . $suite);
         }

@@ -1,13 +1,15 @@
 <?php
 /**
- * Plugin Name: WPSSO OAuth & OpenID Connect
+ * Plugin Name: STSA Identity SSO
+ * Plugin URI: https://github.com/RobotHanzo/WordPressSSO
  * Description: Multi-provider OAuth/OIDC sign-in, provisioning, access control and audit tools.
  * Version: 1.0.0
  * Requires at least: 6.5
  * Requires PHP: 8.1
  * Author: STSA
  * License: GPL-2.0-or-later
- * Text Domain: wpsso
+ * Text Domain: stsa-identity-sso
+ * Domain Path: /languages
  * Network: true
  */
 
@@ -18,7 +20,7 @@ define('WPSSO_FILE', __FILE__);
 define('WPSSO_DIR', plugin_dir_path(__FILE__));
 define('WPSSO_URL', plugin_dir_url(__FILE__));
 
-foreach (['config', 'audit', 'http', 'jwt', 'accounts', 'auth', 'access', 'display', 'admin', 'extensions', 'abilities', 'cli'] as $wpsso_class) {
+foreach (['config', 'audit', 'http', 'jwt', 'accounts', 'auth', 'access', 'privacy', 'display', 'admin', 'extensions', 'abilities', 'cli'] as $wpsso_class) {
     require_once WPSSO_DIR . 'includes/class-' . $wpsso_class . '.php';
 }
 unset($wpsso_class);
@@ -58,11 +60,11 @@ add_action('wp_initialize_site', function ($site) {
     restore_current_blog();
 }, 200);
 add_action('plugins_loaded', function () {
-    load_plugin_textdomain('wpsso', false, dirname(plugin_basename(WPSSO_FILE)) . '/languages');
+    load_plugin_textdomain('stsa-identity-sso', false, dirname(plugin_basename(WPSSO_FILE)) . '/languages');
     if (get_option('wpsso_db_version') !== WPSSO_VERSION) {
         \WPSSO\Audit::install();
     }
-    foreach (['Auth', 'Access', 'Display', 'Admin', 'Extensions', 'Abilities', 'Cli'] as $class) {
+    foreach (['Auth', 'Access', 'Privacy', 'Display', 'Admin', 'Extensions', 'Abilities', 'Cli'] as $class) {
         call_user_func(['WPSSO\\' . $class, 'register']);
     }
     add_action('wpsso_cleanup', ['WPSSO\\Audit', 'cleanup']);

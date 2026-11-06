@@ -36,8 +36,11 @@ final class Audit
     public static function record($status, $app = '', $user = null, $code = '', $navigation = ''): void
     {
         global $wpdb;
+        if (!Config::get('audit_enabled', true)) {
+            return;
+        }
         $user = $user instanceof \WP_User ? $user : ($user ? get_userdata((int) $user) : null);
-        $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+        $ip = Config::get('audit_ip') && isset($_SERVER['REMOTE_ADDR']) && is_string($_SERVER['REMOTE_ADDR']) ? sanitize_text_field(wp_unslash($_SERVER['REMOTE_ADDR'])) : '';
         // Proxy headers are untrusted. Configure the web server's real IP module instead.
         $ip = filter_var($ip, FILTER_VALIDATE_IP) ? $ip : '';
         $navigation = $navigation ?: Redirect::current();
@@ -49,6 +52,7 @@ final class Audit
             'client_ip' => $ip, 'navigation' => substr(esc_url_raw($navigation), 0, 2048),
             'created_at' => current_time('mysql', true),
         ]);
+        self::invalidate();
         do_action('wpsso_audit_recorded', $status, $app, $user ? $user->ID : 0, $code);
         if (Config::get('debug')) {
             $logs = (array) get_option('wpsso_debug_log', []);
@@ -60,29 +64,62 @@ final class Audit
     public static function recent(array $args = []): array
     {
         global $wpdb;
-        $where = '1=1';
-        $params = [];
-        foreach (['status', 'app', 'user_id'] as $key) {
-            if (isset($args[$key]) && $args[$key] !== '') {
-                $where .= " AND {$key} = %s";
-                $params[] = sanitize_text_field((string) $args[$key]);
-            }
+        $status = sanitize_key((string) ($args['status'] ?? ''));
+        $app = sanitize_key((string) ($args['app'] ?? ''));
+        $user_id = isset($args['user_id']) && $args['user_id'] !== '' ? absint($args['user_id']) : -1;
+        $limit = max(1, min(10000, (int) ($args['limit'] ?? 100)));
+        $offset = max(0, (int) ($args['offset'] ?? 0));
+        $generation = wp_cache_get('generation', 'stsa_identity_sso_audit') ?: 'initial';
+        $key = hash('sha256', wp_json_encode([$generation, $status, $app, $user_id, $limit, $offset]));
+        $rows = wp_cache_get($key, 'stsa_identity_sso_audit');
+        if ($rows !== false) {
+            return $rows;
         }
-        $params[] = max(1, min(10000, (int) ($args['limit'] ?? 100)));
-        $params[] = max(0, (int) ($args['offset'] ?? 0));
-        return $wpdb->get_results($wpdb->prepare("SELECT * FROM {$wpdb->prefix}wpsso_audit WHERE {$where} ORDER BY id DESC LIMIT %d OFFSET %d", $params), ARRAY_A) ?: [];
+        $rows = $wpdb->get_results($wpdb->prepare(
+            "SELECT * FROM %i WHERE (%s = '' OR status = %s) AND (%s = '' OR app = %s) AND (%d < 0 OR user_id = %d) ORDER BY id DESC LIMIT %d OFFSET %d",
+            $wpdb->prefix . 'wpsso_audit', $status, $status, $app, $app, $user_id, $user_id, $limit, $offset
+        ), ARRAY_A) ?: [];
+        wp_cache_set($key, $rows, 'stsa_identity_sso_audit', MINUTE_IN_SECONDS);
+        return $rows;
+    }
+
+    public static function for_email(string $email, int $page = 1): array
+    {
+        global $wpdb;
+        // Privacy exports must read the current authoritative records, without retaining PII in a secondary cache.
+        return $wpdb->get_results($wpdb->prepare(
+            'SELECT * FROM %i WHERE email = %s ORDER BY id LIMIT 100 OFFSET %d',
+            $wpdb->prefix . 'wpsso_audit', sanitize_email($email), (max(1, $page) - 1) * 100
+        ), ARRAY_A) ?: []; // phpcs:ignore WordPress.DB.DirectDatabaseQuery.NoCaching -- Privacy export intentionally bypasses caches containing personal data.
+    }
+
+    public static function anonymize(string $email): int
+    {
+        global $wpdb;
+        $count = $wpdb->query($wpdb->prepare(
+            "UPDATE %i SET email = '', username = '', user_id = 0, client_ip = '', navigation = '' WHERE email = %s",
+            $wpdb->prefix . 'wpsso_audit', sanitize_email($email)
+        ));
+        self::invalidate();
+        return (int) $count;
+    }
+
+    private static function invalidate(): void
+    {
+        wp_cache_set('generation', wp_generate_uuid4(), 'stsa_identity_sso_audit');
     }
 
     public static function cleanup(): void
     {
         global $wpdb;
         $days = max(1, (int) Config::get('audit_retention_days', 90));
-        $wpdb->query($wpdb->prepare("DELETE FROM {$wpdb->prefix}wpsso_audit WHERE created_at < %s", gmdate('Y-m-d H:i:s', time() - $days * DAY_IN_SECONDS)));
+        $wpdb->query($wpdb->prepare('DELETE FROM %i WHERE created_at < %s', $wpdb->prefix . 'wpsso_audit', gmdate('Y-m-d H:i:s', time() - $days * DAY_IN_SECONDS)));
+        self::invalidate();
         $logs = array_values(array_filter((array) get_option('wpsso_debug_log', []), static fn($row) => ($row['at'] ?? 0) >= time() - WEEK_IN_SECONDS));
         update_option('wpsso_debug_log', $logs, false);
         // Expired locks and used flow records are not autoloaded; bound their lifetime.
         $like = $wpdb->esc_like('_wpsso_lock_') . '%';
-        $wpdb->query($wpdb->prepare("DELETE FROM {$wpdb->options} WHERE option_name LIKE %s AND CAST(option_value AS UNSIGNED) < %d", $like, time()));
+        $wpdb->query($wpdb->prepare('DELETE FROM %i WHERE option_name LIKE %s AND CAST(option_value AS UNSIGNED) < %d', $wpdb->options, $like, time()));
         do_action('wpsso_cleanup_complete');
     }
 }
