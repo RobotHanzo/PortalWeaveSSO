@@ -4,7 +4,7 @@ if (PHP_SAPI !== 'cli') { http_response_code(404); exit; }
 require_once __DIR__ . '/report.php';
 portalweave_sso_report_bootstrap('integration');
 ob_start();
-define('PORTALWEAVE_SSO_PRIVATE_MEDIA_DIR', '/tmp/portalweave-sso-private-tests');
+// Exercise the real default vault; deployments can still override it in wp-config.php.
 $_SERVER['HTTPS'] = 'on';
 $_SERVER['SERVER_PORT'] = '443';
 $_SERVER['REQUEST_METHOD'] = 'GET';
@@ -61,7 +61,7 @@ function portalweave_sso_test(string $name, callable $test): void {
 
 try {
     \PortalWeaveSSO\Audit::install();
-    foreach (['jwt', 'auth', 'core', 'extensions', 'smoke', 'compliance-auth', 'compliance-ui', 'compliance-modules', 'compliance-privacy', 'admin-settings', 'admin-navigation', 'provider-setup', 'activity', 'button-appearance', 'logout', 'client-ip'] as $suite) {
+    foreach (['jwt', 'auth', 'core', 'extensions', 'smoke', 'compliance-auth', 'compliance-ui', 'compliance-modules', 'compliance-privacy', 'admin-settings', 'admin-navigation', 'provider-setup', 'activity', 'button-appearance', 'logout', 'client-ip', 'reviewer-compliance'] as $suite) {
         if (!is_file(__DIR__ . '/' . $suite . '.php')) {
             throw new RuntimeException('Required test suite missing: ' . $suite);
         }

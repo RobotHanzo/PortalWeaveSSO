@@ -1,5 +1,7 @@
 # Product screenshot maintenance
 
+`appearance.png` and `wordpress-button-style.png` were refreshed on 2026-11-11 using PortalWeave SSO 1.3.1 in a disposable WordPress 7.1.4 fixture. They show the prefixed shortcode, structured controls and a fictional Example provider preview after removal of custom CSS input. The WordPress appearance choice was saved in that fixture. Both captures were reviewed for framing, credentials, nonces, server paths and personal data; the capture wrapper was removed afterwards.
+
 These PNGs were captured in disposable WordPress 7.1.4 fixtures. The full gallery was retaken on 2026-11-07 using PortalWeave SSO 1.2.0, including a genuine multisite fixture for network enforcement and anonymous contexts for public sign-in. Providers, accounts, domains and audit records are fictional examples; they do not establish successful registration or authentication with an external provider.
 
 Capture the actual interface with Playwright. Keep the WordPress styling and use a consistent desktop viewport; crop to the plugin workspace or the relevant complete section. Public sign-in captures must use an anonymous browser context. Use ordinary UI navigation to show the provider guide steps and expanded settings. Never fill or reveal a real secret for a screenshot.

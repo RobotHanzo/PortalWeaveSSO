@@ -14,6 +14,10 @@ msgstr ""
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: portalweave-sso\n"
 
+#: includes/class-access.php
+msgid "The private media directory identifier is invalid. Restore it from a backup or configure PORTALWEAVE_SSO_PRIVATE_MEDIA_DIR."
+msgstr ""
+
 #. Plugin Name of the plugin
 #: portalweave-sso.php
 #: includes/class-abilities.php:19
@@ -1762,14 +1766,6 @@ msgstr ""
 msgid "This choice is retained when custom WordPress sign-in styling is off."
 msgstr ""
 
-#: includes/class-admin.php:957
-msgid "Custom button CSS"
-msgstr ""
-
-#: includes/class-admin.php:957
-msgid "Scope rules to .portalweave-sso-login to avoid affecting unrelated site elements. Only trusted administrators can configure CSS."
-msgstr ""
-
 #: includes/class-admin.php:958
 msgid "Logged-in message"
 msgstr ""
@@ -1791,7 +1787,7 @@ msgid "Customize WordPress sign-in buttons"
 msgstr ""
 
 #: includes/class-admin.php:961
-msgid "Turn this off to inherit the shared settings, including the choice to leave WordPress login styling off. Your custom values are retained. Shared custom CSS is not applied while this customization is on."
+msgid "Turn this off to inherit the shared settings, including the choice to leave WordPress login styling off. Your custom values are retained. Only the structured appearance controls are applied."
 msgstr ""
 
 #: includes/class-admin.php:963
@@ -1971,7 +1967,7 @@ msgid "Shared button preview. WordPress sign-in can use its own appearance."
 msgstr ""
 
 #: includes/class-admin.php:1037
-msgid "WordPress sign-in inherits the shared button settings. Custom CSS and theme styles can affect the final appearance."
+msgid "WordPress sign-in inherits the shared button settings. Site and theme styles can affect the final appearance."
 msgstr ""
 
 #: includes/class-admin.php:1038

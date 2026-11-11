@@ -1,5 +1,19 @@
-PORTALWEAVE SSO 1.0.0 — REVIEWER NOTES
-Proposed slug: portalweave-sso. Prepared 6 November 2026.
+PORTALWEAVE SSO 1.3.1 — REVIEWER NOTES
+Proposed slug: portalweave-sso. Updated 11 November 2026.
+
+REVIEW FOLLOW-UP
+The custom button CSS editor and its save/render paths have been removed.
+Stored legacy CSS is ignored and discarded on the next successful save/import.
+Appearance uses structured controls; site CSS belongs in WordPress's own editor.
+The only login shortcode is now [portalweave_sso_login]; earlier unprefixed
+placements must be updated. Media errors are limited to media/attachment screens.
+Private-media directory names use a persistent random blog-local identifier,
+not authentication salts. Existing private file manifests remain usable without
+moving or publishing files. Local credential encryption retains its existing
+salt-bound format for compatibility; salts are never logged, exported or sent.
+The listing explains provider payloads/triggers and optional destinations, with
+official policy references and a maintained public external-services link.
+Regression and directory-policy checks run through the existing required CI.
 
 Thank you for reviewing PortalWeave SSO. This is the first proposed directory
 release. The main plugin file is portalweave-sso.php inside the portalweave-sso
@@ -117,7 +131,7 @@ the complete binary into memory. Admin-supplied data is escaped at output.
 SOURCE, LICENSING AND PACKAGING
 Source and build/test tools: https://github.com/RobotHanzo/PortalWeaveSSO
 PORTALWEAVE_SSO_* constants, the PortalWeaveSSO PHP namespace,
-portalweave_sso_* hooks/settings, [sso_oauth_login] and
+portalweave_sso_* hooks/settings, [portalweave_sso_login] and
 wp portalweave-sso commands use the current product name throughout.
 Earlier technical names have no compatibility aliases or automatic stored-data
 conversion. Existing deployments require the controlled replacement procedure

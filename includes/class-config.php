@@ -115,7 +115,7 @@ final class Config
             'button' => ['theme' => 'default', 'shape' => 'round-edge', 'text' => 'Sign in with {app}',
                 'above_text' => '', 'logout_message' => 'Signed in as ##user##. ##Sign Out##', 'logout_link' => true,
                 'size' => 16, 'radius' => 8, 'spacing' => 12, 'shadow' => true, 'transform' => true,
-                'custom_css' => '', 'admin_style' => true],
+                'admin_style' => true],
             'wp_login_button' => self::wp_login_button_defaults(),
             'support' => ['email' => '', 'booking_url' => '', 'forum_url' => '', 'demo_url' => ''],
             'modules' => ['scim' => false, 'jwt_sso' => false, 'shared_sso' => false, 'guest' => false,
@@ -153,6 +153,8 @@ final class Config
         $network = is_multisite() ? get_site_option('portalweave_sso_settings', []) : [];
         $stored = !empty($network['network_enforced']) ? $network : $local;
         $settings = array_replace_recursive(self::defaults(), is_array($stored) ? $stored : []);
+        // Discard retired free-form code fields, including values saved by older versions.
+        $settings['button'] = array_intersect_key((array) $settings['button'], self::defaults()['button']);
         // Recursive merging must never resurrect removed providers.
         $settings['apps'] = is_array($stored['apps'] ?? null) ? $stored['apps'] : [];
         foreach ($settings['apps'] as $id => &$app) {
@@ -374,8 +376,8 @@ final class Config
         $settings['modules'] = self::bools(array_replace(self::defaults()['modules'], (array) $settings['modules']), array_keys(self::defaults()['modules']));
         $settings['audit_retention_days'] = max(1, min(3650, absint($settings['audit_retention_days'])));
         $settings['guest_ttl'] = max(300, min(86400, absint($settings['guest_ttl'])));
-        $settings['button'] = array_replace(self::defaults()['button'], (array) $settings['button']);
-        foreach (['theme', 'shape', 'text', 'above_text', 'logout_message', 'custom_css'] as $key) {
+        $settings['button'] = array_replace(self::defaults()['button'], array_intersect_key((array) $settings['button'], self::defaults()['button']));
+        foreach (['theme', 'shape', 'text', 'above_text', 'logout_message'] as $key) {
             if (!is_string($settings['button'][$key])) {
                 return new \WP_Error('portalweave_sso_button_type', 'Button text and appearance settings must be strings.');
             }
@@ -384,7 +386,6 @@ final class Config
             $settings['button'][$key] = max($bounds[0], min($bounds[1], (int) $settings['button'][$key]));
         }
         $settings['button'] = self::bools($settings['button'], ['shadow', 'transform', 'logout_link', 'admin_style']);
-        $settings['button']['custom_css'] = wp_strip_all_tags((string) $settings['button']['custom_css']);
         $wp_button = $settings['wp_login_button'];
         if (is_array($wp_button)) {
             $wp_button = array_replace(is_array($old['wp_login_button'] ?? null) ? $old['wp_login_button'] : [], $wp_button);
@@ -515,8 +516,7 @@ final class Config
         unset($app);
         $settings['scim_token'] = '';
         $settings['shared_secret'] = '';
-        // Arbitrary CSS and custom claim values may contain personal information.
-        $settings['button']['custom_css'] = '';
+        // Administrator-selected image queries may contain personal information.
         $settings['wp_login_button']['icon_url'] = preg_replace('/[?#].*$/', '', $settings['wp_login_button']['icon_url']);
         return apply_filters('portalweave_sso_redacted_configuration', $settings);
     }

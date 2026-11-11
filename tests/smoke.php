@@ -3,7 +3,7 @@ portalweave_sso_test('Plugin activates its public hooks and renders provider but
     $app = portalweave_sso_app(['name' => '<img src=x onerror=alert(1)>']);
     portalweave_sso_assert(\PortalWeaveSSO\Config::save(['apps' => ['fixture' => $app], 'default_app' => 'fixture']) === true, 'Fixture save failed');
     wp_set_current_user(0);
-    $html = do_shortcode('[sso_oauth_login app="fixture" redirect="/origin/"]');
+    $html = do_shortcode('[portalweave_sso_login app="fixture" redirect="/origin/"]');
     portalweave_sso_assert(str_contains($html, 'portalweave-sso-button') && str_contains($html, 'redirect_to='), 'Shortcode missing login link');
     portalweave_sso_assert(!str_contains($html, 'onerror=') && !str_contains($html, 'fixture-client-secret'), 'Untrusted markup or credentials leaked');
     portalweave_sso_assert(has_action('woocommerce_login_form_end', [\PortalWeaveSSO\Display::class, 'login_buttons']) !== false, 'WooCommerce hook missing');

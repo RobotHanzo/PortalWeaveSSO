@@ -11,7 +11,7 @@ function portalweave_sso_button_render(string $page, string $surface = 'buttons'
         $GLOBALS['pagenow'] = $page;
         wp_set_current_user(0);
         if ($surface === 'shortcode') {
-            $html = do_shortcode('[sso_oauth_login]');
+            $html = do_shortcode('[portalweave_sso_login]');
         } elseif ($surface === 'widget') {
             ob_start();
             try {
@@ -141,7 +141,7 @@ portalweave_sso_test('Independent WordPress appearance leaves shortcode, widget 
         $public = portalweave_sso_button_render('index.php', $surface);
         portalweave_sso_assert($public['styled'] && str_contains($public['html'], 'portalweave-sso-theme-white') && str_contains($public['html'], 'Existing provider label')
             && !str_contains($public['html'], 'portalweave-sso-login-screen') && !str_contains($public['html'], 'Portal Workforce'), 'Independent styling leaked into a public placement: ' . $surface);
-        portalweave_sso_assert(str_contains($public['css'], 'shared-only-fixture') && !str_contains($public['css'], '#123456'), 'Public placement lost shared CSS or inherited WordPress override values');
+        portalweave_sso_assert(!str_contains($public['css'], 'shared-only-fixture') && !str_contains($public['css'], '#123456'), 'Public placement rendered retired arbitrary CSS or inherited WordPress override values');
     }
 });
 
