@@ -3,9 +3,9 @@ Prepared 7 November 2026. This candidate has not been submitted to WordPress.org
 
 Plugin name: PortalWeave SSO
 Proposed directory slug: portalweave-sso
-Version / stable tag: 1.3.0
+Version / stable tag: 1.3.2
 Main plugin file: portalweave-sso/portalweave-sso.php
-Upload: dist/portalweave-sso-1.3.0.zip
+Upload: dist/portalweave-sso-1.3.2.zip
 License: GPL-2.0-or-later; complete license included in the plugin.
 Requires WordPress: 6.5 or newer
 Requires PHP: 8.1 or newer, with OpenSSL
