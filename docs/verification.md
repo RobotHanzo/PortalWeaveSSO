@@ -1,5 +1,11 @@
 # Verification and rollout
 
+## November 2026 reviewer follow-up
+
+On 2026-11-11, disposable WordPress 7.1.4 / PHP 8.3.36 fixtures passed 154 single-site integration tests, 18 HTTPS protocol tests and 42 multisite tests. Linux tooling passed all 100 tests without skips. New regressions cover retired/imported CSS, the prefixed shortcode, scoped media notices, persistent salt-independent vault identity, corrupt identifiers, legacy recovery, document-root rejection and multisite cleanup retention. The official checker with all categories, runtime and experimental checks passed the strict error/warning parser with zero findings. These are local candidate measurements; required CI remains authoritative for a merged commit.
+
+Playwright confirmed the Appearance screen has no custom-CSS input, renders the prefixed placement hint, and retains working shared and WordPress button controls. Refreshed screenshots use the fictional built-in Example provider preview; no external provider was authenticated. Provider legal resources were reviewed separately, with the documented One Identity retrieval and ClassLink agreement limitations.
+
 ## Version 1.2.0 administrator workflow checks
 
 The combined administrator changes were exercised on 2026-11-07 in a new disposable WordPress 7.1.4 / PHP 8.3 fixture with fictional providers and audit history. Playwright verified the following behavior in the running plugin:

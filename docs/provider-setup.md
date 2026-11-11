@@ -2,7 +2,7 @@
 
 Install `portalweave-sso-1.3.0.zip` through **Plugins → Add New → Upload Plugin**, activate **PortalWeave SSO**, and open **PortalWeave SSO** in the WordPress admin sidebar. On multisite, **Network Admin → PortalWeave SSO** can enforce a network-wide policy. Each WordPress network has its own network option.
 
-The proposed directory slug and text domain are `portalweave-sso`. Use the `[sso_oauth_login]` shortcode, `PORTALWEAVE_SSO_*` server configuration constants, `PortalWeaveSSO` PHP namespace and `wp portalweave-sso` commands.
+The proposed directory slug and text domain are `portalweave-sso`. Use the `[portalweave_sso_login]` shortcode, `PORTALWEAVE_SSO_*` server configuration constants, `PortalWeaveSSO` PHP namespace and `wp portalweave-sso` commands.
 
 SSO requires HTTPS. Configure WordPress's HTTPS detection for a trusted reverse proxy when TLS terminates there. Keep `AUTH_KEY`, `SECURE_AUTH_KEY` and the WordPress salts stable: stored secrets and tokens depend on them for encryption. Changing them requires re-entering credentials and signing in again. Include this server configuration in your protected recovery backup.
 
@@ -165,7 +165,9 @@ Domain allow/block policy uses exact lower-case domains. Domain mapping is an op
 
 ## Login display
 
-Insert `[sso_oauth_login]` or add the **PortalWeave SSO login** widget. WooCommerce's login form gets enabled-provider buttons. Customize global theme, shape, size, curve, spacing, shadow, and hover treatment. In each provider's **Login button** section, set its text and choose or upload a custom logo using the WordPress media library, or paste an HTTPS image URL. Upload and selection require WordPress upload permission; a manual URL remains available. Selected media must be served over HTTPS. The preview and removal controls affect the current draft until **Save provider**; removing a custom logo restores the default appearance. The same provider logo is used by shared buttons and WordPress's provider-icon choice. `##user##` and `##Sign Out##` are available in the logged-in message. Button assets load for the relevant login/widget/shortcode/account contexts; normal pages without those displays do not need them.
+Insert `[portalweave_sso_login]` or add the **PortalWeave SSO login** widget. WooCommerce's login form gets enabled-provider buttons. Customize global theme, shape, size, curve, spacing, shadow, and hover treatment. In each provider's **Login button** section, set its text and choose or upload a custom logo using the WordPress media library, or paste an HTTPS image URL. Upload and selection require WordPress upload permission; a manual URL remains available. Selected media must be served over HTTPS. The preview and removal controls affect the current draft until **Save provider**; removing a custom logo restores the default appearance. The same provider logo is used by shared buttons and WordPress's provider-icon choice. `##user##` and `##Sign Out##` are available in the logged-in message. Button assets load for the relevant login/widget/shortcode/account contexts; normal pages without those displays do not need them.
+
+Replace earlier `[sso_oauth_login]` placements with `[portalweave_sso_login]`; the unprefixed shortcode is no longer registered. Appearance accepts structured controls only. Retired custom button CSS is ignored when reading settings and discarded on the next successful save, including imports. Move any needed site CSS into WordPress's built-in Styles or Additional CSS editor.
 
 Open **Appearance → WordPress sign-in** to give the SSO buttons on `wp-login.php` their own appearance. Enable customization, then adjust text, normal and hover colors, borders, corners, font size, padding, width and shadows. The live preview follows the selected provider. Presets provide a starting point; save changes to apply your choices. The shared appearance remains in use until customization is enabled.
 
@@ -180,6 +182,8 @@ On multisite, network enforcement overrides site configuration only within the c
 Post/page editors and category forms expose login, allowed-role, and allowed-group controls. A matching configured role or group grants access. Attachment editing includes a protected checkbox; the global protected-ID list provides the same file protection.
 
 Protecting an attachment relocates its original, thumbnails, and other recorded derivatives outside the web document root. WordPress generates authenticated delivery URLs and applies the attachment and parent-content access policies before serving files. Unprotecting moves the files back to their original upload paths. Configure a writable `PORTALWEAVE_SSO_PRIVATE_MEDIA_DIR` in `wp-config.php` when the default private sibling directory of `ABSPATH` is not writable. The plugin rejects a vault inside the web document root. Purge previously cached copies from the web server and CDN when protecting media. An attachment-page role restriction alone does not relocate static files; select file protection as well.
+
+The default uses an independent random identifier stored in the blog-local, non-autoloaded `portalweave_sso_media_vault_id` option; it does not use WordPress authentication keys or salts. Existing protected attachments keep their recorded absolute paths, including files protected before this change. No automatic migration moves or publishes those files. Back up the identifier and attachment recovery metadata with the vault; uninstall retains them.
 
 For example, use an absolute directory outside the actual document root that the PHP worker can read and write:
 

@@ -7,7 +7,7 @@ final class Display
 {
     public static function register(): void
     {
-        add_shortcode('sso_oauth_login', [self::class, 'shortcode']);
+        add_shortcode('portalweave_sso_login', [self::class, 'shortcode']);
         add_action('widgets_init', static fn() => register_widget(Login_Widget::class));
         add_action('wp_enqueue_scripts', [self::class, 'frontend_assets']);
         add_action('wp_footer', [self::class, 'late_styles']);
@@ -38,7 +38,7 @@ final class Display
         $has_buttons = is_active_widget(false, false, 'portalweave_sso_oauth_login', true)
             || (function_exists('is_account_page') && is_account_page());
         foreach (($GLOBALS['wp_query']->posts ?? []) as $post) {
-            if ($post instanceof \WP_Post && has_shortcode($post->post_content, 'sso_oauth_login')) {
+            if ($post instanceof \WP_Post && has_shortcode($post->post_content, 'portalweave_sso_login')) {
                 $has_buttons = true;
                 break;
             }
@@ -62,7 +62,7 @@ final class Display
         wp_enqueue_style('portalweave-sso-buttons', PORTALWEAVE_SSO_URL . 'assets/login.css', [], $revision);
         $css = sprintf('.portalweave-sso-login{--portalweave-sso-size:%dpx;--portalweave-sso-radius:%dpx;--portalweave-sso-spacing:%dpx}', $button['size'], $button['radius'], $button['spacing']);
         if (!wp_style_is('portalweave-sso-buttons', 'done') && !wp_styles()->get_data('portalweave-sso-buttons', 'after')) {
-            wp_add_inline_style('portalweave-sso-buttons', $css . "\n" . ($custom !== null ? self::wp_login_css($custom) : wp_strip_all_tags($button['custom_css'])));
+            wp_add_inline_style('portalweave-sso-buttons', $css . ($custom !== null ? "\n" . self::wp_login_css($custom) : ''));
         }
     }
 
@@ -129,7 +129,7 @@ final class Display
 
     public static function shortcode($atts = []): string
     {
-        return self::buttons(shortcode_atts(['app' => '', 'redirect' => '', 'popup' => '', 'title' => ''], $atts, 'sso_oauth_login'));
+        return self::buttons(shortcode_atts(['app' => '', 'redirect' => '', 'popup' => '', 'title' => ''], $atts, 'portalweave_sso_login'));
     }
 
     public static function login_buttons(): void

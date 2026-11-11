@@ -461,9 +461,7 @@ final class Admin {
             }
             $settings['apps'][$id] = $app;
         }
-        if (isset($settings['button']['custom_css'])) {
-            $settings['button']['custom_css'] = '';
-        }
+        $settings['button'] = array_intersect_key((array) ($settings['button'] ?? []), Config::defaults()['button']);
         if (isset($settings['wp_login_button']['icon_url'])) {
             $settings['wp_login_button']['icon_url'] = preg_replace('/[?#].*$/', '', (string) $settings['wp_login_button']['icon_url']);
         }
@@ -942,7 +940,7 @@ final class Admin {
         }
         echo '</nav><div class="portalweave-sso-appearance-layout"><div class="portalweave-sso-appearance-controls"><section id="portalweave-sso-appearance-panel-shared" data-appearance-panel="shared"><h3>' . esc_html__('Shared buttons', 'portalweave-sso') . '</h3>';
         /* translators: %s: login button shortcode, displayed as code. */
-        $placement = sprintf(__('Use %s, the PortalWeave SSO widget, or the WooCommerce login form.', 'portalweave-sso'), '<code>[sso_oauth_login]</code>');
+        $placement = sprintf(__('Use %s, the PortalWeave SSO widget, or the WooCommerce login form.', 'portalweave-sso'), '<code>[portalweave_sso_login]</code>');
         echo '<p>' . wp_kses($placement, ['code' => []]) . '</p>';
         self::select('settings[button][theme]', $button['theme'], __('Button theme', 'portalweave-sso'), ['default' => __('Default', 'portalweave-sso'), 'white' => __('White', 'portalweave-sso'), 'hover' => __('Hover', 'portalweave-sso'), 'custom' => __('Custom', 'portalweave-sso'), 'smart' => __('Smart', 'portalweave-sso')]);
         self::select('settings[button][shape]', $button['shape'], __('Button shape', 'portalweave-sso'), ['round' => __('Round', 'portalweave-sso'), 'round-edge' => __('Round edge', 'portalweave-sso'), 'square' => __('Square', 'portalweave-sso'), 'long' => __('Long', 'portalweave-sso')]);
@@ -954,11 +952,10 @@ final class Admin {
         self::check('settings[button][shadow]', $button['shadow'], __('Show button shadows', 'portalweave-sso'));
         self::check('settings[button][transform]', $button['transform'], __('Animate buttons on hover', 'portalweave-sso'));
         self::check('settings[button][admin_style]', $button['admin_style'], __('Apply shared styling on the WordPress login screen', 'portalweave-sso'), __('This choice is retained when custom WordPress sign-in styling is off.', 'portalweave-sso'));
-        self::field('settings[button][custom_css]', $button['custom_css'], __('Custom button CSS', 'portalweave-sso'), 'textarea', __('Scope rules to .portalweave-sso-login to avoid affecting unrelated site elements. Only trusted administrators can configure CSS.', 'portalweave-sso'));
         self::field('settings[button][logout_message]', $button['logout_message'], __('Logged-in message', 'portalweave-sso'), 'textarea', __('Placeholders: ##user## for the display name and ##Sign Out## for the logout link.', 'portalweave-sso'));
         self::check('settings[button][logout_link]', $button['logout_link'], __('Show a logout link', 'portalweave-sso'));
         echo '</section><section id="portalweave-sso-appearance-panel-wordpress" data-appearance-panel="wordpress"><h3>' . esc_html__('WordPress sign-in', 'portalweave-sso') . '</h3><p>' . esc_html__('Customize provider buttons on the WordPress sign-in page. Shortcode, widget and WooCommerce buttons keep the shared appearance.', 'portalweave-sso') . '</p>';
-        self::check('settings[wp_login_button][enabled]', $style['enabled'], __('Customize WordPress sign-in buttons', 'portalweave-sso'), __('Turn this off to inherit the shared settings, including the choice to leave WordPress login styling off. Your custom values are retained. Shared custom CSS is not applied while this customization is on.', 'portalweave-sso'));
+        self::check('settings[wp_login_button][enabled]', $style['enabled'], __('Customize WordPress sign-in buttons', 'portalweave-sso'), __('Turn this off to inherit the shared settings, including the choice to leave WordPress login styling off. Your custom values are retained. Only the structured appearance controls are applied.', 'portalweave-sso'));
         echo '<fieldset class="portalweave-sso-appearance-group"><legend>' . esc_html__('Button text', 'portalweave-sso') . '</legend>';
         self::field('settings[wp_login_button][text]', $style['text'], __('WordPress button text', 'portalweave-sso'), 'text', __('Use {app} for the provider name. Leave blank to inherit the provider label or shared template. Maximum 200 characters.', 'portalweave-sso'), ['maxlength' => 200]);
         echo '</fieldset><fieldset class="portalweave-sso-appearance-group"><legend>' . esc_html__('Colors', 'portalweave-sso') . '</legend><div class="portalweave-sso-appearance-presets" data-appearance-presets>';
@@ -1034,7 +1031,7 @@ final class Admin {
         $icon = $icon !== '' && Config::https_url($icon) ? $icon : '';
         $custom_note = __('Custom WordPress sign-in styling is on. Save changes to apply it.', 'portalweave-sso');
         $shared_note = __('Shared button preview. WordPress sign-in can use its own appearance.', 'portalweave-sso');
-        $inherit_note = __('WordPress sign-in inherits the shared button settings. Custom CSS and theme styles can affect the final appearance.', 'portalweave-sso');
+        $inherit_note = __('WordPress sign-in inherits the shared button settings. Site and theme styles can affect the final appearance.', 'portalweave-sso');
         $unstyled_note = __('Shared WordPress login styling is off. Your theme controls the provider links until you enable styling.', 'portalweave-sso');
         echo '<aside class="portalweave-sso-appearance-preview" id="portalweave-sso-appearance-preview" aria-label="' . esc_attr__('Button appearance preview', 'portalweave-sso') . '"><h3>' . esc_html__('Preview', 'portalweave-sso') . '</h3><label for="portalweave-sso-preview-provider">' . esc_html__('Preview provider', 'portalweave-sso') . '</label><select id="portalweave-sso-preview-provider" data-appearance-provider>';
         foreach ($apps as $id => $provider) {

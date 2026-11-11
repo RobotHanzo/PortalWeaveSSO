@@ -1,4 +1,40 @@
 <?php
+portalweave_sso_test('multisite: private vault identifiers remain blog-local across switches and cleanup', function () {
+    global $portalweave_sso_blog_a, $portalweave_sso_blog_b;
+    $method = new ReflectionMethod(\PortalWeaveSSO\Access::class, 'default_vault_directory');
+    $paths = [];
+    $prior = [];
+    try {
+        foreach ([$portalweave_sso_blog_a, $portalweave_sso_blog_b] as $blog) {
+            switch_to_blog($blog);
+            $prior[$blog] = get_option('portalweave_sso_media_vault_id', false);
+            delete_option('portalweave_sso_media_vault_id');
+            $paths[$blog] = $method->invoke(null);
+            portalweave_sso_assert(is_string($paths[$blog]), 'Blog vault identity could not initialize');
+            restore_current_blog();
+        }
+        portalweave_sso_assert($paths[$portalweave_sso_blog_a] !== $paths[$portalweave_sso_blog_b], 'Blogs shared a random vault identifier');
+        foreach ($paths as $blog => $path) {
+            switch_to_blog($blog);
+            portalweave_sso_assert($method->invoke(null) === $path, 'Blog switch reused another blog vault identity');
+            \PortalWeaveSSO\Cleanup::site(['delete_data_on_uninstall' => true], []);
+            portalweave_sso_assert($method->invoke(null) === $path, 'Cleanup removed the private vault recovery identity');
+            restore_current_blog();
+        }
+    } finally {
+        while (ms_is_switched()) { restore_current_blog(); }
+        foreach ($prior as $blog => $id) {
+            switch_to_blog($blog);
+            \PortalWeaveSSO\Audit::install();
+            \PortalWeaveSSO\Auth::register();
+            \PortalWeaveSSO\Extensions::register();
+            if ($id === false) { delete_option('portalweave_sso_media_vault_id'); }
+            else { update_option('portalweave_sso_media_vault_id', $id, false); }
+            restore_current_blog();
+        }
+    }
+});
+
 /** Privacy, audit and consent boundaries on the disposable real multisite network. */
 function portalweave_sso_compliance_multisite_at(int $blog, callable $callback) {
     switch_to_blog($blog);

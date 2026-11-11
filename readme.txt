@@ -3,7 +3,7 @@ Tags: oauth, openid-connect, sso, scim, login
 Requires at least: 6.5
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 1.3.1
+Stable tag: 1.3.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -15,7 +15,7 @@ PortalWeave SSO connects a site to administrator-configured OAuth 2.0 and OpenID
 * Configure multiple providers, attribute mappings and group/email-domain role policies with visual editors or advanced JSON.
 * Register users at first login or allow only existing accounts. Account linking requires explicit configuration and a verified, unique email.
 * Keep administrator SSO disabled by default; enable it per provider with a verified account claim.
-* Display login buttons using the login widget, [sso_oauth_login] shortcode, WordPress login screen or WooCommerce login form.
+* Display login buttons using the login widget, [portalweave_sso_login] shortcode, WordPress login screen or WooCommerce login form.
 * Preview custom WordPress sign-in button styles and provider/custom icons independently of website buttons.
 * Restrict posts, pages, categories and media using login, role or group rules.
 * Visualize retained authentication activity over 7, 30 or 90 days, page through retained audit logs and export CSV reports. Debug logging, client IP collection and optional modules are administrator controlled.
@@ -32,12 +32,14 @@ This is an independent plugin. Provider names describe integrations and do not i
 
 The plugin has no developer-hosted authentication, tracking, licensing or update service. It sends no telemetry to its author and downloads no remote executable code. All plugin JavaScript and CSS are distributed locally.
 
-After an administrator configures a provider, sign-in redirects the browser to that provider with the client identifier, requested scopes, callback URL, random state/nonce and PKCE challenge. The server exchanges the code and requests signing keys, profile or groups at the configured HTTPS endpoints. Returned account/profile/group data is used for local authentication and authorization. Optional refresh and logout requests go to the same configured provider. Tokens are never included in audit or support exports.
+Each service below is an optional identity provider used to sign users in and obtain the configured profile/group claims for local account and access decisions. No provider is contacted until an administrator configures it and its authentication flow runs. Preset setup and bundled logos work locally.
+
+For every configured identity service below, sign-in sends the browser to its authorization endpoint with the client identifier, scopes, callback URL, random state/nonce and PKCE challenge. WordPress sends the returned authorization code, PKCE verifier and configured client authentication to that service's token endpoint; it sends an access token when requesting profile or group data. Public signing-key requests send no user token. Explicit refresh sends the refresh token and client authentication. Configured logout sends the browser to that service with client ID, callback, state and an ID-token hint when available. An explicitly enabled legacy Password grant sends the entered username/password to that provider over HTTPS without retaining the password; the legacy Implicit grant returns tokens through the browser callback. These transfers happen only for the configured login, validation, refresh or logout operation. Tokens are never included in audit or support exports.
 
 Preset service policy references:
 
-* [Microsoft identity services](https://learn.microsoft.com/entra/identity/): [privacy](https://www.microsoft.com/en-us/privacy/privacystatement), [product terms](https://www.microsoft.com/licensing/terms/).
-* [Amazon Cognito](https://aws.amazon.com/cognito/): [privacy](https://aws.amazon.com/privacy/), [customer agreement](https://aws.amazon.com/agreement/), [service terms](https://aws.amazon.com/service-terms/).
+* [Microsoft Entra ID / Azure AD, Azure AD B2C and Office 365](https://learn.microsoft.com/entra/identity/): Microsoft hosts the configured tenant's sign-in/token/key endpoints; Microsoft Graph can supply profile/group data. The identity transfers above apply to the selected tenant and B2C policy. [Privacy](https://www.microsoft.com/en-us/privacy/privacystatement), [product terms](https://www.microsoft.com/licensing/terms/).
+* [Amazon Cognito](https://aws.amazon.com/cognito/): AWS hosts the configured regional user pool and authorization domain. The identity transfers above go to that pool's endpoints, including any configured custom domain. [Privacy](https://aws.amazon.com/privacy/), [customer agreement](https://aws.amazon.com/agreement/), [service terms](https://aws.amazon.com/service-terms/).
 * [Google identity services](https://developers.google.com/identity): [privacy](https://policies.google.com/privacy), [API terms](https://developers.google.com/terms), [user data policy](https://developers.google.com/terms/api-services-user-data-policy).
 * [Okta](https://www.okta.com/): [privacy](https://www.okta.com/legal/privacy-policy/), [agreements](https://www.okta.com/legal/).
 * [Auth0](https://auth0.com/): [privacy](https://www.okta.com/legal/privacy-policy/), [legal resources](https://auth0.com/legal).
@@ -47,9 +49,11 @@ Preset service policy references:
 * [ClassLink](https://www.classlink.com/): [privacy](https://www.classlink.com/company/privacy), [contact](https://www.classlink.com/contact). Obtain the applicable school/organization license and service agreement from ClassLink.
 * Keycloak, authentik and custom providers: the administrator chooses the deployment, endpoint and applicable operator terms/privacy policy. Selecting a self-hosted preset does not contact the software project's developer.
 
-Optional mapped pictures and custom provider icons are browser requests to administrator-selected image hosts. Those hosts receive browser network information. Support email is sent only after an administrator explicitly submits a message or requests sending through the support ability; its recipient is administrator configured. MCP transport and any data handling by a connected AI client belong to the separately configured adapter/client.
+Optional mapped pictures and custom provider or WordPress sign-in icons are browser requests to the selected image hosts when displayed, including login pages and administrator previews. Hosts receive the visitor's IP address and ordinary browser request information; sign-in icons use a no-referrer policy. Uploaded icons use the site's media delivery service. Support email sends the administrator's message through the site's mail service to the chosen recipient only on explicit submission (or an explicit support-ability send request); redacted configuration is attached only when requested. Booking, forum and demo links open only when selected. The site operator must disclose these actual image, mail, support and link destinations and their policies.
 
-The external-services document is included in the ZIP. Its maintained source is [available here](https://github.com/RobotHanzo/PortalWeaveSSO/blob/compliance/wordpress-org-submission/docs/external-services.md). Site operators must publish the policies applicable to their configured providers.
+Optional SCIM accepts incoming authenticated provisioning requests from the administrator's chosen client and returns account/group data; it does not select or contact a vendor. Optional shared-subdomain SSO sends selected identity claims in a signed, unencrypted one-minute cookie to explicitly trusted sites, without OAuth tokens. Optional abilities return authorized configuration, diagnostics and audit data through the separately installed MCP Adapter to the chosen client; this plugin does not call an AI service. Disclose the actual provisioning, trusted-site and MCP/client operators' terms and privacy policies before enabling them.
+
+The external-services document is included in the ZIP. Its maintained source is [available here](https://github.com/RobotHanzo/PortalWeaveSSO/blob/main/docs/external-services.md). Site operators must publish the policies applicable to their configured providers. One Identity policy pages may restrict automated retrieval; confirm the applicable OneLogin agreement with your account contact. ClassLink's privacy notice refers to school/organization license and service-level agreements supplied by ClassLink, rather than a universal public service contract.
 
 == Privacy and data retention ==
 
@@ -64,11 +68,11 @@ Deactivation preserves data. Uninstall preserves settings unless the administrat
 == Installation ==
 Upgrades from PortalWeave SSO 1.0.1 retain existing configuration. Replacing an installation that uses the earlier technical namespace requires the controlled procedure in docs/provider-setup.md; there are no earlier-name aliases or automatic conversion of that stored data. Restrict access externally during that replacement, including settings, identity links, access rules, provider URLs and private-media metadata.
 
-1. Upload portalweave-sso-1.3.1.zip or copy the portalweave-sso directory into wp-content/plugins.
+1. Upload portalweave-sso-1.3.2.zip or copy the portalweave-sso directory into wp-content/plugins.
 2. Activate PortalWeave SSO and open PortalWeave SSO in the WordPress admin sidebar.
 3. Add a provider, register the displayed callback URL and enter its details. Use Test connection on the final review step before saving the provider.
 4. Saved providers also offer Test SSO Config to inspect returned attributes. Configure mappings and test an ordinary user before enforcing login.
-5. Add [sso_oauth_login], the PortalWeave SSO login widget or use the WordPress/WooCommerce login form integration.
+5. Add [portalweave_sso_login], the PortalWeave SSO login widget or use the WordPress/WooCommerce login form integration.
 6. Optionally customize the WordPress sign-in buttons and icons under Appearance > WordPress sign-in. Existing styling is inherited until customization is enabled.
 
 Optional features start disabled. Use the distributed user guides for provider, SCIM, media and MCP setup. Development source and build tools are [publicly maintained](https://github.com/RobotHanzo/PortalWeaveSSO).
@@ -93,6 +97,12 @@ Run wp portalweave-sso recover (or --network), or temporarily define PORTALWEAVE
 No. Re-enter credentials on a new installation. Same-site restores retain existing credentials.
 
 == Changelog ==
+= 1.3.2 =
+* Remove custom CSS input and rendering; use structured appearance controls and WordPress's own CSS editor.
+* Register only the prefixed [portalweave_sso_login] shortcode; replace earlier unprefixed placements.
+* Keep private-media directory identifiers independent of authentication salts and preserve existing file recovery paths.
+* Scope media errors to media screens and expand service disclosures with a maintained documentation link.
+
 = 1.3.1 =
 * Enforce content restrictions for mixed-case WordPress REST routes.
 * Deny native Application Password authentication for deactivated, moderated and expired accounts while preserving multisite isolation.
@@ -126,7 +136,7 @@ No. Re-enter credentials on a new installation. Same-site restores retain existi
 * Expand the visual feature guide and update provider, privacy and administration documentation.
 
 = 1.0.1 =
-* Replace the technical namespace with PortalWeave SSO identifiers and use [sso_oauth_login] for login buttons. Earlier installations require the documented controlled replacement procedure.
+* Replace the technical namespace with PortalWeave SSO identifiers. Earlier installations require the documented controlled replacement procedure.
 * Add provider-specific guided setup, credential instructions and bundled provider logos.
 * Sort provider choices alphabetically and remove logo borders.
 * Address Plugin Check advisories and enforce complete strict checks in CI.
@@ -137,6 +147,9 @@ Initial multi-provider OAuth/OIDC, access policy, provisioning and operations re
 Includes private-media recovery, privacy-policy guidance, data export/erasure and administrator-controlled retention.
 
 == Upgrade Notice ==
+= 1.3.2 =
+Replace [sso_oauth_login] placements with [portalweave_sso_login]. Custom button CSS is no longer rendered; move needed styles into WordPress's built-in editor. Existing private-media files retain their recorded recovery paths.
+
 = 1.3.1 =
 Security update for REST content restrictions, Application Password account policies and login auditing. Existing settings and credentials are retained.
 

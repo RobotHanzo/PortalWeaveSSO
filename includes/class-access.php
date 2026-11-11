@@ -233,9 +233,28 @@ final class Access
             || in_array($id, array_map('intval', Config::get('protected_media', [])), true);
     }
 
+    /** Stable, blog-local storage identity independent of authentication keys and salts. */
+    private static function default_vault_directory()
+    {
+        $key = 'portalweave_sso_media_vault_id';
+        $id = get_option($key, false);
+        if ($id === false) {
+            // add_option is atomic; read back the winner if another request initializes it.
+            add_option($key, bin2hex(random_bytes(16)), '', false);
+            $id = get_option($key, false);
+        }
+        if (!is_string($id) || !preg_match('/^[a-f0-9]{32}$/D', $id)) {
+            return new \WP_Error('portalweave_sso_media_vault', __('The private media directory identifier is invalid. Restore it from a backup or configure PORTALWEAVE_SSO_PRIVATE_MEDIA_DIR.', 'portalweave-sso'));
+        }
+        return dirname(rtrim(ABSPATH, '/\\')) . '/portalweave-sso-private-' . $id;
+    }
+
     private static function vault()
     {
-        $dir = defined('PORTALWEAVE_SSO_PRIVATE_MEDIA_DIR') ? PORTALWEAVE_SSO_PRIVATE_MEDIA_DIR : dirname(rtrim(ABSPATH, '/\\')) . '/portalweave-sso-private-' . substr(hash('sha256', wp_salt()), 0, 12);
+        $dir = defined('PORTALWEAVE_SSO_PRIVATE_MEDIA_DIR') ? PORTALWEAVE_SSO_PRIVATE_MEDIA_DIR : self::default_vault_directory();
+        if (is_wp_error($dir)) {
+            return $dir;
+        }
         if (!wp_mkdir_p($dir)) {
             return new \WP_Error('portalweave_sso_media_vault', 'The private media directory is not writable.');
         }
@@ -372,6 +391,11 @@ final class Access
 
     public static function media_notice(): void
     {
+        $screen = get_current_screen();
+        if (!current_user_can('upload_files') || !$screen || !in_array($screen->base, ['upload', 'post'], true)
+            || ($screen->base === 'post' && $screen->post_type !== 'attachment')) {
+            return;
+        }
         $error = get_transient('portalweave_sso_media_error_' . get_current_user_id());
         if ($error) {
             delete_transient('portalweave_sso_media_error_' . get_current_user_id());

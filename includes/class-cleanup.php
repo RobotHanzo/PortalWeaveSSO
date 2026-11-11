@@ -67,7 +67,7 @@ final class Cleanup
         }
         // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching, WordPress.DB.DirectDatabaseQuery.SchemaChange -- Explicit uninstall consent authorizes dropping only this blog's plugin-owned audit table; core has no table-removal API and audit rows are not cached.
         $wpdb->query($wpdb->prepare('DROP TABLE IF EXISTS %i', $wpdb->prefix . 'portalweave_sso_audit'));
-        // _portalweave_sso_private_files/_portalweave_sso_public_files/_portalweave_sso_protected remain available for safe vault recovery.
+        // Private/public file manifests, protection flags and portalweave_sso_media_vault_id remain for safe vault recovery.
     }
 
     public static function run(): void
