@@ -1,8 +1,8 @@
 # PortalWeave SSO CI and WordPress.org releases
 
-The workflows run checks and prepare release files before a publishing job can use WordPress.org credentials. A normal code push never publishes a plugin update. The repository has not yet been approved for WordPress.org; leave deployment disabled until the directory review is complete and an SVN repository has been assigned.
+The workflows run checks and prepare release files before a publishing job can use WordPress.org credentials. A normal code push never publishes a plugin update. WordPress.org deployment is enabled for the assigned `portalweave-sso` repository; version 1.3.2 was deployed successfully on 12 November 2026. New releases must still pass every CI, artifact and immutable-tag gate before publication.
 
-The proposed name is **PortalWeave SSO**, with slug/text domain `portalweave-sso`. The submission candidate is `dist/portalweave-sso-1.3.2.zip`. This proposal is not a directory assignment or publication. If reviewers assign a different slug, update the main filename, literal text domains, metadata, translation filenames and packaging configuration together before rebuilding.
+The public name is **PortalWeave SSO**, with assigned slug/text domain `portalweave-sso`. The current release package is `dist/portalweave-sso-1.4.0.zip`. If the directory slug changes, update the main filename, literal text domains, metadata, translation filenames and packaging configuration together before rebuilding.
 
 ## One-time WordPress.org setup
 
@@ -38,10 +38,10 @@ Before WordPress.org approval, keep `WORDPRESS_DEPLOY_ENABLED=false` and the `wo
 Before approval, a GitHub-only release can attach the exact verified package without enabling WordPress.org deployment. The existing `github-release` job depends on successful SVN publication, so it is skipped while deployment is disabled. Use a successful Release workflow run for the matching immutable version tag, download that run's `plugin-package` artifact into a fresh empty directory, and verify the checksum and remote tag against its tested commit before publishing. Replace `RELEASE_RUN_ID` and `TESTED_COMMIT_SHA` below with values from that same successful run:
 
 ```sh
-gh run download RELEASE_RUN_ID --name plugin-package --dir .test-runtime/github-release-v1.3.2
-(cd .test-runtime/github-release-v1.3.2 && sha256sum --check portalweave-sso-1.3.2.zip.sha256)
-bash scripts/check-release-ref.sh v1.3.2 TESTED_COMMIT_SHA
-gh release create v1.3.2 .test-runtime/github-release-v1.3.2/portalweave-sso-1.3.2.zip .test-runtime/github-release-v1.3.2/portalweave-sso-1.3.2.zip.sha256 --verify-tag --target TESTED_COMMIT_SHA --generate-notes
+gh run download RELEASE_RUN_ID --name plugin-package --dir .test-runtime/github-release-v1.4.0
+(cd .test-runtime/github-release-v1.4.0 && sha256sum --check portalweave-sso-1.4.0.zip.sha256)
+bash scripts/check-release-ref.sh v1.4.0 TESTED_COMMIT_SHA
+gh release create v1.4.0 .test-runtime/github-release-v1.4.0/portalweave-sso-1.4.0.zip .test-runtime/github-release-v1.4.0/portalweave-sso-1.4.0.zip.sha256 --verify-tag --target TESTED_COMMIT_SHA --generate-notes
 ```
 
 Publish those downloaded files directly; do not rebuild or substitute another run's artifact. `--verify-tag` requires an existing remote tag; the separate tag guard checks its exact commit. Keep `WORDPRESS_DEPLOY_ENABLED=false` until directory approval. See the GitHub CLI documentation for [artifact download](https://cli.github.com/manual/gh_run_download) and [release creation](https://cli.github.com/manual/gh_release_create).
@@ -52,13 +52,13 @@ Bash and Node.js 20 or later are required for the release entrypoints. They use 
 
 ```sh
 bash scripts/release.sh validate
-bash scripts/release.sh validate --tag v1.3.2
+bash scripts/release.sh validate --tag v1.4.0
 node --test tests/release.test.mjs
 bash scripts/release.sh stage --output .test-runtime/release-stage --slug portalweave-sso
 bash scripts/release.sh verify --output .test-runtime/release-stage
 ```
 
-`portalweave-sso` is the proposed package directory and text domain, pending WordPress.org approval. Staging rejects a package slug that disagrees with the plugin metadata. A stage contains production files directly, ready for the deploy action's `BUILD_DIR`; a ZIP adds the slug as the containing directory. Staging refuses a nonempty output and never recursively deletes an existing destination. Use a fresh output path for each staging attempt.
+`portalweave-sso` is the assigned package directory and text domain. Staging rejects a package slug that disagrees with the plugin metadata. A stage contains production files directly, ready for the deploy action's `BUILD_DIR`; a ZIP adds the slug as the containing directory. Staging refuses a nonempty output and never recursively deletes an existing destination. Use a fresh output path for each staging attempt.
 
 Build the installable ZIP and SHA-256 file with the same Bash entrypoint used by CI:
 
@@ -66,7 +66,7 @@ Build the installable ZIP and SHA-256 file with the same Bash entrypoint used by
 bash scripts/build.sh --slug portalweave-sso
 ```
 
-The slug and version come from validated plugin metadata. Explicit `--slug` or `--version` values must match that metadata. Version 1.3.2 produces `dist/portalweave-sso-1.3.2.zip` and its `.zip.sha256` checksum. Packaging includes `portalweave-sso.php`, `uninstall.php`, `readme.txt`, `LICENSE`, `includes/`, runtime `assets/`, `languages/` and exactly four user guides: `docs/provider-setup.md`, `docs/integrations.md`, `docs/external-services.md` and `docs/privacy.md`. The main filename, containing directory and text domain match the proposed `portalweave-sso` slug, and the release validator enforces that relationship.
+The slug and version come from validated plugin metadata. Explicit `--slug` or `--version` values must match that metadata. Version 1.4.0 produces `dist/portalweave-sso-1.4.0.zip` and its `.zip.sha256` checksum. Packaging includes `portalweave-sso.php`, `uninstall.php`, `readme.txt`, `LICENSE`, `includes/`, runtime `assets/`, `languages/` and exactly four user guides: `docs/provider-setup.md`, `docs/integrations.md`, `docs/external-services.md` and `docs/privacy.md`. The main filename, containing directory and text domain match the proposed `portalweave-sso` slug, and the release validator enforces that relationship.
 
 `scripts/build.ps1` remains an optional Windows builder with its existing `-Slug` and `-Version` parameters. CI does not require PowerShell. Both builders use the same Node.js metadata and production-staging engine, and retain the same ZIP entry, manifest and hash verification requirements.
 
