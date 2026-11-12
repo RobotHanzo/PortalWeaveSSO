@@ -3,27 +3,23 @@
 msgid ""
 msgstr ""
 "Project-Id-Version: PortalWeave SSO 1.3.2\n"
-"Report-Msgid-Bugs-To: https://wordpress.org/support/plugin/portalweave-sso\n"
+"Report-Msgid-Bugs-To: https://github.com/RobotHanzo/PortalWeaveSSO/issues\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language-Team: LANGUAGE <LL@li.org>\n"
 "MIME-Version: 1.0\n"
 "Content-Type: text/plain; charset=UTF-8\n"
 "Content-Transfer-Encoding: 8bit\n"
-"POT-Creation-Date: 2026-11-06T20:15:57+00:00\n"
+"POT-Creation-Date: 2026-11-12T04:13:04+00:00\n"
 "PO-Revision-Date: YEAR-MO-DA HO:MI+ZONE\n"
 "X-Generator: WP-CLI 2.12.0\n"
 "X-Domain: portalweave-sso\n"
-
-#: includes/class-access.php
-msgid "The private media directory identifier is invalid. Restore it from a backup or configure PORTALWEAVE_SSO_PRIVATE_MEDIA_DIR."
-msgstr ""
 
 #. Plugin Name of the plugin
 #: portalweave-sso.php
 #: includes/class-abilities.php:19
 #: includes/class-admin.php:27
 #: includes/class-admin.php:31
-#: includes/class-admin.php:553
+#: includes/class-admin.php:551
 #: includes/class-logout-view.php:17
 msgid "PortalWeave SSO"
 msgstr ""
@@ -118,6 +114,10 @@ msgstr ""
 
 #: includes/class-access.php:93
 msgid "Your account does not have access to this content."
+msgstr ""
+
+#: includes/class-access.php:247
+msgid "The private media directory identifier is invalid. Restore it from a backup or configure PORTALWEAVE_SSO_PRIVATE_MEDIA_DIR."
 msgstr ""
 
 #: includes/class-accounts.php:103
@@ -317,7 +317,7 @@ msgid "Daily audit event counts in UTC"
 msgstr ""
 
 #: includes/class-activity-view.php:92
-#: includes/class-admin.php:1181
+#: includes/class-admin.php:1180
 msgid "Date (UTC)"
 msgstr ""
 
@@ -390,22 +390,22 @@ msgid "The form security token is invalid. Reload the settings page and try agai
 msgstr ""
 
 #: includes/class-admin.php:191
-#: includes/class-admin.php:1151
+#: includes/class-admin.php:1150
 msgid "Overview"
 msgstr ""
 
 #: includes/class-admin.php:192
-#: includes/class-admin.php:574
+#: includes/class-admin.php:572
 msgid "Identity providers"
 msgstr ""
 
 #: includes/class-admin.php:193
-#: includes/class-admin.php:575
+#: includes/class-admin.php:573
 msgid "Login & logout"
 msgstr ""
 
 #: includes/class-admin.php:194
-#: includes/class-admin.php:576
+#: includes/class-admin.php:574
 msgid "Access policies"
 msgstr ""
 
@@ -415,7 +415,7 @@ msgstr ""
 
 #: includes/class-admin.php:196
 #: includes/class-admin.php:209
-#: includes/class-admin.php:578
+#: includes/class-admin.php:576
 msgid "Integrations"
 msgstr ""
 
@@ -424,12 +424,12 @@ msgid "Activity"
 msgstr ""
 
 #: includes/class-admin.php:198
-#: includes/class-admin.php:580
+#: includes/class-admin.php:578
 msgid "Tools & support"
 msgstr ""
 
 #: includes/class-admin.php:204
-#: includes/class-admin.php:705
+#: includes/class-admin.php:703
 msgid "Connection"
 msgstr ""
 
@@ -450,7 +450,7 @@ msgid "Accounts"
 msgstr ""
 
 #: includes/class-admin.php:210
-#: includes/class-admin.php:778
+#: includes/class-admin.php:776
 msgid "Login button"
 msgstr ""
 
@@ -502,1952 +502,1960 @@ msgstr ""
 msgid "Invalid JSON object or array for %s."
 msgstr ""
 
-#: includes/class-admin.php:478
+#: includes/class-admin.php:476
 msgid "Choose a configuration JSON file."
 msgstr ""
 
-#: includes/class-admin.php:483
-#: includes/class-admin.php:488
+#: includes/class-admin.php:481
+#: includes/class-admin.php:486
 msgid "The upload failed or exceeds the 1 MB limit."
 msgstr ""
 
-#: includes/class-admin.php:510
+#: includes/class-admin.php:508
 msgid "Configure a support recipient and enter a message of up to 10,000 characters."
 msgstr ""
 
-#: includes/class-admin.php:514
+#: includes/class-admin.php:512
 msgid "Configuration (client IDs, secrets and tokens excluded):"
 msgstr ""
 
-#: includes/class-admin.php:517
+#: includes/class-admin.php:515
 msgid "[PortalWeave SSO] Support request"
 msgstr ""
 
-#: includes/class-admin.php:518
+#: includes/class-admin.php:516
 msgid "WordPress could not hand the support message to its mail service."
 msgstr ""
 
-#: includes/class-admin.php:550
+#: includes/class-admin.php:548
 msgid "Changes saved."
 msgstr ""
 
-#: includes/class-admin.php:550
+#: includes/class-admin.php:548
 msgid "Configuration imported. Existing credentials were retained by app ID. Incomplete restored providers and login enforcement are disabled until you configure credentials and test SSO."
 msgstr ""
 
-#: includes/class-admin.php:550
+#: includes/class-admin.php:548
 msgid "Support message submitted to the WordPress mail service."
 msgstr ""
 
-#: includes/class-admin.php:553
+#: includes/class-admin.php:551
 msgid "Unsaved settings"
 msgstr ""
 
-#: includes/class-admin.php:553
+#: includes/class-admin.php:551
 msgid "You have unsaved changes."
 msgstr ""
 
-#: includes/class-admin.php:553
-#: includes/class-admin.php:637
+#: includes/class-admin.php:551
+#: includes/class-admin.php:635
 msgid "Save changes"
 msgstr ""
 
-#: includes/class-admin.php:553
+#: includes/class-admin.php:551
 msgid "Revert all changes"
 msgstr ""
 
-#: includes/class-admin.php:553
+#: includes/class-admin.php:551
 msgid "Single sign-on for your network"
 msgstr ""
 
-#: includes/class-admin.php:553
+#: includes/class-admin.php:551
 msgid "Identity and access for your WordPress site"
 msgstr ""
 
-#: includes/class-admin.php:557
+#: includes/class-admin.php:555
 msgid "The operation could not be completed."
 msgstr ""
 
-#: includes/class-admin.php:562
+#: includes/class-admin.php:560
 msgid "That provider no longer exists. Choose a provider below or add a new one."
 msgstr ""
 
-#: includes/class-admin.php:565
+#: includes/class-admin.php:563
 msgid "These settings are managed by your network administrator. You can review them here."
 msgstr ""
 
-#: includes/class-admin.php:567
+#: includes/class-admin.php:565
 msgid "Skip to SSO settings"
 msgstr ""
 
-#: includes/class-admin.php:567
+#: includes/class-admin.php:565
 msgid "SSO settings"
 msgstr ""
 
-#: includes/class-admin.php:573
+#: includes/class-admin.php:571
 msgid "Your sign-in workspace"
 msgstr ""
 
-#: includes/class-admin.php:573
+#: includes/class-admin.php:571
 msgid "Set up a provider, test sign-in, then choose how people access your site."
 msgstr ""
 
-#: includes/class-admin.php:574
+#: includes/class-admin.php:572
 msgid "Manage the services people use to sign in. Configure and test each provider separately."
 msgstr ""
 
-#: includes/class-admin.php:575
+#: includes/class-admin.php:573
 msgid "Choose the default provider and what happens when people sign in or out."
 msgstr ""
 
-#: includes/class-admin.php:576
+#: includes/class-admin.php:574
 msgid "Decide who can visit your site and protect specific content or media."
 msgstr ""
 
-#: includes/class-admin.php:577
+#: includes/class-admin.php:575
 msgid "Login appearance"
 msgstr ""
 
-#: includes/class-admin.php:577
+#: includes/class-admin.php:575
 msgid "Style your login buttons and the messages people see before and after sign-in."
 msgstr ""
 
-#: includes/class-admin.php:578
+#: includes/class-admin.php:576
 msgid "Enable the optional features your site needs. Keep unused integrations off."
 msgstr ""
 
-#: includes/class-admin.php:579
+#: includes/class-admin.php:577
 msgid "SSO activity"
 msgstr ""
 
-#: includes/class-admin.php:579
+#: includes/class-admin.php:577
 msgid "View activity trends or inspect recorded audit events."
 msgstr ""
 
-#: includes/class-admin.php:580
+#: includes/class-admin.php:578
 msgid "Back up configuration, troubleshoot sign-in, and contact your support team."
 msgstr ""
 
-#: includes/class-admin.php:584
+#: includes/class-admin.php:582
 msgid "Add identity provider"
 msgstr ""
 
-#: includes/class-admin.php:585
+#: includes/class-admin.php:583
 msgid "Connect your service with a guide tailored to its setup process."
 msgstr ""
 
-#: includes/class-admin.php:585
+#: includes/class-admin.php:583
 msgid "Configure this provider. Other providers and site settings are saved separately."
 msgstr ""
 
-#: includes/class-admin.php:586
+#: includes/class-admin.php:584
 msgid "Back to identity providers"
 msgstr ""
 
-#: includes/class-admin.php:590
-#: includes/class-admin.php:637
-#: includes/class-admin.php:669
+#: includes/class-admin.php:588
+#: includes/class-admin.php:635
+#: includes/class-admin.php:667
 msgid "Add provider"
 msgstr ""
 
-#: includes/class-admin.php:618
+#: includes/class-admin.php:616
 #: includes/class-provider-wizard.php:32
 msgid "Saving…"
 msgstr ""
 
-#: includes/class-admin.php:618
+#: includes/class-admin.php:616
 msgid "Saving your changes…"
 msgstr ""
 
-#: includes/class-admin.php:637
+#: includes/class-admin.php:635
 #: includes/class-provider-wizard.php:85
 #: includes/class-provider-wizard.php:89
 msgid "Save provider"
 msgstr ""
 
-#: includes/class-admin.php:637
+#: includes/class-admin.php:635
 msgid "Saves all sections for this provider."
 msgstr ""
 
-#: includes/class-admin.php:637
+#: includes/class-admin.php:635
 msgid "Saves only the settings on this screen."
 msgstr ""
 
-#: includes/class-admin.php:652
+#: includes/class-admin.php:650
 msgid "Configured providers"
 msgstr ""
 
-#: includes/class-admin.php:653
+#: includes/class-admin.php:651
 msgid "Default provider"
 msgstr ""
 
-#: includes/class-admin.php:653
+#: includes/class-admin.php:651
 msgid "Not selected"
 msgstr ""
 
-#: includes/class-admin.php:654
+#: includes/class-admin.php:652
 msgid "Site-wide sign-in"
 msgstr ""
 
-#: includes/class-admin.php:654
+#: includes/class-admin.php:652
 msgid "Required"
 msgstr ""
 
-#: includes/class-admin.php:654
+#: includes/class-admin.php:652
 msgid "Optional"
 msgstr ""
 
-#: includes/class-admin.php:658
+#: includes/class-admin.php:656
 msgid "Set up SSO in three steps"
 msgstr ""
 
-#: includes/class-admin.php:660
+#: includes/class-admin.php:658
 msgid "Connect an identity provider"
 msgstr ""
 
-#: includes/class-admin.php:660
+#: includes/class-admin.php:658
 msgid "Add your provider credentials and register the displayed callback URL."
 msgstr ""
 
-#: includes/class-admin.php:661
+#: includes/class-admin.php:659
 msgid "Test before you enforce sign-in"
 msgstr ""
 
-#: includes/class-admin.php:661
+#: includes/class-admin.php:659
 msgid "Use Test SSO Config, review the returned attributes, and sign in with an ordinary account."
 msgstr ""
 
-#: includes/class-admin.php:662
+#: includes/class-admin.php:660
 msgid "Choose your access policy"
 msgstr ""
 
-#: includes/class-admin.php:662
+#: includes/class-admin.php:660
 msgid "Set a default provider and review recovery options before requiring SSO."
 msgstr ""
 
-#: includes/class-admin.php:669
+#: includes/class-admin.php:667
 msgid "Start with your first provider"
 msgstr ""
 
-#: includes/class-admin.php:669
+#: includes/class-admin.php:667
 msgid "Choose a provider template or configure your own OAuth / OpenID Connect service."
 msgstr ""
 
-#: includes/class-admin.php:675
+#: includes/class-admin.php:673
 msgid "No identity providers yet"
 msgstr ""
 
-#: includes/class-admin.php:675
+#: includes/class-admin.php:673
 msgid "Add a provider to connect your site to your identity service. Login policies stay separate from provider setup."
 msgstr ""
 
-#: includes/class-admin.php:679
-#: includes/class-display.php:266
+#: includes/class-admin.php:677
+#: includes/class-display.php:274
 #: includes/class-provider-wizard.php:167
 msgid "Provider"
 msgstr ""
 
-#: includes/class-admin.php:679
-#: includes/class-admin.php:735
+#: includes/class-admin.php:677
+#: includes/class-admin.php:733
 #: includes/class-provider-setup.php:250
 msgid "Protocol"
 msgstr ""
 
-#: includes/class-admin.php:679
-#: includes/class-admin.php:1181
+#: includes/class-admin.php:677
+#: includes/class-admin.php:1180
 msgid "Status"
 msgstr ""
 
-#: includes/class-admin.php:679
+#: includes/class-admin.php:677
 msgid "Actions"
 msgstr ""
 
-#: includes/class-admin.php:685
-#: includes/class-admin.php:870
-#: includes/class-admin.php:876
+#: includes/class-admin.php:683
+#: includes/class-admin.php:868
+#: includes/class-admin.php:874
 msgid "Enabled"
 msgstr ""
 
-#: includes/class-admin.php:685
+#: includes/class-admin.php:683
 msgid "Disabled"
 msgstr ""
 
-#: includes/class-admin.php:685
+#: includes/class-admin.php:683
 msgid "View"
 msgstr ""
 
-#: includes/class-admin.php:685
+#: includes/class-admin.php:683
 msgid "Configure"
 msgstr ""
 
-#: includes/class-admin.php:687
-#: includes/class-admin.php:784
+#: includes/class-admin.php:685
+#: includes/class-admin.php:782
 msgid "Test SSO Config"
 msgstr ""
 
-#: includes/class-admin.php:691
+#: includes/class-admin.php:689
 msgid "Enabled is a configuration setting. Test each provider to verify the connection."
 msgstr ""
 
-#: includes/class-admin.php:700
+#: includes/class-admin.php:698
 msgid "Provider configuration sections"
 msgstr ""
 
-#: includes/class-admin.php:707
+#: includes/class-admin.php:705
 msgid "App ID"
 msgstr ""
 
-#: includes/class-admin.php:707
+#: includes/class-admin.php:705
 msgid "A unique slug, for example staff-entra."
 msgstr ""
 
-#: includes/class-admin.php:709
+#: includes/class-admin.php:707
 msgid "App ID:"
 msgstr ""
 
-#: includes/class-admin.php:712
+#: includes/class-admin.php:710
 msgid "Custom OAuth / OpenID"
 msgstr ""
 
-#: includes/class-admin.php:712
+#: includes/class-admin.php:710
 msgid "Microsoft Entra ID / Azure AD"
 msgstr ""
 
-#: includes/class-admin.php:712
+#: includes/class-admin.php:710
 #: includes/class-provider-setup.php:113
 msgid "Azure AD B2C"
 msgstr ""
 
-#: includes/class-admin.php:712
+#: includes/class-admin.php:710
 msgid "Office 365"
 msgstr ""
 
-#: includes/class-admin.php:712
+#: includes/class-admin.php:710
 msgid "AWS Cognito"
 msgstr ""
 
-#: includes/class-admin.php:712
+#: includes/class-admin.php:710
 #: includes/class-provider-setup.php:140
 msgid "Keycloak"
 msgstr ""
 
-#: includes/class-admin.php:712
+#: includes/class-admin.php:710
 #: includes/class-provider-setup.php:152
 msgid "Okta"
 msgstr ""
 
-#: includes/class-admin.php:712
+#: includes/class-admin.php:710
 #: includes/class-provider-setup.php:163
 msgid "Salesforce"
 msgstr ""
 
-#: includes/class-admin.php:712
+#: includes/class-admin.php:710
 #: includes/class-provider-setup.php:175
 msgid "Google"
 msgstr ""
 
-#: includes/class-admin.php:712
+#: includes/class-admin.php:710
 #: includes/class-provider-setup.php:187
 msgid "Auth0"
 msgstr ""
 
-#: includes/class-admin.php:712
+#: includes/class-admin.php:710
 #: includes/class-provider-setup.php:198
 msgid "OneLogin"
 msgstr ""
 
-#: includes/class-admin.php:712
+#: includes/class-admin.php:710
 #: includes/class-provider-setup.php:208
 msgid "Discord"
 msgstr ""
 
-#: includes/class-admin.php:712
+#: includes/class-admin.php:710
 #: includes/class-provider-setup.php:226
 msgid "ClassLink"
 msgstr ""
 
-#: includes/class-admin.php:715
+#: includes/class-admin.php:713
 msgid "Provider template"
 msgstr ""
 
-#: includes/class-admin.php:715
+#: includes/class-admin.php:713
 msgid "Templates fill empty endpoint fields. Replace tenant and domain placeholders with values from your provider."
 msgstr ""
 
-#: includes/class-admin.php:716
-#: includes/class-admin.php:1142
+#: includes/class-admin.php:714
+#: includes/class-admin.php:1141
 #: includes/class-provider-wizard.php:166
 msgid "Display name"
 msgstr ""
 
-#: includes/class-admin.php:717
+#: includes/class-admin.php:715
 msgid "Enable this provider"
 msgstr ""
 
-#: includes/class-admin.php:718
+#: includes/class-admin.php:716
 #: includes/class-provider-setup.php:80
 #: includes/class-provider-wizard.php:174
 msgid "Client ID"
 msgstr ""
 
-#: includes/class-admin.php:718
+#: includes/class-admin.php:716
 msgid "Stored on the server. Excluded from support exports."
 msgstr ""
 
-#: includes/class-admin.php:719
+#: includes/class-admin.php:717
 #: includes/class-provider-setup.php:81
 #: includes/class-provider-wizard.php:174
 msgid "Client secret"
 msgstr ""
 
-#: includes/class-admin.php:720
+#: includes/class-admin.php:718
 msgid "Send client credentials"
 msgstr ""
 
-#: includes/class-admin.php:720
+#: includes/class-admin.php:718
 msgid "HTTP Basic header"
 msgstr ""
 
-#: includes/class-admin.php:720
+#: includes/class-admin.php:718
 msgid "Request body"
 msgstr ""
 
-#: includes/class-admin.php:720
+#: includes/class-admin.php:718
 msgid "No client authentication (public client)"
 msgstr ""
 
-#: includes/class-admin.php:721
+#: includes/class-admin.php:719
 #: includes/class-provider-setup.php:220
 msgid "Scopes"
 msgstr ""
 
-#: includes/class-admin.php:721
+#: includes/class-admin.php:719
 msgid "Space separated. OIDC requires openid; profile and email are common."
 msgstr ""
 
-#: includes/class-admin.php:723
+#: includes/class-admin.php:721
 msgid "Provider endpoints"
 msgstr ""
 
-#: includes/class-admin.php:724
+#: includes/class-admin.php:722
 #: includes/class-provider-setup.php:218
 msgid "Authorization endpoint"
 msgstr ""
 
-#: includes/class-admin.php:724
+#: includes/class-admin.php:722
 #: includes/class-provider-setup.php:219
 msgid "Token endpoint"
 msgstr ""
 
-#: includes/class-admin.php:724
+#: includes/class-admin.php:722
 msgid "User-info endpoint"
 msgstr ""
 
-#: includes/class-admin.php:724
+#: includes/class-admin.php:722
 msgid "Group-info endpoint"
 msgstr ""
 
-#: includes/class-admin.php:724
+#: includes/class-admin.php:722
 msgid "JWKS endpoint"
 msgstr ""
 
-#: includes/class-admin.php:724
+#: includes/class-admin.php:722
 msgid "Issuer"
 msgstr ""
 
-#: includes/class-admin.php:724
+#: includes/class-admin.php:722
 msgid "OIDC end-session endpoint"
 msgstr ""
 
-#: includes/class-admin.php:724
+#: includes/class-admin.php:722
 msgid "Callback URL override"
 msgstr ""
 
-#: includes/class-admin.php:725
+#: includes/class-admin.php:723
 msgid "Optional. Use an allowed origin that routes to this WordPress installation; register this exact URL with the provider."
 msgstr ""
 
-#: includes/class-admin.php:727
+#: includes/class-admin.php:725
 msgid "Enable signed OIDC back-channel logout"
 msgstr ""
 
-#: includes/class-admin.php:727
+#: includes/class-admin.php:725
 msgid "Configure the back-channel URL at the provider. Logout tokens must pass signature, issuer, audience, event, expiry, and replay checks."
 msgstr ""
 
-#: includes/class-admin.php:729
+#: includes/class-admin.php:727
 msgid "OIDC back-channel logout URL"
 msgstr ""
 
-#: includes/class-admin.php:731
+#: includes/class-admin.php:729
 msgid "Registered callback URL"
 msgstr ""
 
-#: includes/class-admin.php:733
+#: includes/class-admin.php:731
 msgid "Token validation and advanced options"
 msgstr ""
 
-#: includes/class-admin.php:735
+#: includes/class-admin.php:733
 msgid "OpenID Connect 1.0"
 msgstr ""
 
-#: includes/class-admin.php:735
+#: includes/class-admin.php:733
 #: includes/class-provider-setup.php:250
 msgid "OAuth 2.0"
 msgstr ""
 
-#: includes/class-admin.php:736
+#: includes/class-admin.php:734
 msgid "Login grant"
 msgstr ""
 
-#: includes/class-admin.php:736
+#: includes/class-admin.php:734
 msgid "Authorization Code"
 msgstr ""
 
-#: includes/class-admin.php:736
+#: includes/class-admin.php:734
 msgid "Implicit (legacy)"
 msgstr ""
 
-#: includes/class-admin.php:736
+#: includes/class-admin.php:734
 msgid "Password (legacy)"
 msgstr ""
 
-#: includes/class-admin.php:738
+#: includes/class-admin.php:736
 msgid "Use PKCE (S256)"
 msgstr ""
 
-#: includes/class-admin.php:738
+#: includes/class-admin.php:736
 msgid "Public clients can select “No client authentication” and omit a client secret."
 msgstr ""
 
-#: includes/class-admin.php:739
+#: includes/class-admin.php:737
 msgid "Explicitly allow legacy Implicit / Password grants"
 msgstr ""
 
-#: includes/class-admin.php:739
+#: includes/class-admin.php:737
 msgid "These flows are deprecated by current OAuth security guidance. Authorization Code with PKCE is the recommended flow."
 msgstr ""
 
-#: includes/class-admin.php:740
+#: includes/class-admin.php:738
 msgid "Additional state value"
 msgstr ""
 
-#: includes/class-admin.php:740
+#: includes/class-admin.php:738
 msgid "Stored inside a random, browser-bound, one-use state transaction."
 msgstr ""
 
-#: includes/class-admin.php:741
+#: includes/class-admin.php:739
 msgid "Allowed JWT algorithms"
 msgstr ""
 
-#: includes/class-admin.php:741
+#: includes/class-admin.php:739
 msgid "One per line: RS256, RS384, RS512, HS256, HS384, HS512. Pin only the algorithms used by this provider."
 msgstr ""
 
-#: includes/class-admin.php:742
+#: includes/class-admin.php:740
 msgid "HMAC JWT signing secret"
 msgstr ""
 
-#: includes/class-admin.php:743
+#: includes/class-admin.php:741
 msgid "Immutable subject attribute"
 msgstr ""
 
-#: includes/class-admin.php:743
+#: includes/class-admin.php:741
 msgid "OIDC uses the signed sub claim. OAuth-only providers need a stable unique ID."
 msgstr ""
 
-#: includes/class-admin.php:745
+#: includes/class-admin.php:743
 msgid "Attributes and role mapping"
 msgstr ""
 
-#: includes/class-admin.php:746
+#: includes/class-admin.php:744
 msgid "Standard attribute paths"
 msgstr ""
 
-#: includes/class-admin.php:746
+#: includes/class-admin.php:744
 msgid "Map WordPress profile fields to provider attributes. Use dot paths for nested attributes, such as realm_access.roles."
 msgstr ""
 
-#: includes/class-admin.php:747
+#: includes/class-admin.php:745
 msgid "Custom profile attributes"
 msgstr ""
 
-#: includes/class-admin.php:747
+#: includes/class-admin.php:745
 msgid "Map safe public profile keys to provider attribute paths. Privilege and internal WordPress metadata are blocked."
 msgstr ""
 
-#: includes/class-admin.php:748
+#: includes/class-admin.php:746
 msgid "Group → WordPress roles"
 msgstr ""
 
-#: includes/class-admin.php:748
+#: includes/class-admin.php:746
 msgid "Choose the WordPress roles assigned for each matching provider group. Use Ctrl or Command to select multiple roles."
 msgstr ""
 
-#: includes/class-admin.php:749
+#: includes/class-admin.php:747
 msgid "Email domain → WordPress roles"
 msgstr ""
 
-#: includes/class-admin.php:749
+#: includes/class-admin.php:747
 msgid "Choose roles for exact email domains, such as school.example. Use Ctrl or Command to select multiple roles."
 msgstr ""
 
-#: includes/class-admin.php:750
+#: includes/class-admin.php:748
 msgid "Default WordPress role"
 msgstr ""
 
-#: includes/class-admin.php:752
+#: includes/class-admin.php:750
 msgid "Account access and verification"
 msgstr ""
 
-#: includes/class-admin.php:753
+#: includes/class-admin.php:751
 msgid "Email domain mapping"
 msgstr ""
 
-#: includes/class-admin.php:753
+#: includes/class-admin.php:751
 msgid "Replace an exact email domain with another domain. Identity verification still uses the original provider claim."
 msgstr ""
 
-#: includes/class-admin.php:755
+#: includes/class-admin.php:753
 msgid "Automatically register users at first SSO login"
 msgstr ""
 
-#: includes/class-admin.php:755
+#: includes/class-admin.php:753
 msgid "Turn off to allow existing linked or eligible local accounts only."
 msgstr ""
 
-#: includes/class-admin.php:756
+#: includes/class-admin.php:754
 msgid "Link existing users by verified email"
 msgstr ""
 
-#: includes/class-admin.php:756
+#: includes/class-admin.php:754
 msgid "Only a verified provider email may link an existing account."
 msgstr ""
 
-#: includes/class-admin.php:757
+#: includes/class-admin.php:755
 msgid "Keep existing WordPress roles"
 msgstr ""
 
-#: includes/class-admin.php:757
+#: includes/class-admin.php:755
 msgid "Provider roles are not used to replace an existing account’s roles."
 msgstr ""
 
-#: includes/class-admin.php:758
+#: includes/class-admin.php:756
 msgid "Block login when no explicit role mapping matches"
 msgstr ""
 
-#: includes/class-admin.php:758
+#: includes/class-admin.php:756
 msgid "The default role does not count as an explicit match."
 msgstr ""
 
-#: includes/class-admin.php:759
+#: includes/class-admin.php:757
 msgid "Keep existing profile attributes"
 msgstr ""
 
-#: includes/class-admin.php:759
-#: includes/class-admin.php:760
+#: includes/class-admin.php:757
+#: includes/class-admin.php:758
 msgid "Applies to existing users."
 msgstr ""
 
-#: includes/class-admin.php:760
+#: includes/class-admin.php:758
 msgid "Keep existing account email"
 msgstr ""
 
-#: includes/class-admin.php:761
+#: includes/class-admin.php:759
 msgid "Allow duplicate WordPress email addresses"
 msgstr ""
 
-#: includes/class-admin.php:761
+#: includes/class-admin.php:759
 msgid "Provider subject stays the primary identity. Automatic email linking requires one unambiguous account."
 msgstr ""
 
-#: includes/class-admin.php:762
+#: includes/class-admin.php:760
 msgid "Require a verified provider email"
 msgstr ""
 
-#: includes/class-admin.php:762
+#: includes/class-admin.php:760
 msgid "The verified claim and value are configured below."
 msgstr ""
 
-#: includes/class-admin.php:763
+#: includes/class-admin.php:761
 msgid "Allow SSO for administrators"
 msgstr ""
 
-#: includes/class-admin.php:763
+#: includes/class-admin.php:761
 msgid "Off by default. The configured verified claim must match for every administrator SSO login."
 msgstr ""
 
-#: includes/class-admin.php:767
+#: includes/class-admin.php:765
 msgid "Verified provider claim path"
 msgstr ""
 
-#: includes/class-admin.php:768
+#: includes/class-admin.php:766
 msgid "Required verified claim value"
 msgstr ""
 
-#: includes/class-admin.php:768
+#: includes/class-admin.php:766
 msgid "JSON scalar. A true/1 expectation accepts true, \"true\", 1, or \"1\". Other scalar values use an exact string comparison."
 msgstr ""
 
-#: includes/class-admin.php:770
+#: includes/class-admin.php:768
 msgid "Optional integrations"
 msgstr ""
 
-#: includes/class-admin.php:771
+#: includes/class-admin.php:769
 msgid "Allow ephemeral guest login for this app"
 msgstr ""
 
-#: includes/class-admin.php:771
+#: includes/class-admin.php:769
 msgid "Also enable the Guest User Login module."
 msgstr ""
 
-#: includes/class-admin.php:772
+#: includes/class-admin.php:770
 msgid "Hold new users for administrator approval"
 msgstr ""
 
-#: includes/class-admin.php:772
+#: includes/class-admin.php:770
 msgid "Also enable the User Moderation module."
 msgstr ""
 
-#: includes/class-admin.php:773
+#: includes/class-admin.php:771
 msgid "Issue a shared subdomain SSO ticket"
 msgstr ""
 
-#: includes/class-admin.php:773
+#: includes/class-admin.php:771
 msgid "Also enable and configure the Shared SSO module."
 msgstr ""
 
-#: includes/class-admin.php:774
+#: includes/class-admin.php:772
 msgid "Allow signed JWT SSO for this app"
 msgstr ""
 
-#: includes/class-admin.php:774
+#: includes/class-admin.php:772
 msgid "Also enable the JWT SSO module."
 msgstr ""
 
-#: includes/class-admin.php:775
+#: includes/class-admin.php:773
 msgid "Profile picture attribute"
 msgstr ""
 
-#: includes/class-admin.php:775
+#: includes/class-admin.php:773
 msgid "Used when the Profile Picture module is enabled."
 msgstr ""
 
-#: includes/class-admin.php:776
+#: includes/class-admin.php:774
 msgid "Attribute based redirect rules"
 msgstr ""
 
-#: includes/class-admin.php:776
+#: includes/class-admin.php:774
 msgid "Match a provider attribute to a value and choose its redirect URL. Rules run in order and URLs must pass the redirect allowlist."
 msgstr ""
 
-#: includes/class-admin.php:779
-#: includes/class-admin.php:962
+#: includes/class-admin.php:777
+#: includes/class-admin.php:959
 msgid "Button text"
 msgstr ""
 
-#: includes/class-admin.php:779
+#: includes/class-admin.php:777
 msgid "Leave blank to use the global text and provider name."
 msgstr ""
 
-#: includes/class-admin.php:784
+#: includes/class-admin.php:782
 msgid "Opens a protected raw-attribute test without changing your account."
 msgstr ""
 
-#: includes/class-admin.php:786
+#: includes/class-admin.php:784
 msgid "This network configuration is not active for sign-in. Test it on a staging site before enforcing it; a site-level test could otherwise use a different provider with the same ID."
 msgstr ""
 
-#: includes/class-admin.php:788
+#: includes/class-admin.php:786
 msgid "Delete this provider when saving"
 msgstr ""
 
-#: includes/class-admin.php:788
+#: includes/class-admin.php:786
 msgid "Linked user identities remain stored. Removing a provider does not delete users."
 msgstr ""
 
-#: includes/class-admin.php:795
+#: includes/class-admin.php:793
 msgid "Sign-in behavior"
 msgstr ""
 
-#: includes/class-admin.php:796
+#: includes/class-admin.php:794
 msgid "Select a default provider"
 msgstr ""
 
-#: includes/class-admin.php:800
+#: includes/class-admin.php:798
 msgid "Default identity provider"
 msgstr ""
 
-#: includes/class-admin.php:802
+#: includes/class-admin.php:800
 msgid "Force authentication for the whole site"
 msgstr ""
 
-#: includes/class-admin.php:802
+#: includes/class-admin.php:800
 msgid "Logged-out visitors start SSO with the default provider."
 msgstr ""
 
-#: includes/class-admin.php:803
+#: includes/class-admin.php:801
 msgid "Hide the standard WordPress password login"
 msgstr ""
 
-#: includes/class-admin.php:803
+#: includes/class-admin.php:801
 msgid "Keep a tested SSO route and a documented recovery procedure before enabling."
 msgstr ""
 
-#: includes/class-admin.php:804
+#: includes/class-admin.php:802
 msgid "Use a single sign-in flow"
 msgstr ""
 
-#: includes/class-admin.php:804
+#: includes/class-admin.php:802
 msgid "Send WordPress login requests directly to the default provider."
 msgstr ""
 
-#: includes/class-admin.php:805
+#: includes/class-admin.php:803
 msgid "Open SSO login in a popup window"
 msgstr ""
 
-#: includes/class-admin.php:805
+#: includes/class-admin.php:803
 msgid "Browsers may use the normal redirect if popups are blocked."
 msgstr ""
 
-#: includes/class-admin.php:806
+#: includes/class-admin.php:804
 msgid "Ask for confirmation before SSO logout"
 msgstr ""
 
-#: includes/class-admin.php:806
+#: includes/class-admin.php:804
 msgid "Confirmation also verifies the current WordPress session."
 msgstr ""
 
-#: includes/class-admin.php:810
+#: includes/class-admin.php:808
 msgid "Default redirect after login"
 msgstr ""
 
-#: includes/class-admin.php:811
+#: includes/class-admin.php:809
 msgid "Default redirect after logout"
 msgstr ""
 
-#: includes/class-admin.php:812
+#: includes/class-admin.php:810
 msgid "Allowed redirect URLs"
 msgstr ""
 
-#: includes/class-admin.php:812
+#: includes/class-admin.php:810
 msgid "One HTTPS origin or path prefix per line. Paths use a boundary check; example https://portal.example.com/members/."
 msgstr ""
 
-#: includes/class-admin.php:814
+#: includes/class-admin.php:812
 msgid "Who can access your site"
 msgstr ""
 
-#: includes/class-admin.php:816
+#: includes/class-admin.php:814
 msgid "Enforce these settings across this network"
 msgstr ""
 
-#: includes/class-admin.php:816
+#: includes/class-admin.php:814
 msgid "Applies to this network ID. Other networks keep their own policy."
 msgstr ""
 
-#: includes/class-admin.php:818
+#: includes/class-admin.php:816
 msgid "Restrict the site to logged-in users"
 msgstr ""
 
-#: includes/class-admin.php:819
+#: includes/class-admin.php:817
 msgid "Allowed email domains"
 msgstr ""
 
-#: includes/class-admin.php:819
+#: includes/class-admin.php:817
 msgid "One exact domain per line. Leave empty to allow all domains except blocked ones."
 msgstr ""
 
-#: includes/class-admin.php:820
+#: includes/class-admin.php:818
 msgid "Blocked email domains"
 msgstr ""
 
-#: includes/class-admin.php:820
+#: includes/class-admin.php:818
 msgid "One exact domain per line. A blocked domain always takes precedence."
 msgstr ""
 
-#: includes/class-admin.php:821
+#: includes/class-admin.php:819
 msgid "Content access rules"
 msgstr ""
 
-#: includes/class-admin.php:821
+#: includes/class-admin.php:819
 msgid "Add bulk rules by post, page or category ID. Individual editors also expose access restrictions. When roles or groups are selected, a user must match either one."
 msgstr ""
 
-#: includes/class-admin.php:822
+#: includes/class-admin.php:820
 msgid "Protected attachment IDs"
 msgstr ""
 
-#: includes/class-admin.php:822
+#: includes/class-admin.php:820
 msgid "Comma separated. Original files and derivatives are relocated outside the document root and served through authenticated delivery. Purge old copies from web-server and CDN caches."
 msgstr ""
 
 #. translators: %s: private media directory configuration constant, displayed as code.
-#: includes/class-admin.php:824
+#: includes/class-admin.php:822
 #, php-format
 msgid "Protecting an attachment relocates its original and derivatives outside the web document root. WordPress URLs then use the authenticated delivery endpoint. Configure a writable %s in wp-config.php; the default is a private sibling directory of ABSPATH. Purge previously cached files from web-server and CDN caches. Restoring public access moves files back to their original upload paths."
 msgstr ""
 
-#: includes/class-admin.php:825
+#: includes/class-admin.php:823
 msgid "Protected media delivery"
 msgstr ""
 
-#: includes/class-admin.php:833
+#: includes/class-admin.php:831
 msgid "Audit collection and retention"
 msgstr ""
 
-#: includes/class-admin.php:834
+#: includes/class-admin.php:832
 msgid "Enable diagnostic debug events"
 msgstr ""
 
-#: includes/class-admin.php:834
+#: includes/class-admin.php:832
 msgid "No bearer tokens, client secrets, or raw provider attributes are logged. Debug events are removed weekly."
 msgstr ""
 
-#: includes/class-admin.php:835
+#: includes/class-admin.php:833
 msgid "Record SSO transactions and login audit events"
 msgstr ""
 
-#: includes/class-admin.php:835
+#: includes/class-admin.php:833
 msgid "Disable to stop collecting new audit events. Existing events remain until their retention period expires."
 msgstr ""
 
-#: includes/class-admin.php:836
+#: includes/class-admin.php:834
 msgid "Include client IP addresses in audit events"
 msgstr ""
 
-#: includes/class-admin.php:836
+#: includes/class-admin.php:834
 msgid "Off by default. Enable only when needed and disclose this collection in your site privacy policy."
 msgstr ""
 
-#: includes/class-admin.php:837
+#: includes/class-admin.php:835
 msgid "Audit retention (days)"
 msgstr ""
 
-#: includes/class-admin.php:837
+#: includes/class-admin.php:835
 msgid "Audit and transaction reports contain personal data. Set retention appropriate to your site."
 msgstr ""
 
-#: includes/class-admin.php:839
+#: includes/class-admin.php:837
 msgid "Support destinations"
 msgstr ""
 
-#: includes/class-admin.php:840
+#: includes/class-admin.php:838
 msgid "Support recipient email"
 msgstr ""
 
-#: includes/class-admin.php:840
+#: includes/class-admin.php:838
 msgid "Choose the team that supports this installation. No vendor destination is configured automatically."
 msgstr ""
 
-#: includes/class-admin.php:841
+#: includes/class-admin.php:839
 msgid "Call / screen-share booking URL"
 msgstr ""
 
-#: includes/class-admin.php:841
+#: includes/class-admin.php:839
 msgid "Support forum URL"
 msgstr ""
 
-#: includes/class-admin.php:841
+#: includes/class-admin.php:839
 msgid "Demo / trial request URL"
 msgstr ""
 
-#: includes/class-admin.php:844
+#: includes/class-admin.php:842
 msgid "Data removal"
 msgstr ""
 
-#: includes/class-admin.php:845
+#: includes/class-admin.php:843
 msgid "Delete plugin data when uninstalling"
 msgstr ""
 
-#: includes/class-admin.php:845
+#: includes/class-admin.php:843
 msgid "Off by default. Removes plugin settings, audit events, and linked user metadata. WordPress users, posts, and private media vault files are retained. Back up and restore protected media before uninstalling."
 msgstr ""
 
-#: includes/class-admin.php:855
+#: includes/class-admin.php:853
 msgid "Provisioning"
 msgstr ""
 
-#: includes/class-admin.php:856
+#: includes/class-admin.php:854
 msgid "Sign-in and sessions"
 msgstr ""
 
-#: includes/class-admin.php:857
+#: includes/class-admin.php:855
 msgid "Account experience"
 msgstr ""
 
-#: includes/class-admin.php:858
+#: includes/class-admin.php:856
 msgid "Automation"
 msgstr ""
 
-#: includes/class-admin.php:861
+#: includes/class-admin.php:859
 msgid "SCIM provisioning"
 msgstr ""
 
-#: includes/class-admin.php:861
+#: includes/class-admin.php:859
 msgid "Create and manage site-owned directory users and groups through an authenticated SCIM client."
 msgstr ""
 
-#: includes/class-admin.php:862
+#: includes/class-admin.php:860
 msgid "JWT single sign-on"
 msgstr ""
 
-#: includes/class-admin.php:862
+#: includes/class-admin.php:860
 msgid "Accept signed ID tokens through the browser-bound JWT sign-in flow."
 msgstr ""
 
-#: includes/class-admin.php:863
+#: includes/class-admin.php:861
 msgid "Shared subdomain SSO"
 msgstr ""
 
-#: includes/class-admin.php:863
+#: includes/class-admin.php:861
 msgid "Hand off sign-in between trusted HTTPS sites on the same parent domain."
 msgstr ""
 
-#: includes/class-admin.php:864
+#: includes/class-admin.php:862
 msgid "Guest accounts"
 msgstr ""
 
-#: includes/class-admin.php:864
+#: includes/class-admin.php:862
 msgid "Create temporary subscriber accounts through selected identity providers."
 msgstr ""
 
-#: includes/class-admin.php:865
+#: includes/class-admin.php:863
 msgid "User moderation"
 msgstr ""
 
-#: includes/class-admin.php:865
+#: includes/class-admin.php:863
 msgid "Hold new nonprivileged identities for administrator approval before sign-in."
 msgstr ""
 
-#: includes/class-admin.php:866
+#: includes/class-admin.php:864
 msgid "Profile pictures"
 msgstr ""
 
-#: includes/class-admin.php:866
+#: includes/class-admin.php:864
 msgid "Use a provider picture attribute for WordPress avatars."
 msgstr ""
 
-#: includes/class-admin.php:867
+#: includes/class-admin.php:865
 msgid "Attribute redirects"
 msgstr ""
 
-#: includes/class-admin.php:867
+#: includes/class-admin.php:865
 msgid "Choose a destination after sign-in using ordered provider claim rules."
 msgstr ""
 
-#: includes/class-admin.php:868
+#: includes/class-admin.php:866
 msgid "AI / MCP abilities"
 msgstr ""
 
-#: includes/class-admin.php:868
+#: includes/class-admin.php:866
 msgid "Expose eight administrator abilities to an authenticated automation client."
 msgstr ""
 
-#: includes/class-admin.php:870
-#: includes/class-admin.php:876
+#: includes/class-admin.php:868
+#: includes/class-admin.php:874
 msgid "Off"
 msgstr ""
 
-#: includes/class-admin.php:870
+#: includes/class-admin.php:868
 msgid "Choose an integration to configure it. Each integration starts off; enabling it keeps your existing account and access policies in place."
 msgstr ""
 
-#: includes/class-admin.php:870
+#: includes/class-admin.php:868
 msgid "Integration settings"
 msgstr ""
 
-#: includes/class-admin.php:884
+#: includes/class-admin.php:882
 msgid "Enable the eight AI / MCP abilities"
 msgstr ""
 
-#: includes/class-admin.php:884
+#: includes/class-admin.php:882
 msgid "Requires WordPress 6.9 or later and manage_options. Install the WordPress MCP Adapter separately for MCP transport."
 msgstr ""
 
-#: includes/class-admin.php:885
+#: includes/class-admin.php:883
 msgid "The adapter owns authentication and connection setup. PortalWeave SSO does not call an AI model itself. Review the client’s data handling before exposing personal audit output."
 msgstr ""
 
-#: includes/class-admin.php:887
+#: includes/class-admin.php:885
 msgid "Enable this integration"
 msgstr ""
 
-#: includes/class-admin.php:889
+#: includes/class-admin.php:887
 msgid "SCIM bearer token"
 msgstr ""
 
-#: includes/class-admin.php:890
+#: includes/class-admin.php:888
 msgid "Use a dedicated cryptographically random token of at least 32 characters. Configure it in the provisioning client; it is never displayed again."
 msgstr ""
 
-#: includes/class-admin.php:890
+#: includes/class-admin.php:888
 msgid "SCIM base URL"
 msgstr ""
 
-#: includes/class-admin.php:892
+#: includes/class-admin.php:890
 msgid "Shared cookie domain"
 msgstr ""
 
-#: includes/class-admin.php:892
+#: includes/class-admin.php:890
 msgid "Example: .example.com. Every subdomain that can set cookies must be trusted."
 msgstr ""
 
-#: includes/class-admin.php:893
+#: includes/class-admin.php:891
 msgid "Shared SSO signing secret"
 msgstr ""
 
-#: includes/class-admin.php:894
+#: includes/class-admin.php:892
 msgid "Trusted shared SSO sites"
 msgstr ""
 
-#: includes/class-admin.php:894
+#: includes/class-admin.php:892
 msgid "One exact HTTPS origin per line. Configure matching signing secrets and provider identities in each app."
 msgstr ""
 
-#: includes/class-admin.php:896
+#: includes/class-admin.php:894
 msgid "Guest session lifetime (seconds)"
 msgstr ""
 
-#: includes/class-admin.php:896
+#: includes/class-admin.php:894
 msgid "Between 300 and 86,400 seconds. Expired guests cannot sign in; scheduled cleanup retains accounts that authored content."
 msgstr ""
 
-#: includes/class-admin.php:898
+#: includes/class-admin.php:896
 msgid "Use an OIDC provider that supports signed ID tokens with form_post. Configure its issuer, algorithms and trusted keys in the provider’s Security section."
 msgstr ""
 
-#: includes/class-admin.php:900
+#: includes/class-admin.php:898
 msgid "Approve or block accounts under Users → Edit User → SSO account moderation. Approval does not grant roles; privileged accounts keep their recovery protections."
 msgstr ""
 
-#: includes/class-admin.php:902
+#: includes/class-admin.php:900
 msgid "Set the picture attribute on each provider. Visitors’ browsers fetch the public HTTPS image from the picture host; disclose the host in your site privacy policy."
 msgstr ""
 
-#: includes/class-admin.php:904
+#: includes/class-admin.php:902
 msgid "Set ordered claim, value and destination rules on each provider. Every destination must also pass the allowlist under Login & logout."
 msgstr ""
 
-#: includes/class-admin.php:904
+#: includes/class-admin.php:902
 msgid "Manage the redirect allowlist"
 msgstr ""
 
-#: includes/class-admin.php:916
+#: includes/class-admin.php:914
 msgid "Provider settings"
 msgstr ""
 
-#: includes/class-admin.php:916
+#: includes/class-admin.php:914
 msgid "Provider options are saved separately. Save your integration changes before opening a provider."
 msgstr ""
 
-#: includes/class-admin.php:918
+#: includes/class-admin.php:916
 msgid "Add an identity provider"
 msgstr ""
 
-#: includes/class-admin.php:925
+#: includes/class-admin.php:923
 msgid "Provider option on"
 msgstr ""
 
-#: includes/class-admin.php:925
+#: includes/class-admin.php:923
 msgid "Provider option off"
 msgstr ""
 
-#: includes/class-admin.php:939
+#: includes/class-admin.php:937
 msgid "Use an HTTPS image URL without embedded credentials or a fragment."
 msgstr ""
 
-#: includes/class-admin.php:939
+#: includes/class-admin.php:937
 msgid "The preview image could not be loaded. Check the image URL."
 msgstr ""
 
-#: includes/class-admin.php:939
+#: includes/class-admin.php:937
 msgid "Appearance sections"
 msgstr ""
 
-#: includes/class-admin.php:940
-#: includes/class-admin.php:943
+#: includes/class-admin.php:938
+#: includes/class-admin.php:941
 msgid "Shared buttons"
 msgstr ""
 
-#: includes/class-admin.php:940
-#: includes/class-admin.php:960
+#: includes/class-admin.php:938
+#: includes/class-admin.php:957
 msgid "WordPress sign-in"
 msgstr ""
 
 #. translators: %s: login button shortcode, displayed as code.
-#: includes/class-admin.php:945
+#: includes/class-admin.php:943
 #, php-format
 msgid "Use %s, the PortalWeave SSO widget, or the WooCommerce login form."
 msgstr ""
 
-#: includes/class-admin.php:947
+#: includes/class-admin.php:945
 msgid "Button theme"
 msgstr ""
 
-#: includes/class-admin.php:947
+#: includes/class-admin.php:945
 msgid "Default"
 msgstr ""
 
-#: includes/class-admin.php:947
+#: includes/class-admin.php:945
 msgid "White"
 msgstr ""
 
-#: includes/class-admin.php:947
+#: includes/class-admin.php:945
 msgid "Hover"
 msgstr ""
 
-#: includes/class-admin.php:947
+#: includes/class-admin.php:945
 msgid "Custom"
 msgstr ""
 
-#: includes/class-admin.php:947
+#: includes/class-admin.php:945
 msgid "Smart"
 msgstr ""
 
-#: includes/class-admin.php:948
+#: includes/class-admin.php:946
 msgid "Button shape"
 msgstr ""
 
-#: includes/class-admin.php:948
+#: includes/class-admin.php:946
 msgid "Round"
 msgstr ""
 
-#: includes/class-admin.php:948
+#: includes/class-admin.php:946
 msgid "Round edge"
 msgstr ""
 
-#: includes/class-admin.php:948
+#: includes/class-admin.php:946
 msgid "Square"
 msgstr ""
 
-#: includes/class-admin.php:948
+#: includes/class-admin.php:946
 msgid "Long"
 msgstr ""
 
-#: includes/class-admin.php:949
+#: includes/class-admin.php:947
 msgid "Default button text"
 msgstr ""
 
-#: includes/class-admin.php:949
+#: includes/class-admin.php:947
 msgid "Use {app} for the provider name. Each app can override this text."
 msgstr ""
 
-#: includes/class-admin.php:950
+#: includes/class-admin.php:948
 msgid "Text above the widget"
 msgstr ""
 
-#: includes/class-admin.php:951
-#: includes/class-admin.php:973
+#: includes/class-admin.php:949
+#: includes/class-admin.php:970
 msgid "Font size (px)"
 msgstr ""
 
-#: includes/class-admin.php:951
+#: includes/class-admin.php:949
 msgid "Corner curve (px)"
 msgstr ""
 
-#: includes/class-admin.php:951
+#: includes/class-admin.php:949
 msgid "Button spacing (px)"
 msgstr ""
 
-#: includes/class-admin.php:954
+#: includes/class-admin.php:952
 msgid "Show button shadows"
 msgstr ""
 
-#: includes/class-admin.php:955
+#: includes/class-admin.php:953
 msgid "Animate buttons on hover"
 msgstr ""
 
-#: includes/class-admin.php:956
+#: includes/class-admin.php:954
 msgid "Apply shared styling on the WordPress login screen"
 msgstr ""
 
-#: includes/class-admin.php:956
+#: includes/class-admin.php:954
 msgid "This choice is retained when custom WordPress sign-in styling is off."
 msgstr ""
 
-#: includes/class-admin.php:958
+#: includes/class-admin.php:955
 msgid "Logged-in message"
 msgstr ""
 
-#: includes/class-admin.php:958
+#: includes/class-admin.php:955
 msgid "Placeholders: ##user## for the display name and ##Sign Out## for the logout link."
 msgstr ""
 
-#: includes/class-admin.php:959
+#: includes/class-admin.php:956
 msgid "Show a logout link"
 msgstr ""
 
-#: includes/class-admin.php:960
+#: includes/class-admin.php:957
 msgid "Customize provider buttons on the WordPress sign-in page. Shortcode, widget and WooCommerce buttons keep the shared appearance."
 msgstr ""
 
-#: includes/class-admin.php:961
+#: includes/class-admin.php:958
 msgid "Customize WordPress sign-in buttons"
 msgstr ""
 
-#: includes/class-admin.php:961
+#: includes/class-admin.php:958
 msgid "Turn this off to inherit the shared settings, including the choice to leave WordPress login styling off. Your custom values are retained. Only the structured appearance controls are applied."
 msgstr ""
 
-#: includes/class-admin.php:963
+#: includes/class-admin.php:960
 msgid "WordPress button text"
 msgstr ""
 
-#: includes/class-admin.php:963
+#: includes/class-admin.php:960
 msgid "Use {app} for the provider name. Leave blank to inherit the provider label or shared template. Maximum 200 characters."
 msgstr ""
 
-#: includes/class-admin.php:964
+#: includes/class-admin.php:961
 msgid "Colors"
 msgstr ""
 
-#: includes/class-admin.php:965
+#: includes/class-admin.php:962
 msgid "Light"
 msgstr ""
 
-#: includes/class-admin.php:965
+#: includes/class-admin.php:962
 msgid "Light preset applied. Custom WordPress styling is on. Save changes to keep it."
 msgstr ""
 
-#: includes/class-admin.php:965
+#: includes/class-admin.php:962
 msgid "Blue"
 msgstr ""
 
-#: includes/class-admin.php:965
+#: includes/class-admin.php:962
 msgid "Blue preset applied. Custom WordPress styling is on. Save changes to keep it."
 msgstr ""
 
-#: includes/class-admin.php:965
+#: includes/class-admin.php:962
 msgid "Dark"
 msgstr ""
 
-#: includes/class-admin.php:965
+#: includes/class-admin.php:962
 msgid "Dark preset applied. Custom WordPress styling is on. Save changes to keep it."
 msgstr ""
 
-#: includes/class-admin.php:969
+#: includes/class-admin.php:966
 msgid "Background"
 msgstr ""
 
-#: includes/class-admin.php:969
+#: includes/class-admin.php:966
 msgid "Text color"
 msgstr ""
 
-#: includes/class-admin.php:969
+#: includes/class-admin.php:966
 msgid "Border color"
 msgstr ""
 
-#: includes/class-admin.php:969
+#: includes/class-admin.php:966
 msgid "Hover background"
 msgstr ""
 
-#: includes/class-admin.php:969
+#: includes/class-admin.php:966
 msgid "Hover text color"
 msgstr ""
 
-#: includes/class-admin.php:972
+#: includes/class-admin.php:969
 msgid "Size and spacing"
 msgstr ""
 
-#: includes/class-admin.php:973
+#: includes/class-admin.php:970
 msgid "Corner radius (px)"
 msgstr ""
 
-#: includes/class-admin.php:973
+#: includes/class-admin.php:970
 msgid "Vertical padding (px)"
 msgstr ""
 
-#: includes/class-admin.php:973
+#: includes/class-admin.php:970
 msgid "Horizontal padding (px)"
 msgstr ""
 
-#: includes/class-admin.php:977
+#: includes/class-admin.php:974
 msgid "Use the full sign-in form width"
 msgstr ""
 
-#: includes/class-admin.php:978
+#: includes/class-admin.php:975
 msgid "Show a button shadow"
 msgstr ""
 
-#: includes/class-admin.php:979
+#: includes/class-admin.php:976
 msgid "Icon"
 msgstr ""
 
-#: includes/class-admin.php:980
+#: includes/class-admin.php:977
 msgid "Icon source"
 msgstr ""
 
-#: includes/class-admin.php:980
+#: includes/class-admin.php:977
 msgid "Provider icon"
 msgstr ""
 
-#: includes/class-admin.php:980
+#: includes/class-admin.php:977
 msgid "Custom image"
 msgstr ""
 
-#: includes/class-admin.php:980
+#: includes/class-admin.php:977
 msgid "No icon"
 msgstr ""
 
-#: includes/class-admin.php:980
+#: includes/class-admin.php:977
 msgid "Provider icons use the provider image when available and a generic icon otherwise."
 msgstr ""
 
-#: includes/class-admin.php:982
+#: includes/class-admin.php:979
 msgid "Custom icon URL"
 msgstr ""
 
-#: includes/class-admin.php:982
+#: includes/class-admin.php:979
 msgid "Use an HTTPS image URL without embedded credentials or a fragment. You can paste a URL without using the media library."
 msgstr ""
 
-#: includes/class-admin.php:985
+#: includes/class-admin.php:982
 msgid "Choose a sign-in button icon"
 msgstr ""
 
-#: includes/class-admin.php:985
-#: includes/class-admin.php:1055
+#: includes/class-admin.php:982
+#: includes/class-admin.php:1054
 msgid "Use this image"
 msgstr ""
 
-#: includes/class-admin.php:985
+#: includes/class-admin.php:982
 msgid "Custom image selected. Save changes to keep it."
 msgstr ""
 
-#: includes/class-admin.php:985
+#: includes/class-admin.php:982
 msgid "Choose image"
 msgstr ""
 
-#: includes/class-admin.php:987
+#: includes/class-admin.php:984
 msgid "Custom image cleared. Choose another image, provider icons or no icon before saving."
 msgstr ""
 
-#: includes/class-admin.php:987
+#: includes/class-admin.php:984
 msgid "Remove image"
 msgstr ""
 
-#: includes/class-admin.php:988
+#: includes/class-admin.php:985
 msgid "Icon size (px)"
 msgstr ""
 
-#: includes/class-admin.php:989
+#: includes/class-admin.php:986
 msgid "Icon position"
 msgstr ""
 
-#: includes/class-admin.php:989
+#: includes/class-admin.php:986
 msgid "Left of text"
 msgstr ""
 
-#: includes/class-admin.php:989
+#: includes/class-admin.php:986
 msgid "Right of text"
 msgstr ""
 
-#: includes/class-admin.php:1001
+#: includes/class-admin.php:998
 msgid "Hex color, for example #ffffff."
 msgstr ""
 
-#: includes/class-admin.php:1012
+#: includes/class-admin.php:1009
 msgid "Example provider"
 msgstr ""
 
+#. translators: Keep {app} unchanged; it is replaced with the provider name.
+#: includes/class-admin.php:1017
+#: includes/class-admin.php:1042
+#: includes/class-display.php:177
+msgid "Sign in with {app}"
+msgstr ""
+
 #. translators: %s: provider name.
-#: includes/class-admin.php:1024
-#: includes/class-display.php:176
+#: includes/class-admin.php:1023
+#: includes/class-display.php:184
 #, php-format
 msgid "Sign in with %s"
 msgstr ""
 
-#: includes/class-admin.php:1035
+#: includes/class-admin.php:1034
 msgid "Custom WordPress sign-in styling is on. Save changes to apply it."
 msgstr ""
 
-#: includes/class-admin.php:1036
+#: includes/class-admin.php:1035
 msgid "Shared button preview. WordPress sign-in can use its own appearance."
 msgstr ""
 
-#: includes/class-admin.php:1037
+#: includes/class-admin.php:1036
 msgid "WordPress sign-in inherits the shared button settings. Site and theme styles can affect the final appearance."
 msgstr ""
 
-#: includes/class-admin.php:1038
+#: includes/class-admin.php:1037
 msgid "Shared WordPress login styling is off. Your theme controls the provider links until you enable styling."
 msgstr ""
 
-#: includes/class-admin.php:1039
+#: includes/class-admin.php:1038
 msgid "Button appearance preview"
 msgstr ""
 
-#: includes/class-admin.php:1039
+#: includes/class-admin.php:1038
 msgid "Preview"
 msgstr ""
 
-#: includes/class-admin.php:1039
+#: includes/class-admin.php:1038
 msgid "Preview provider"
 msgstr ""
 
-#: includes/class-admin.php:1043
-msgid "Sign in with {app}"
-msgstr ""
-
-#: includes/class-admin.php:1043
+#: includes/class-admin.php:1042
 msgid "Preview only. This button does not start sign-in."
 msgstr ""
 
-#: includes/class-admin.php:1045
+#: includes/class-admin.php:1044
 msgid "No providers are configured. This preview uses a fictional provider."
 msgstr ""
 
-#: includes/class-admin.php:1051
+#: includes/class-admin.php:1050
 msgid "Choose an HTTPS image URL without embedded credentials or a fragment. Media library images must also be served over HTTPS."
 msgstr ""
 
-#: includes/class-admin.php:1051
+#: includes/class-admin.php:1050
 msgid "Custom logo selected. Save provider to apply it."
 msgstr ""
 
-#: includes/class-admin.php:1051
+#: includes/class-admin.php:1050
 msgid "Custom logo removed. Save provider to apply it."
 msgstr ""
 
-#: includes/class-admin.php:1051
+#: includes/class-admin.php:1050
 msgid "The image could not be loaded. Check its URL or choose another image."
 msgstr ""
 
-#: includes/class-admin.php:1052
+#: includes/class-admin.php:1051
 msgid "Custom logo URL"
 msgstr ""
 
-#: includes/class-admin.php:1052
+#: includes/class-admin.php:1051
 msgid "Choose or upload an image, or paste an HTTPS image URL you control. This provider logo is used by shared buttons and the WordPress provider-icon option. Leave blank for the default appearance."
 msgstr ""
 
-#: includes/class-admin.php:1055
+#: includes/class-admin.php:1054
 msgid "Choose a provider button logo"
 msgstr ""
 
-#: includes/class-admin.php:1055
+#: includes/class-admin.php:1054
 msgid "Choose or upload image"
 msgstr ""
 
-#: includes/class-admin.php:1057
+#: includes/class-admin.php:1056
 msgid "Remove custom logo"
 msgstr ""
 
-#: includes/class-admin.php:1057
+#: includes/class-admin.php:1056
 msgid "Custom logo preview"
 msgstr ""
 
-#: includes/class-admin.php:1104
+#: includes/class-admin.php:1103
 msgid "Configured — leave blank to keep"
 msgstr ""
 
-#: includes/class-admin.php:1104
+#: includes/class-admin.php:1103
 msgid "Not configured"
 msgstr ""
 
-#: includes/class-admin.php:1104
+#: includes/class-admin.php:1103
 msgid "Enter a new value to replace it. Stored values are never printed in this page."
 msgstr ""
 
 #. translators: %s: credential field label.
-#: includes/class-admin.php:1106
+#: includes/class-admin.php:1105
 #, php-format
 msgid "Clear stored %s"
 msgstr ""
 
-#: includes/class-admin.php:1117
+#: includes/class-admin.php:1116
 msgid "Visual editor"
 msgstr ""
 
-#: includes/class-admin.php:1117
+#: includes/class-admin.php:1116
 msgid "Advanced JSON"
 msgstr ""
 
-#: includes/class-admin.php:1118
+#: includes/class-admin.php:1117
 msgid "Add rule"
 msgstr ""
 
-#: includes/class-admin.php:1118
+#: includes/class-admin.php:1117
 msgid "Remove rule"
 msgstr ""
 
-#: includes/class-admin.php:1119
-#: includes/class-admin.php:1122
+#: includes/class-admin.php:1118
+#: includes/class-admin.php:1121
 msgid "Provider attribute path"
 msgstr ""
 
-#: includes/class-admin.php:1119
+#: includes/class-admin.php:1118
 msgid "Profile field key"
 msgstr ""
 
-#: includes/class-admin.php:1120
+#: includes/class-admin.php:1119
 msgid "Provider group"
 msgstr ""
 
-#: includes/class-admin.php:1120
+#: includes/class-admin.php:1119
 msgid "Email domain"
 msgstr ""
 
-#: includes/class-admin.php:1121
+#: includes/class-admin.php:1120
 msgid "Replacement email domain"
 msgstr ""
 
-#: includes/class-admin.php:1121
+#: includes/class-admin.php:1120
 msgid "WordPress roles"
 msgstr ""
 
-#: includes/class-admin.php:1122
+#: includes/class-admin.php:1121
 msgid "Matches value"
 msgstr ""
 
-#: includes/class-admin.php:1123
+#: includes/class-admin.php:1122
 msgid "Value type"
 msgstr ""
 
-#: includes/class-admin.php:1123
+#: includes/class-admin.php:1122
 msgid "Text"
 msgstr ""
 
-#: includes/class-admin.php:1124
+#: includes/class-admin.php:1123
 msgid "Number"
 msgstr ""
 
-#: includes/class-admin.php:1124
+#: includes/class-admin.php:1123
 msgid "Boolean"
 msgstr ""
 
-#: includes/class-admin.php:1124
+#: includes/class-admin.php:1123
 msgid "Null"
 msgstr ""
 
-#: includes/class-admin.php:1125
+#: includes/class-admin.php:1124
 msgid "Redirect URL"
 msgstr ""
 
-#: includes/class-admin.php:1125
+#: includes/class-admin.php:1124
 msgid "Content type"
 msgstr ""
 
-#: includes/class-admin.php:1126
+#: includes/class-admin.php:1125
 msgid "Post or page"
 msgstr ""
 
-#: includes/class-admin.php:1126
+#: includes/class-admin.php:1125
 msgid "Category"
 msgstr ""
 
-#: includes/class-admin.php:1127
+#: includes/class-admin.php:1126
 msgid "Content ID"
 msgstr ""
 
-#: includes/class-admin.php:1127
+#: includes/class-admin.php:1126
 msgid "Require sign-in"
 msgstr ""
 
-#: includes/class-admin.php:1128
+#: includes/class-admin.php:1127
 msgid "Provider groups (one per line)"
 msgstr ""
 
-#: includes/class-admin.php:1129
+#: includes/class-admin.php:1128
 msgid "No rules configured. Add a rule to get started."
 msgstr ""
 
-#: includes/class-admin.php:1130
+#: includes/class-admin.php:1129
 msgid "This JSON uses a structure the visual editor cannot represent. Continue editing JSON; your values have been kept."
 msgstr ""
 
-#: includes/class-admin.php:1131
+#: includes/class-admin.php:1130
 msgid "Enter a valid JSON object or array before switching to the visual editor."
 msgstr ""
 
-#: includes/class-admin.php:1132
+#: includes/class-admin.php:1131
 msgid "Each source must be unique. Change or remove the duplicate rule."
 msgstr ""
 
-#: includes/class-admin.php:1133
+#: includes/class-admin.php:1132
 msgid "Complete this rule or remove it."
 msgstr ""
 
-#: includes/class-admin.php:1134
+#: includes/class-admin.php:1133
 msgid "Enter a valid value for the selected type."
 msgstr ""
 
-#: includes/class-admin.php:1135
+#: includes/class-admin.php:1134
 msgid "Use Advanced JSON to preserve large integer matches exactly. The visual editor accepts integers from -9007199254740991 to 9007199254740991."
 msgstr ""
 
-#: includes/class-admin.php:1136
+#: includes/class-admin.php:1135
 msgid "Select one or more roles. Existing administrator verification requirements still apply."
 msgstr ""
 
-#: includes/class-admin.php:1137
+#: includes/class-admin.php:1136
 msgid "Rule"
 msgstr ""
 
-#: includes/class-admin.php:1140
+#: includes/class-admin.php:1139
 msgid "Username"
 msgstr ""
 
-#: includes/class-admin.php:1140
-#: includes/class-admin.php:1181
+#: includes/class-admin.php:1139
+#: includes/class-admin.php:1180
 msgid "Email"
 msgstr ""
 
-#: includes/class-admin.php:1141
+#: includes/class-admin.php:1140
 msgid "First name"
 msgstr ""
 
-#: includes/class-admin.php:1141
+#: includes/class-admin.php:1140
 msgid "Last name"
 msgstr ""
 
-#: includes/class-admin.php:1142
+#: includes/class-admin.php:1141
 msgid "Groups"
 msgstr ""
 
-#: includes/class-admin.php:1150
+#: includes/class-admin.php:1149
 msgid "Activity views"
 msgstr ""
 
-#: includes/class-admin.php:1151
+#: includes/class-admin.php:1150
 msgid "Audit logs"
 msgstr ""
 
-#: includes/class-admin.php:1174
+#: includes/class-admin.php:1173
 msgid "SSO transaction and login audit"
 msgstr ""
 
-#: includes/class-admin.php:1174
+#: includes/class-admin.php:1173
 msgid "Export audit CSV"
 msgstr ""
 
-#: includes/class-admin.php:1174
+#: includes/class-admin.php:1173
 msgid "Retained events for this site, newest first, 50 per page. Timestamps are UTC. CSV exports the latest 5,000 rows independently of this page."
 msgstr ""
 
-#: includes/class-admin.php:1180
+#: includes/class-admin.php:1179
 msgid "Audit events"
 msgstr ""
 
-#: includes/class-admin.php:1181
+#: includes/class-admin.php:1180
 msgid "User"
 msgstr ""
 
-#: includes/class-admin.php:1181
+#: includes/class-admin.php:1180
 msgid "App"
 msgstr ""
 
-#: includes/class-admin.php:1181
+#: includes/class-admin.php:1180
 msgid "Client IP"
 msgstr ""
 
-#: includes/class-admin.php:1181
+#: includes/class-admin.php:1180
 msgid "Navigation URL"
 msgstr ""
 
-#: includes/class-admin.php:1181
+#: includes/class-admin.php:1180
 msgid "Error code"
 msgstr ""
 
-#: includes/class-admin.php:1194
+#: includes/class-admin.php:1193
 msgid "No retained events in this view. Refresh latest to check for new events."
 msgstr ""
 
-#: includes/class-admin.php:1209
+#: includes/class-admin.php:1208
 msgid "Audit pagination above events"
 msgstr ""
 
-#: includes/class-admin.php:1209
+#: includes/class-admin.php:1208
 msgid "Audit pagination below events"
 msgstr ""
 
 #. translators: 1: first event number, 2: last event number, 3: total retained events.
-#: includes/class-admin.php:1211
+#: includes/class-admin.php:1210
 #, php-format
 msgid "%1$s–%2$s of %3$s events"
 msgstr ""
 
-#: includes/class-admin.php:1214
+#: includes/class-admin.php:1213
 msgid "First"
 msgstr ""
 
-#: includes/class-admin.php:1215
+#: includes/class-admin.php:1214
 msgid "Previous"
 msgstr ""
 
 #. translators: 1: current page, 2: total pages.
-#: includes/class-admin.php:1220
+#: includes/class-admin.php:1219
 #, php-format
 msgid "Page %1$s of %2$s"
 msgstr ""
 
-#: includes/class-admin.php:1222
+#: includes/class-admin.php:1221
 msgid "Next"
 msgstr ""
 
-#: includes/class-admin.php:1223
+#: includes/class-admin.php:1222
 msgid "Last"
 msgstr ""
 
-#: includes/class-admin.php:1227
+#: includes/class-admin.php:1226
 msgid "Refresh latest"
 msgstr ""
 
-#: includes/class-admin.php:1239
+#: includes/class-admin.php:1238
 msgid "Troubleshooting and admin tools"
 msgstr ""
 
-#: includes/class-admin.php:1239
+#: includes/class-admin.php:1238
 msgid "Recovery before enforcement"
 msgstr ""
 
-#: includes/class-admin.php:1239
+#: includes/class-admin.php:1238
 msgid "Test a non-admin account first, then verify an approved administrator account. Keep filesystem or WP-CLI access available so forced login can be disabled if your provider is unavailable."
 msgstr ""
 
-#: includes/class-admin.php:1240
+#: includes/class-admin.php:1239
 msgid "Troubleshooting, FAQs and AI setup"
 msgstr ""
 
-#: includes/class-admin.php:1240
+#: includes/class-admin.php:1239
 msgid "Common errors"
 msgstr ""
 
-#: includes/class-admin.php:1242
+#: includes/class-admin.php:1241
 msgid "State / browser binding"
 msgstr ""
 
-#: includes/class-admin.php:1242
+#: includes/class-admin.php:1241
 msgid "Restart sign-in from the original browser. Ensure cookies work and the callback hostname and HTTPS scheme match the initiating login origin. Do not cache login or callback routes."
 msgstr ""
 
-#: includes/class-admin.php:1243
+#: includes/class-admin.php:1242
 msgid "Invalid issuer or audience"
 msgstr ""
 
-#: includes/class-admin.php:1243
+#: includes/class-admin.php:1242
 msgid "Copy the exact issuer and client ID from the provider registration. Tenant-specific issuers must match exactly; the token audience must include this app’s client ID."
 msgstr ""
 
-#: includes/class-admin.php:1244
+#: includes/class-admin.php:1243
 msgid "JWT signature / key unavailable"
 msgstr ""
 
-#: includes/class-admin.php:1244
+#: includes/class-admin.php:1243
 msgid "Check the pinned algorithm and JWKS URL. Confirm outbound HTTPS and current provider key rotation. Never solve a signature error by disabling validation."
 msgstr ""
 
-#: includes/class-admin.php:1245
+#: includes/class-admin.php:1244
 msgid "Email not verified / admin blocked"
 msgstr ""
 
-#: includes/class-admin.php:1245
+#: includes/class-admin.php:1244
 msgid "Check the configured verified claim and expected JSON value. Administrator SSO is disabled by default and always requires the verified claim."
 msgstr ""
 
-#: includes/class-admin.php:1246
+#: includes/class-admin.php:1245
 msgid "No role match / restricted domain"
 msgstr ""
 
-#: includes/class-admin.php:1246
+#: includes/class-admin.php:1245
 msgid "Inspect raw attributes using Test SSO Config. Map the returned groups and check exact allowed and blocked email domains."
 msgstr ""
 
-#: includes/class-admin.php:1247
+#: includes/class-admin.php:1246
 msgid "Redirect rejected"
 msgstr ""
 
-#: includes/class-admin.php:1247
+#: includes/class-admin.php:1246
 msgid "Use a same-origin URL or add the exact trusted HTTPS origin/path to the redirect allowlist. The callback must route back to this WordPress instance."
 msgstr ""
 
-#: includes/class-admin.php:1251
+#: includes/class-admin.php:1250
 msgid "FAQs"
 msgstr ""
 
-#: includes/class-admin.php:1251
+#: includes/class-admin.php:1250
 msgid "Which provider endpoint URLs should I use?"
 msgstr ""
 
-#: includes/class-admin.php:1251
+#: includes/class-admin.php:1250
 msgid "Use your provider’s tenant-specific OpenID discovery document to copy issuer, authorization_endpoint, token_endpoint, userinfo_endpoint, jwks_uri, and end_session_endpoint. The templates are starting points; the provider registration is authoritative."
 msgstr ""
 
-#: includes/class-admin.php:1251
+#: includes/class-admin.php:1250
 msgid "How are direct media URLs protected?"
 msgstr ""
 
-#: includes/class-admin.php:1251
+#: includes/class-admin.php:1250
 msgid "Protected originals and derivatives are moved into a writable private directory outside the web document root, and WordPress generates authenticated delivery URLs. Purge old web-server and CDN cached copies when protecting a file. Attachment-page rules alone do not relocate files; use the protected attachment control or the protected-ID list."
 msgstr ""
 
-#: includes/class-admin.php:1251
+#: includes/class-admin.php:1250
 msgid "Will this create user accounts automatically?"
 msgstr ""
 
-#: includes/class-admin.php:1251
+#: includes/class-admin.php:1250
 msgid "Only when the provider’s automatic registration setting is enabled. Existing-account linking is a separate opt-in and requires a verified, unique email."
 msgstr ""
 
 #. translators: %s: required WordPress capability, displayed as code.
-#: includes/class-admin.php:1253
+#: includes/class-admin.php:1252
 #, php-format
 msgid "Enable AI / MCP abilities on the Integrations screen. Authenticate your MCP client with an administrator who has %s."
 msgstr ""
 
 #. translators: %s: ability namespace, displayed as code.
-#: includes/class-admin.php:1255
+#: includes/class-admin.php:1254
 #, php-format
 msgid "Discover the eight %s abilities for status, provider configuration, validation, diagnosis, repair, audit, support preparation, and support submission. Review configuration changes before asking a client to execute them."
 msgstr ""
 
-#: includes/class-admin.php:1256
+#: includes/class-admin.php:1255
 msgid "AI / MCP setup"
 msgstr ""
 
-#: includes/class-admin.php:1256
+#: includes/class-admin.php:1255
 msgid "Use WordPress 6.9 or later and install the official WordPress MCP Adapter for MCP transport."
 msgstr ""
 
-#: includes/class-admin.php:1256
+#: includes/class-admin.php:1255
 msgid "Connect Claude Desktop, Cursor, ChatGPT, or another MCP client to your adapter’s authenticated endpoint. Follow the adapter’s current transport and authentication setup."
 msgstr ""
 
-#: includes/class-admin.php:1256
+#: includes/class-admin.php:1255
 msgid "Disabling the abilities setting removes execution access. Abilities never return client IDs, secrets, access tokens, or refresh tokens."
 msgstr ""
 
-#: includes/class-admin.php:1258
+#: includes/class-admin.php:1257
 msgid "Configuration backup"
 msgstr ""
 
-#: includes/class-admin.php:1258
+#: includes/class-admin.php:1257
 msgid "Download configuration backup"
 msgstr ""
 
-#: includes/class-admin.php:1258
+#: includes/class-admin.php:1257
 msgid "Credential-free JSON includes mappings and policy. Client IDs, all secrets, and tokens are excluded. Restore retains existing credentials by app ID; on a clean installation, incomplete providers and login enforcement remain disabled until credentials are entered. Retain an independent WordPress database backup for complete recovery."
 msgstr ""
 
-#: includes/class-admin.php:1260
+#: includes/class-admin.php:1259
 msgid "Importing…"
 msgstr ""
 
-#: includes/class-admin.php:1260
+#: includes/class-admin.php:1259
 msgid "Importing your configuration…"
 msgstr ""
 
-#: includes/class-admin.php:1263
+#: includes/class-admin.php:1262
 msgid "Restore configuration JSON (maximum 1 MB)"
 msgstr ""
 
-#: includes/class-admin.php:1263
+#: includes/class-admin.php:1262
 msgid "Import configuration"
 msgstr ""
 
-#: includes/class-admin.php:1265
+#: includes/class-admin.php:1264
 msgid "Support"
+msgstr ""
+
+#: includes/class-admin.php:1264
+#: includes/class-display.php:20
+msgid "Report a bug"
 msgstr ""
 
 #: includes/class-admin.php:1265
@@ -2861,73 +2869,78 @@ msgstr ""
 msgid "Choose a custom icon image or select provider icons."
 msgstr ""
 
-#: includes/class-display.php:18
+#: includes/class-display.php:19
 msgid "Settings"
 msgstr ""
 
-#: includes/class-display.php:152
+#: includes/class-display.php:156
 #: includes/class-logout-view.php:10
 msgid "Sign out"
 msgstr ""
 
-#: includes/class-display.php:208
+#. translators: Keep ##user## and ##Sign Out## unchanged; they are replaced with the display name and sign-out link.
+#: includes/class-display.php:158
+msgid "Signed in as ##user##. ##Sign Out##"
+msgstr ""
+
+#: includes/class-display.php:216
 msgid "SSO profile attributes"
 msgstr ""
 
-#: includes/class-display.php:221
-#: includes/class-display.php:238
+#: includes/class-display.php:229
+#: includes/class-display.php:246
 msgid "PortalWeave SSO login audit"
 msgstr ""
 
-#: includes/class-display.php:229
+#: includes/class-display.php:237
 msgid "SSO login audit"
 msgstr ""
 
-#: includes/class-display.php:250
+#: includes/class-display.php:258
 msgid "PortalWeave SSO login"
 msgstr ""
 
-#: includes/class-display.php:250
+#: includes/class-display.php:258
 msgid "OAuth and OpenID Connect login buttons."
 msgstr ""
 
-#: includes/class-display.php:265
+#: includes/class-display.php:273
 msgid "Title"
 msgstr ""
 
-#: includes/class-display.php:266
+#: includes/class-display.php:274
 msgid "All enabled providers"
 msgstr ""
 
-#: includes/class-extensions.php:598
+#: includes/class-extensions.php:608
 msgid "SSO account moderation"
 msgstr ""
 
-#: includes/class-extensions.php:598
+#: includes/class-extensions.php:608
 msgid "Approval"
 msgstr ""
 
-#: includes/class-extensions.php:601
+#: includes/class-extensions.php:611
 msgid "No moderation policy"
 msgstr ""
 
-#: includes/class-extensions.php:601
+#: includes/class-extensions.php:611
 msgid "Pending approval"
 msgstr ""
 
-#: includes/class-extensions.php:601
+#: includes/class-extensions.php:611
 msgid "Approved"
 msgstr ""
 
-#: includes/class-extensions.php:601
+#: includes/class-extensions.php:611
 msgid "Blocked"
 msgstr ""
 
-#: includes/class-extensions.php:604
+#: includes/class-extensions.php:614
 msgid "Approval never changes WordPress roles."
 msgstr ""
 
-#: includes/class-extensions.php:769
+#: includes/class-extensions.php:779
 msgid "SSO login failed"
 msgstr ""
 
@@ -4356,6 +4369,6 @@ msgstr ""
 msgid "Credentials are stored encrypted on this WordPress installation. They are excluded from configuration exports."
 msgstr ""
 
-#: portalweave-sso.php:26
+#: portalweave-sso.php:30
 msgid "PortalWeave SSO requires the PHP OpenSSL extension. Enable it on the server to activate authentication features."
 msgstr ""

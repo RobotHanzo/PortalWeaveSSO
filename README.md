@@ -12,6 +12,10 @@ Add OAuth 2.0 and OpenID Connect sign-in to WordPress with multiple identity pro
 
 Requires **WordPress 6.5+**, **PHP 8.1+ with OpenSSL**, and **HTTPS**.
 
+Found a bug? [Submit a GitHub issue](https://github.com/RobotHanzo/PortalWeaveSSO/issues/new/choose).
+
+Common interface text is available in Spanish, French, German, Brazilian Portuguese, Simplified Chinese, Traditional Chinese and Japanese. Technical text without a translation uses English. See [language settings](docs/provider-setup.md#languages).
+
 ## Quick start
 
 1. [Download the plugin ZIP](https://github.com/RobotHanzo/PortalWeaveSSO/releases/download/v1.3.2/portalweave-sso-1.3.2.zip), upload it through **Plugins → Add New → Upload Plugin**, and activate **PortalWeave SSO**.
@@ -152,7 +156,9 @@ Choose what to record and how long to retain it.
 
 Download and restore credential-free configuration backups.
 
-![Configuration backup, restore and troubleshooting controls](docs/screenshots/backup-support.png)
+![Configuration backup, restore, troubleshooting and GitHub bug reporting controls](docs/screenshots/backup-support.png)
+
+The support addresses shown are fictional sample destinations.
 
 On multisite, manage the current network's configuration and enforcement.
 

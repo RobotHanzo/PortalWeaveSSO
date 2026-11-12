@@ -32,6 +32,8 @@ This is an independent plugin. Provider names describe integrations and do not i
 
 The plugin has no developer-hosted authentication, tracking, licensing or update service. It sends no telemetry to its author and downloads no remote executable code. All plugin JavaScript and CSS are distributed locally.
 
+Report a bug opens the [GitHub issue tracker](https://github.com/RobotHanzo/PortalWeaveSSO/issues) only when selected. No configuration or logs are attached automatically. GitHub receives the browser request and any information you submit. [Privacy](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement), [terms](https://docs.github.com/en/site-policy/github-terms/github-terms-of-service).
+
 Each service below is an optional identity provider used to sign users in and obtain the configured profile/group claims for local account and access decisions. No provider is contacted until an administrator configures it and its authentication flow runs. Preset setup and bundled logos work locally.
 
 For every configured identity service below, sign-in sends the browser to its authorization endpoint with the client identifier, scopes, callback URL, random state/nonce and PKCE challenge. WordPress sends the returned authorization code, PKCE verifier and configured client authentication to that service's token endpoint; it sends an access token when requesting profile or group data. Public signing-key requests send no user token. Explicit refresh sends the refresh token and client authentication. Configured logout sends the browser to that service with client ID, callback, state and an ID-token hint when available. An explicitly enabled legacy Password grant sends the entered username/password to that provider over HTTPS without retaining the password; the legacy Implicit grant returns tokens through the browser callback. These transfers happen only for the configured login, validation, refresh or logout operation. Tokens are never included in audit or support exports.
@@ -78,6 +80,12 @@ Upgrades from PortalWeave SSO 1.0.1 retain existing configuration. Replacing an 
 Optional features start disabled. Use the distributed user guides for provider, SCIM, media and MCP setup. Development source and build tools are [publicly maintained](https://github.com/RobotHanzo/PortalWeaveSSO).
 
 == Frequently Asked Questions ==
+= Which languages are included? =
+Bundled translations cover common interface text and sign-in/sign-out screens in Spanish, French, German, Brazilian Portuguese, Simplified Chinese, Traditional Chinese and Japanese. Choose your Site Language in WordPress Settings > General, or your personal administration language in Users > Profile. Technical text without a translation uses English. Custom provider names, button text and messages stay as entered.
+
+= Where can I report a bug? =
+Use the [GitHub bug tracker](https://github.com/RobotHanzo/PortalWeaveSSO/issues/new/choose). Include reproduction steps and your WordPress, PHP and plugin versions. Keep credentials, tokens and personal data out of public issues.
+
 = Can media be private? =
 Yes. Selected originals and registered sizes move to a writable directory outside the document root, and use authenticated delivery. Purge existing CDN copies and include the vault in backups. Review custom image/storage integrations before rollout.
 

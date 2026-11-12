@@ -21,6 +21,11 @@ define('PORTALWEAVE_SSO_FILE', __FILE__);
 define('PORTALWEAVE_SSO_DIR', plugin_dir_path(__FILE__));
 define('PORTALWEAVE_SSO_URL', plugin_dir_url(__FILE__));
 
+add_action('init', static function () {
+    // phpcs:ignore PluginCheck.CodeAnalysis.DiscouragedFunctions.load_plugin_textdomainFound -- GitHub/manual ZIP installs need the bundled catalogs before WordPress.org language packs are available.
+    load_plugin_textdomain('portalweave-sso', false, dirname(plugin_basename(PORTALWEAVE_SSO_FILE)) . '/languages');
+}, 0);
+
 if (!function_exists('openssl_encrypt') || !function_exists('openssl_verify')) {
     add_action('admin_notices', static function () {
         echo '<div class="notice notice-error"><p>' . esc_html__('PortalWeave SSO requires the PHP OpenSSL extension. Enable it on the server to activate authentication features.', 'portalweave-sso') . '</p></div>';
