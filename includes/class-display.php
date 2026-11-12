@@ -14,10 +14,14 @@ final class Display
         add_action('login_enqueue_scripts', [self::class, 'assets']);
         add_action('login_form', [self::class, 'login_buttons']);
         add_action('woocommerce_login_form_end', [self::class, 'login_buttons']);
-        add_filter('plugin_action_links_' . plugin_basename(PORTALWEAVE_SSO_FILE), static function ($links) {
-            array_unshift($links, '<a href="' . esc_url(admin_url('admin.php?page=portalweave-sso')) . '">' . esc_html__('Settings', 'portalweave-sso') . '</a>');
+        $plugin_links = static function ($links) {
+            $settings_url = is_network_admin() ? network_admin_url('admin.php?page=portalweave-sso') : admin_url('admin.php?page=portalweave-sso');
+            array_unshift($links, '<a href="' . esc_url($settings_url) . '">' . esc_html__('Settings', 'portalweave-sso') . '</a>');
+            $links[] = '<a href="' . esc_url('https://github.com/RobotHanzo/PortalWeaveSSO/issues/new/choose') . '" target="_blank" rel="noopener noreferrer">' . esc_html__('Report a bug', 'portalweave-sso') . '</a>';
             return $links;
-        });
+        };
+        add_filter('plugin_action_links_' . plugin_basename(PORTALWEAVE_SSO_FILE), $plugin_links);
+        add_filter('network_admin_plugin_action_links_' . plugin_basename(PORTALWEAVE_SSO_FILE), $plugin_links);
         add_action('wp_login', static function ($name, $user, $context = '') {
             // Only internal SSO emitters supply this context; request parameters
             // and persistent provider links cannot identify the current login.
@@ -150,7 +154,9 @@ final class Display
         if (is_user_logged_in()) {
             $user = wp_get_current_user();
             $link = !empty($style['logout_link']) ? '<a class="portalweave-sso-logout" href="' . esc_url(Auth::logout_url()) . '">' . esc_html__('Sign out', 'portalweave-sso') . '</a>' : '';
-            $message = str_replace(['##user##', '##Sign Out##'], [esc_html($user->display_name), $link], $style['logout_message']);
+            /* translators: Keep ##user## and ##Sign Out## unchanged; they are replaced with the display name and sign-out link. */
+            $template = $style['logout_message'] === 'Signed in as ##user##. ##Sign Out##' ? __('Signed in as ##user##. ##Sign Out##', 'portalweave-sso') : $style['logout_message'];
+            $message = str_replace(['##user##', '##Sign Out##'], [esc_html($user->display_name), $link], $template);
             return wp_kses($html . '<p class="portalweave-sso-session">' . $message . '</p></div>', self::allowed_html());
         }
         $title = ($args['title'] ?? '') ?: $style['above_text'];
@@ -167,7 +173,9 @@ final class Display
             if (!$app['enabled'] || (!empty($args['app']) && $args['app'] !== $id)) {
                 continue;
             }
-            $text = $app['button_text'] ?: str_replace('{app}', $app['name'] ?: $id, $style['text']);
+            /* translators: Keep {app} unchanged; it is replaced with the provider name. */
+            $template = $style['text'] === 'Sign in with {app}' ? __('Sign in with {app}', 'portalweave-sso') : $style['text'];
+            $text = $app['button_text'] ?: str_replace('{app}', $app['name'] ?: $id, $template);
             if ($custom !== null) {
                 if ($custom['text'] !== '') {
                     $text = str_replace('{app}', $app['name'] ?: $id, $custom['text']);

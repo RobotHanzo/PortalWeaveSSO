@@ -27,6 +27,8 @@ The provider setup guide derives configuration locally and displays bundled prov
 
 **Test SSO Config** intentionally displays the provider's returned attributes to the authenticated administrator who initiated the test. It does not automatically send the result to support. Treat copied results and screenshots as personal data and remove secrets before sharing them.
 
+The **Report a bug** links open this project's [GitHub issue tracker](https://github.com/RobotHanzo/PortalWeaveSSO/issues) only when selected. They do not attach configuration, logs or account data. GitHub receives the browser request and any information the reporter chooses to submit; see [GitHub's privacy statement](https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement) and [terms of service](https://docs.github.com/en/site-policy/github-terms/github-terms-of-service).
+
 ## Provider privacy notices and terms
 
 These links were checked against official provider resources on 6 November 2026. They help locate the provider's published notices; the contract, product edition, region, tenant and organization that operate your endpoints determine which terms apply. A provider name in a template does not imply affiliation, certification or endorsement. Check the provider's current resources and your own service agreement before enabling an integration.

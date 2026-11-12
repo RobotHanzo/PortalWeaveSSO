@@ -6,6 +6,14 @@ The proposed directory slug and text domain are `portalweave-sso`. Use the `[por
 
 SSO requires HTTPS. Configure WordPress's HTTPS detection for a trusted reverse proxy when TLS terminates there. Keep `AUTH_KEY`, `SECURE_AUTH_KEY` and the WordPress salts stable: stored secrets and tokens depend on them for encryption. Changing them requires re-entering credentials and signing in again. Include this server configuration in your protected recovery backup.
 
+## Languages
+
+The plugin bundles editable PO catalogs and compiled MO files for Spanish (`es_ES`), French (`fr_FR`), German (`de_DE`), Brazilian Portuguese (`pt_BR`), Simplified Chinese (`zh_CN`), Traditional Chinese (`zh_TW`) and Japanese (`ja`). Select **Settings → General → Site Language** for public screens, or **Users → Profile → Language** for your administration screens. WordPress manages installation of its own language packs.
+
+The initial catalogs translate common navigation, provider and appearance controls, activity labels, sign-in/sign-out screens and common errors (333 messages per locale). Advanced technical explanations and provider-console instructions currently fall back to English. The translations have not received native-speaker review. Administrator-supplied provider names and custom button/session text remain as entered. The built-in default button and signed-in message translate when displayed, without rewriting saved settings.
+
+Report translation corrections through the [GitHub issue tracker](https://github.com/RobotHanzo/PortalWeaveSSO/issues/new/choose), including the locale and source text. Maintainers can follow the [catalog workflow](https://github.com/RobotHanzo/PortalWeaveSSO/blob/main/docs/architecture.md#translation-catalogs).
+
 ## Client IPs behind Nginx and Cloudflare
 
 In **Activity**, enable **Include client IP addresses in audit events** only when needed and disclose the collection in the site's privacy policy. It remains off by default. With collection enabled, the plugin normally records the validated PHP `REMOTE_ADDR`. The deployment settings below affect new audit rows; existing rows and retention preferences are unchanged. They do not configure WordPress's HTTPS detection or change authentication policy.

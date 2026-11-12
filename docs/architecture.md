@@ -33,6 +33,24 @@ Untrusted provider payloads cannot select keys/algorithms, override verified ID-
 
 Verification includes PHP lint, focused cryptographic/security tests, a real WordPress integration environment where possible, and an installable ZIP. Live IdP and web-server deployment checks are documented as environment-dependent.
 
+## Translation catalogs
+
+`languages/portalweave-sso.pot` is the source template. Each bundled locale has `portalweave-sso-LOCALE.po` and a compiled `portalweave-sso-LOCALE.mo`. The bootstrap registers the bundled directory on `init` at priority zero using `load_plugin_textdomain`; WordPress selects the request/user locale and gives centrally installed language packs precedence. See the [WordPress translation-loading guidance](https://make.wordpress.org/core/2024/10/21/i18n-improvements-6-7/).
+
+The first seven catalogs contain 333 translated messages each; untranslated entries deliberately retain English fallback. Provider-console instructions and advanced explanations still need translation and native-speaker review. Do not mark English source copies as translated to inflate coverage.
+
+Regenerate the template with WP-CLI from the repository root, then merge it into each PO using a gettext editor or `msgmerge`:
+
+```sh
+wp i18n make-pot . languages/portalweave-sso.pot --domain=portalweave-sso --exclude=tests,scripts,.tools,.test-runtime,reports,dist,release-stage --headers='{"Report-Msgid-Bugs-To":"https://github.com/RobotHanzo/PortalWeaveSSO/issues"}'
+bash scripts/l10n.sh
+bash scripts/l10n.sh --check
+```
+
+The dependency-free compiler validates locale headers, source IDs, plural forms and placeholders before producing deterministic GNU MO files. Preserve printf placeholders, `{app}`, `##user##` and `##Sign Out##`. Leave incomplete messages empty; fuzzy translations must be reviewed before compilation. The Node tooling suite checks that committed MO files match their PO sources. WordPress integration tests switch through all seven locales, exercise real MO loading and verify default versus custom login text. Runtime JavaScript receives translated strings from PHP through existing data attributes; no JavaScript language-pack compilation is required.
+
+Catalogs and the template are included by the existing production manifest. Development compilation tools remain outside the production ZIP. See [language settings](provider-setup.md#languages) for coverage and operator instructions.
+
 ## Extension hooks
 
 `portalweave_sso_pre_resolve` can supply a WP_User/WP_Error before normal account resolution; it has full authentication authority and must enforce equivalent policies. `portalweave_sso_account_allowed` runs before account changes. `portalweave_sso_user_resolved` observes the saved user and attributes. `portalweave_sso_pre_authenticate` can reject the resolved user before cookies. `portalweave_sso_authenticated` observes successful authentication. `portalweave_sso_login_redirect` supplies a destination that is still validated against the redirect allowlist. `portalweave_sso_audit_recorded`, `portalweave_sso_configuration_saved`, `portalweave_sso_cleanup_complete` and `portalweave_sso_backchannel_logout` expose operational events. `portalweave_sso_redacted_configuration` can adjust sanitized exports; do not reintroduce credentials.

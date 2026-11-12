@@ -1013,7 +1013,9 @@ final class Admin {
         $custom = $section === 'wordpress' && !empty($style['enabled']);
         $shared = $settings['button'];
         $styled = $section === 'shared' || $custom || !empty($shared['admin_style']);
-        $label = $app['text'] ?: str_replace('{app}', $app['name'], $shared['text']);
+        /* translators: Keep {app} unchanged; it is replaced with the provider name. */
+        $template = $shared['text'] === 'Sign in with {app}' ? __('Sign in with {app}', 'portalweave-sso') : $shared['text'];
+        $label = $app['text'] ?: str_replace('{app}', $app['name'], $template);
         if ($custom) {
             $label = $style['text'] !== '' ? str_replace('{app}', $app['name'], $style['text']) : $label;
             if ($label === '') {
@@ -1259,7 +1261,8 @@ final class Admin {
             self::hidden_scope($network, 'tools');
             echo '<label for="portalweave-sso-import">' . esc_html__('Restore configuration JSON (maximum 1 MB)', 'portalweave-sso') . '</label><p><input type="file" id="portalweave-sso-import" name="configuration" accept="application/json,.json" required> <button type="submit" class="button">' . esc_html__('Import configuration', 'portalweave-sso') . '</button></p></form>';
         }
-        echo '<h3>' . esc_html__('Support', 'portalweave-sso') . '</h3><p>' . esc_html__('Support destinations are configured by your site administrator.', 'portalweave-sso') . '</p><p class="portalweave-sso-support-links">';
+        echo '<h3>' . esc_html__('Support', 'portalweave-sso') . '</h3><p><a class="button" href="' . esc_url('https://github.com/RobotHanzo/PortalWeaveSSO/issues/new/choose') . '" target="_blank" rel="noopener noreferrer">' . esc_html__('Report a bug', 'portalweave-sso') . '</a></p>';
+        echo '<p>' . esc_html__('Support destinations are configured by your site administrator.', 'portalweave-sso') . '</p><p class="portalweave-sso-support-links">';
         foreach (['booking_url' => __('Book a call / screen-share', 'portalweave-sso'), 'forum_url' => __('Visit support forum', 'portalweave-sso'), 'demo_url' => __('Request a demo / trial', 'portalweave-sso')] as $key => $label) {
             if (!empty($settings['support'][$key])) {
                 echo '<a class="button" href="' . esc_url($settings['support'][$key]) . '" target="_blank" rel="noopener noreferrer">' . esc_html($label) . '</a> ';

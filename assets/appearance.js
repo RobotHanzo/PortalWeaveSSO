@@ -96,7 +96,8 @@
         preview.style.setProperty('--portalweave-sso-wp-' + variable, pixels('wp_login_button', key, min, max));
       }
       preview.style.setProperty('--portalweave-sso-wp-width', value('wp_login_button', 'full_width') ? '100%' : 'fit-content');
-      const sharedLabel = selected.dataset.providerText || value('button', 'text').replaceAll('{app}', name);
+      const sharedTemplate = value('button', 'text');
+      const sharedLabel = selected.dataset.providerText || (sharedTemplate === 'Sign in with {app}' ? note.dataset.defaultTemplate : sharedTemplate).replaceAll('{app}', name);
       label.textContent = custom ? (value('wp_login_button', 'text') ? value('wp_login_button', 'text').replaceAll('{app}', name)
         : sharedLabel || note.dataset.defaultTemplate.replaceAll('{app}', name)) : sharedLabel;
       above.textContent = value('button', 'above_text');
