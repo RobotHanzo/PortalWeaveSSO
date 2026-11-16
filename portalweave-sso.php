@@ -1,6 +1,6 @@
 <?php
 /**
- * Plugin Name: PortalWeave SSO
+ * Plugin Name: PortalWeave SSO: OAuth 2.0 & OpenID Connect Login
  * Plugin URI: https://github.com/RobotHanzo/PortalWeaveSSO
  * Description: Multi-provider OAuth/OIDC sign-in, provisioning, access control and audit tools.
  * Version: 1.4.0

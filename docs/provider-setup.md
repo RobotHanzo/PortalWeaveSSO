@@ -1,6 +1,6 @@
 # PortalWeave SSO provider setup and administrator guide
 
-Install `portalweave-sso-1.4.0.zip` through **Plugins → Add New → Upload Plugin**, activate **PortalWeave SSO**, and open **PortalWeave SSO** in the WordPress admin sidebar. On multisite, **Network Admin → PortalWeave SSO** can enforce a network-wide policy. Each WordPress network has its own network option.
+Install `portalweave-sso-1.4.0.zip` through **Plugins → Add New → Upload Plugin**, activate **PortalWeave SSO: OAuth 2.0 & OpenID Connect Login**, and open **PortalWeave SSO** in the WordPress admin sidebar. On multisite, **Network Admin → PortalWeave SSO** can enforce a network-wide policy. Each WordPress network has its own network option.
 
 The assigned directory slug and text domain are `portalweave-sso`. Use the `[portalweave_sso_login]` shortcode, `PORTALWEAVE_SSO_*` server configuration constants, `PortalWeaveSSO` PHP namespace and `wp portalweave-sso` commands.
 

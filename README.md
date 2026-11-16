@@ -1,4 +1,4 @@
-# <img src="assets/branding/logo.png" width="48" height="48" alt=""> PortalWeave SSO
+# <img src="assets/branding/logo.png" width="48" height="48" alt=""> PortalWeave SSO: OAuth 2.0 & OpenID Connect Login
 
 ![PortalWeave SSO — OAuth & OpenID Connect for WordPress](.wordpress-org/banner-1544x500.png)
 
@@ -18,7 +18,7 @@ Common interface text is available in Spanish, French, German, Brazilian Portugu
 
 ## Quick start
 
-1. [Download the plugin ZIP](https://github.com/RobotHanzo/PortalWeaveSSO/releases/download/v1.4.0/portalweave-sso-1.4.0.zip), upload it through **Plugins → Add New → Upload Plugin**, and activate **PortalWeave SSO**.
+1. [Download the plugin ZIP](https://github.com/RobotHanzo/PortalWeaveSSO/releases/download/v1.4.0/portalweave-sso-1.4.0.zip), upload it through **Plugins → Add New → Upload Plugin**, and activate **PortalWeave SSO: OAuth 2.0 & OpenID Connect Login**.
 2. Open **PortalWeave SSO → Identity providers → Add provider** from the WordPress admin sidebar. Follow the service's guide, register its callback URL and save your credentials. Run **Test SSO Config**, configure account mappings and test a regular user before enforcing login.
 3. Add `[portalweave_sso_login]` to a page, use the **PortalWeave SSO login** widget, or sign in through the WordPress and WooCommerce login buttons.
 

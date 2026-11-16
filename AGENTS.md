@@ -10,7 +10,7 @@ This guide applies to the whole repository. PortalWeave SSO is a WordPress OAuth
 - `tests/` contains PHP integration/multisite suites, HTTPS IdP fixtures and Node tooling tests. `scripts/` owns validation, reporting, staging and packaging. `.github/workflows/` is the executable CI/release contract.
 - `readme.txt` is the WordPress.org listing. `README.md`, `docs/` and `submission/` cover development, deployment and reviewer information. Treat recorded test counts and scan results as historical snapshots; current runners and workflow artifacts are authoritative.
 
-Keep the public name, main filename, directory slug and literal text domain aligned: **PortalWeave SSO**, `portalweave-sso.php`, `portalweave-sso`. Bootstrap constants use `PORTALWEAVE_SSO_*`.
+Use **PortalWeave SSO: OAuth 2.0 & OpenID Connect Login** as the plugin/listing name and **PortalWeave SSO** as the compact UI brand. Keep the main filename, directory slug and literal text domain aligned: `portalweave-sso.php`, `portalweave-sso`. Bootstrap constants use `PORTALWEAVE_SSO_*`.
 
 Use the `PortalWeaveSSO` PHP namespace, `portalweave_sso_*` hooks/options/errors, `[portalweave_sso_login]`, `wp portalweave-sso` commands and documented `PORTALWEAVE_SSO_*` server configuration constants. Routes, abilities, asset handles and the distribution directory use `portalweave-sso`. The Docker source mount is `/var/www/html/wp-content/plugins/portalweave-sso`. Do not reintroduce earlier naming aliases. This is a breaking namespace replacement; existing installations require the controlled transition described in [provider setup](docs/provider-setup.md#replacing-an-earlier-installation).
 

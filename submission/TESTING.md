@@ -1,6 +1,6 @@
 # Testing PortalWeave SSO 1.0.0
 
-The uploadable archive contains a single `portalweave-sso` directory. Install it through **Plugins → Add New → Upload Plugin**, activate **PortalWeave SSO**, then open **Settings → PortalWeave SSO**. Use WordPress 6.5+, PHP 8.1+ with OpenSSL, and HTTPS. No developer account, activation key or paid module unlock is required.
+The uploadable archive contains a single `portalweave-sso` directory. Install it through **Plugins → Add New → Upload Plugin**, activate **PortalWeave SSO: OAuth 2.0 & OpenID Connect Login**, then open **PortalWeave SSO** in the WordPress admin sidebar. Use WordPress 6.5+, PHP 8.1+ with OpenSSL, and HTTPS. No developer account, activation key or paid module unlock is required.
 
 ## Provider login
 
