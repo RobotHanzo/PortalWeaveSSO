@@ -33,6 +33,38 @@ final class Audit
         }
     }
 
+    /** Record a failed local authentication without retaining unverified identity or arbitrary error payloads. */
+    public static function local_failure($name, $error = null): void
+    {
+        // The attempted name is unverified input and can itself contain credentials.
+        // Only fixed identifiers enter either the audit table or the debug log.
+        $reasons = [
+            'invalid_username' => 'invalid_username', 'invalid_email' => 'invalid_email',
+            'incorrect_password' => 'incorrect_password', 'empty_username' => 'empty_username',
+            'empty_password' => 'empty_password', 'authentication_failed' => 'authentication_failed',
+            'application_passwords_disabled' => 'application_passwords_disabled',
+            'application_passwords_disabled_for_user' => 'application_passwords_disabled_for_user',
+            'portalweave_sso_account_inactive' => 'account_inactive',
+            'portalweave_sso_guest_expired' => 'guest_expired',
+            'portalweave_sso_approval_pending' => 'approval_pending',
+            'portalweave_sso_account_blocked' => 'account_blocked',
+        ];
+        $code = $error instanceof \WP_Error ? $error->get_error_code() : '';
+        $reason = is_string($code) && isset($reasons[$code]) ? $reasons[$code] : 'credentials';
+        $context = '';
+        if (defined('XMLRPC_REQUEST') && XMLRPC_REQUEST) {
+            $context = 'xmlrpc_';
+        } elseif ((defined('REST_REQUEST') && REST_REQUEST)
+            || (isset($GLOBALS['wp']->query_vars['rest_route']) && is_string($GLOBALS['wp']->query_vars['rest_route'])
+                && $GLOBALS['wp']->query_vars['rest_route'] !== '')) {
+            // WordPress can resolve a REST route before REST_REQUEST is defined.
+            $context = 'rest_';
+        } elseif (($GLOBALS['pagenow'] ?? '') === 'wp-login.php') {
+            $context = 'login_';
+        }
+        self::record('local_failure', '', null, 'portalweave_sso_local_' . $context . $reason);
+    }
+
     public static function record($status, $app = '', $user = null, $code = '', $navigation = ''): void
     {
         global $wpdb;

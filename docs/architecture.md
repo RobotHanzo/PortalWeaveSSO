@@ -11,7 +11,7 @@ All classes are in `PortalWeaveSSO`, use `ABSPATH` guards, and are loaded by the
 - `Http`: static `json($url, array $args = [])` uses WordPress safe HTTP, HTTPS, no redirects, bounded body/time; returns decoded object-as-array or WP_Error.
 - `Redirect`: static `validate($url, $fallback = '')` validates same-origin or explicit allowlist prefix with path boundary; `current()` returns current safe site URL.
 - `ClientIp`: static `current()` resolves the current request's validated address for opt-in audit collection. Server-only `PORTALWEAVE_SSO_TRUSTED_PROXIES` and `PORTALWEAVE_SSO_CLIENT_IP_HEADER` define proxy/header trust; the default uses `REMOTE_ADDR` and ignores forwarded headers. Resolution is bounded, walks XFF from the nearest hop to the first untrusted address, and fails back to the connection address when the selected header or configuration is invalid. It does not mutate server globals or authentication policy. See [deployment settings](provider-setup.md#client-ips-behind-nginx-and-cloudflare).
-- `Audit`: static `install()`, `record($status, $app = '', $user = null, $code = '', $navigation = '')`, `recent(array $args = [])`, `cleanup()`. Append-only transaction rows, weekly debug cleanup, bounded audit retention.
+- `Audit`: static `install()`, `local_failure($name, $error = null)`, `record($status, $app = '', $user = null, $code = '', $navigation = '')`, `recent(array $args = [])`, `cleanup()`. Append-only transaction rows, weekly debug cleanup, bounded audit retention.
 - `Jwt`: static `validate($jwt, array $app, array $context = [])` -> claims or WP_Error. Context: `nonce`, `access_token`, `require_at_hash`, `audience`, `issuer`. Explicit allowed algorithms, issuer/audience/expiry/iat/nonce, RSA JWKS, HMAC secret. No token-directed key URLs.
 - `Auth`: static `register()`, `login_url($app_id, $redirect = '', $test = false, $popup = false)`, `logout_url($redirect = '')`, `refresh($user_id, $app_id)`, `token_meta_key($app_id)`, `app_meta_key()`, `remember_sid($user_id, $app, $attributes)`, `backchannel_logout($app_id, $token)`. Owns `portalweave_sso_action=login|callback|logout|logout_callback|password|backchannel_logout`, state/nonce/browser binding, token exchange and auth cookies. Calls `Accounts::resolve($app, $attributes, $tokens)`; `resolve` does not set cookies. Login tests are manage_options + nonce restricted and do not log the administrator in as the test subject. Provider array includes `id`.
 - `Accounts`: static `resolve(array $app, array $attributes, array $tokens = [])` -> WP_User or WP_Error. Provider identity is issuer/app + immutable subject. Auto-link only on verified email and opt-in. Admin SSO disabled by default; verified per-provider admin claim required when enabled. Role, attribute, email/domain restrictions apply before mutations.
@@ -20,6 +20,24 @@ All classes are in `PortalWeaveSSO`, use `ABSPATH` guards, and are loaded by the
 - `Access`: static `register()`, `allows($rule, $user = null)`, `can_post($id, $user = null)`, `protect_media($id)`, `unprotect_media($id)`; site/content/category/attachment restrictions, standard login blocking, SSO enforcement. Private-media originals, derivatives and backup sizes are relocated outside the document root and URLs use authenticated delivery. Prior CDN copies and custom offloaded/image-regeneration integrations require deployment checks.
 - `Extensions`: static `register()`. Opt-in SCIM, JWT SSO, guest identities, moderation, avatar mapping, attribute redirects, bounded shared-domain sign-in. Owns additional REST routes. Checks permissions and module toggles internally.
 - `Abilities`: static `register()`. Exactly eight admin-only abilities; off by default; never exposes secrets. `Cli`: static `register()`.
+
+## Local authentication failure auditing
+
+`Display::register()` subscribes `Audit::local_failure()` to both arguments of WordPress's `wp_login_failed` hook. Each hook invocation records one `local_failure` event. No retry loop, aggregation or suppression is applied; multiple events can share the same second, and an event is not necessarily a distinct HTTP request. This observer does not change the authentication result.
+
+New error codes follow `portalweave_sso_local_[context_]reason`. The optional context is `login` for WordPress's login-page context, `xmlrpc` for `XMLRPC_REQUEST`, or `rest` for `REST_REQUEST` or a nonempty string route already resolved in WordPress's query variables. XML-RPC takes precedence, then REST, then the login page. Raw query parameters cannot select the context. Unclassified requests omit it; a root navigation URL alone does not identify their endpoint because query strings remain stripped.
+
+| Recognized primary error | Recorded reason |
+| --- | --- |
+| `invalid_username`, `invalid_email`, `incorrect_password` | Same fixed identifier |
+| `empty_username`, `empty_password`, `authentication_failed` | Same fixed identifier; core normally omits empty-credential failures from this hook |
+| `application_passwords_disabled`, `application_passwords_disabled_for_user` | Same fixed identifier |
+| `portalweave_sso_account_inactive`, `portalweave_sso_guest_expired`, `portalweave_sso_approval_pending`, `portalweave_sso_account_blocked` | Identifier without the `portalweave_sso_` prefix |
+| Missing, malformed or unrecognized error | `credentials` |
+
+For example, a password mismatch on the login page records `portalweave_sso_local_login_incorrect_password`; an unknown account over XML-RPC records `portalweave_sso_local_xmlrpc_invalid_username`. The generic unclassified fallback remains `portalweave_sso_local_credentials`. Existing historical rows are unchanged. Only the primary error is classified, using a fixed allowlist: arbitrary third-party codes, messages, error data and attempted names never enter the audit/debug records. Failed events keep user ID zero and empty username, email and provider fields, without resolving an unverified identity to a local or network account.
+
+This hook can observe ordinary logins, XML-RPC and integrations that call `wp_authenticate()` or emit it explicitly. Native REST application-password authentication uses separate hooks and is not added to this observer's coverage. Context describes WordPress's request routing, not proof that a particular authentication mechanism ran. IP opt-in, explicit proxy trust, site scoping, retention, personal-data handling and the independent 5,000-row CSV limit remain unchanged.
 
 ## Settings shape
 
