@@ -151,6 +151,125 @@ foreach (['post' => 'wp/v2/posts', 'page' => 'wp/v2/pages', 'pw_sso_case_fixture
     });
 }
 
+portalweave_sso_test('REST comment reads apply parent policy before item output and collection totals', function () {
+    $posts = [];
+    $comments = [];
+    $users = [];
+    try {
+        foreach (['Restricted discussion', 'Public discussion'] as $title) {
+            $posts[] = wp_insert_post(['post_title' => $title, 'post_status' => 'publish', 'comment_status' => 'open']);
+            $comments[] = wp_insert_comment(['comment_post_ID' => end($posts), 'comment_content' => $title . ' comment', 'comment_author' => 'Fictional reader', 'comment_approved' => 1]);
+        }
+        foreach (['subscriber', 'editor'] as $role) {
+            $users[$role] = wp_insert_user(['user_login' => 'comment_' . $role . '_' . bin2hex(random_bytes(5)), 'user_pass' => wp_generate_password(40), 'role' => $role]);
+            portalweave_sso_assert(!is_wp_error($users[$role]), 'Comment fixture user failed');
+        }
+        update_user_meta($users['editor'], \PortalWeaveSSO\Accounts::groups_meta_key(), ['discussion-members']);
+        foreach ([['login' => true], ['roles' => ['editor']], ['groups' => ['discussion-members']]] as $rule) {
+            update_post_meta($posts[0], '_portalweave_sso_rule', $rule);
+            foreach ([0, $users['subscriber'], $users['editor']] as $user_id) {
+                wp_set_current_user($user_id);
+                $allowed = \PortalWeaveSSO\Access::can_post($posts[0]);
+                foreach (['/wp/v2/comments', '/WP/V2/COMMENTS'] as $route) {
+                    foreach (['GET', 'HEAD'] as $method) {
+                        $response = rest_do_request(new WP_REST_Request($method, $route . '/' . $comments[0]));
+                        portalweave_sso_assert($response->get_status() === ($allowed ? 200 : ($user_id ? 403 : 401)), 'Comment item escaped parent policy');
+                        foreach ([['include' => $comments], ['post' => $posts], ['post' => [$posts[0]]], ['include' => [$comments[0]]]] as $query) {
+                            $request = new WP_REST_Request($method, $route);
+                            $request->set_query_params($query + ['per_page' => 1, 'orderby' => 'id', 'order' => 'asc']);
+                            $response = rest_do_request($request);
+                            $restricted_only = count($query['include'] ?? $query['post']) === 1;
+                            $expected = $allowed ? ($restricted_only ? [$comments[0]] : $comments) : ($restricted_only ? [] : [$comments[1]]);
+                            portalweave_sso_assert($response->get_status() === 200, 'Comment collection failed');
+                            portalweave_sso_assert((int) $response->get_headers()['X-WP-Total'] === count($expected), 'Comment totals disclosed denied parents');
+                            if ($method === 'GET') {
+                                portalweave_sso_assert(array_map('intval', array_column($response->get_data(), 'id')) === array_slice($expected, 0, 1), 'Comment collection leaked or omitted a permitted comment');
+                            }
+                        }
+                    }
+                    foreach (['query', 'json'] as $source) {
+                        $request = new WP_REST_Request('GET', $route . '/' . $comments[1]);
+                        $override = ['id' => $comments[0], 'post' => $posts[1], 'context' => 'embed'];
+                        if ($source === 'query') { $request->set_query_params($override); }
+                        else { $request->set_header('Content-Type', 'application/json'); $request->set_body(wp_json_encode($override)); }
+                        portalweave_sso_assert(rest_do_request($request)->get_status() === ($allowed ? 200 : ($user_id ? 403 : 401)), 'Comment effective ID/parent override escaped policy');
+                        $request = new WP_REST_Request('GET', $route . '/' . $comments[0]);
+                        $request->set_query_params(['id' => $comments[1], 'post' => $posts[0]]);
+                        $response = rest_do_request($request);
+                        portalweave_sso_assert($response->get_status() === 200 && (int) $response->get_data()['id'] === $comments[1], 'Comment guard rejected the effective public object');
+                    }
+                }
+            }
+        }
+        wp_set_current_user(0);
+        $request = new WP_REST_Request('GET', '/wp/v2/comments');
+        $request->set_query_params(['post' => $posts, 'per_page' => 1, 'page' => 2]);
+        $response = rest_do_request($request);
+        portalweave_sso_assert($response->get_status() === 200 && $response->get_data() === [] && (int) $response->get_headers()['X-WP-Total'] === 1, 'Comment pagination counted denied rows');
+        $request = new WP_REST_Request('GET', '/wp/v2/posts/' . $posts[1]);
+        $response = rest_do_request($request);
+        $embedded = rest_get_server()->response_to_data($response, true);
+        portalweave_sso_assert(count($embedded['_embedded']['replies'][0] ?? []) === 1, 'Public embedded discussion disappeared');
+        foreach ($embedded['_embedded']['replies'][0] ?? [] as $comment) {
+            portalweave_sso_assert((int) $comment['id'] === $comments[1], 'Embedded comments escaped parent policy');
+        }
+    } finally {
+        wp_set_current_user(0);
+        foreach ($comments as $id) { wp_delete_comment($id, true); }
+        foreach ($posts as $id) { wp_delete_post($id, true); }
+        foreach ($users as $id) { if (is_int($id)) { wp_delete_user($id); } }
+    }
+});
+
+portalweave_sso_test('REST comment mutations retain parent policy and core errors', function () {
+    $posts = [];
+    $comments = [];
+    $name = 'comment_editor_' . bin2hex(random_bytes(5));
+    $id = wp_insert_user(['user_login' => $name, 'user_email' => $name . '@example.org', 'user_pass' => wp_generate_password(40), 'role' => 'editor']);
+    portalweave_sso_assert(!is_wp_error($id), 'Comment editor fixture failed');
+    try {
+        foreach (['Restricted comment parent', 'Public comment parent'] as $title) {
+            $posts[] = wp_insert_post(['post_title' => $title, 'post_status' => 'publish', 'comment_status' => 'open']);
+            $comments[] = wp_insert_comment(['comment_post_ID' => end($posts), 'comment_content' => $title, 'comment_approved' => 1]);
+        }
+        update_post_meta($posts[0], '_portalweave_sso_rule', ['groups' => ['comment-editors']]);
+        wp_set_current_user($id);
+        foreach (['POST', 'PUT', 'PATCH', 'DELETE'] as $method) {
+            $request = new WP_REST_Request($method, '/wp/v2/comments/' . $comments[0]);
+            $request->set_body_params(['content' => 'Attempted edit', 'post' => $posts[1], 'force' => true]);
+            $response = rest_do_request($request);
+            portalweave_sso_assert($response->get_status() === 403 && $response->get_data()['code'] === 'portalweave_sso_content_denied', 'Comment mutation response disclosed restricted discussion');
+        }
+        foreach (['/wp/v2/comments', '/wp/v2/comments/' . $comments[1]] as $route) {
+            $request = new WP_REST_Request('POST', $route);
+            $request->set_body_params(['post' => $posts[0], 'content' => 'Attempted destination change']);
+            portalweave_sso_assert(rest_do_request($request)->get_status() === 403, 'Comment create/update accepted a restricted destination');
+        }
+        $missing = new WP_REST_Request('GET', '/wp/v2/comments/2147483647');
+        portalweave_sso_assert(rest_do_request($missing)->get_status() === 404, 'Missing comment core error changed');
+        $missing = new WP_REST_Request('POST', '/wp/v2/comments/2147483647');
+        $missing->set_body_params(['post' => $posts[0], 'content' => 'Missing comment edit']);
+        portalweave_sso_assert(rest_do_request($missing)->get_status() === 404, 'Missing comment mutation core error changed');
+        update_user_meta($id, \PortalWeaveSSO\Accounts::groups_meta_key(), ['comment-editors']);
+        $create = new WP_REST_Request('POST', '/wp/v2/comments');
+        $create->set_body_params(['post' => $posts[0], 'content' => 'Permitted discussion']);
+        $created = rest_do_request($create);
+        portalweave_sso_assert($created->get_status() === 201, 'Eligible editor could not create a comment: ' . wp_json_encode($created->get_data()));
+        $comments[] = (int) $created->get_data()['id'];
+        $update = new WP_REST_Request('POST', '/wp/v2/comments/' . end($comments));
+        $update->set_body_params(['content' => 'Permitted edit']);
+        portalweave_sso_assert(rest_do_request($update)->get_status() === 200, 'Eligible editor could not update a comment');
+        $delete = new WP_REST_Request('DELETE', '/wp/v2/comments/' . end($comments));
+        $delete->set_param('force', true);
+        portalweave_sso_assert(rest_do_request($delete)->get_status() === 200, 'Eligible editor could not delete a comment');
+    } finally {
+        wp_set_current_user(0);
+        foreach ($comments as $comment) { wp_delete_comment($comment, true); }
+        foreach ($posts as $post) { wp_delete_post($post, true); }
+        wp_delete_user($id);
+    }
+});
+
 portalweave_sso_test('REST revision and autosave policies follow validated parent and item overrides', function () {
     $posts = [];
     $id = wp_insert_user(['user_login' => 'portalweave_sso_nested_' . bin2hex(random_bytes(5)), 'user_pass' => wp_generate_password(40), 'role' => 'editor']);

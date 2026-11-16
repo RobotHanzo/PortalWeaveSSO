@@ -15,6 +15,7 @@ final class Access
         add_action('pre_get_posts', [self::class, 'filter_query']);
         add_filter('rest_authentication_errors', [self::class, 'rest_gate'], 100);
         add_filter('rest_request_before_callbacks', [self::class, 'rest_content'], 20, 3);
+        add_filter('rest_comment_query', [self::class, 'rest_comments_query']);
         add_action('init', static function () {
             foreach (get_post_types(['show_in_rest' => true]) as $type) {
                 add_filter('rest_' . $type . '_query', [self::class, 'rest_query'], 20);
@@ -188,6 +189,14 @@ final class Access
         return $args;
     }
 
+    public static function rest_comments_query(array $args): array
+    {
+        // WP_Comment_Query combines post__in and post__not_in. Exclude parents
+        // before pagination/counting, including explicitly included comments.
+        $args['post__not_in'] = array_unique(array_merge((array) ($args['post__not_in'] ?? []), self::denied_ids()));
+        return $args;
+    }
+
     public static function rest_gate($error)
     {
         if ($error || is_user_logged_in() || (!Config::get('force_auth') && !Config::get('restrict_site'))) {
@@ -208,6 +217,30 @@ final class Access
     public static function rest_content($result, $handler, \WP_REST_Request $request)
     {
         if ($result !== null) {
+            return $result;
+        }
+        if (preg_match('~^/wp/v2/comments(?:/(\d+))?/?$~i', $request->get_route(), $match)) {
+            $parents = [];
+            if (isset($match[1])) {
+                // Core has validated the effective ID, including query/JSON overrides.
+                $comment = get_comment((int) ($request->get_param('id') ?? $match[1]));
+                if (!$comment) {
+                    return $result; // Preserve core's missing-comment error before considering a destination.
+                }
+                $parents[] = (int) $comment->comment_post_ID;
+            }
+            if (in_array($request->get_method(), ['POST', 'PUT', 'PATCH'], true)) {
+                // A mutation must have access to both its existing and destination parent.
+                $parent = $request->get_param('post');
+                if (is_scalar($parent) && (int) $parent > 0) {
+                    $parents[] = (int) $parent;
+                }
+            }
+            foreach (array_unique($parents) as $parent) {
+                if ($parent && !self::can_post($parent)) {
+                    return new \WP_Error('portalweave_sso_content_denied', 'You do not have access to this content.', ['status' => is_user_logged_in() ? 403 : 401]);
+                }
+            }
             return $result;
         }
         foreach (get_post_types(['show_in_rest' => true], 'objects') as $type) {
