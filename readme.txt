@@ -3,7 +3,7 @@ Tags: oauth, openid-connect, sso, scim, login
 Requires at least: 6.5
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 1.4.0
+Stable tag: 1.4.1
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -70,7 +70,7 @@ Deactivation preserves data. Uninstall preserves settings unless the administrat
 == Installation ==
 Upgrades from PortalWeave SSO 1.0.1 retain existing configuration. Replacing an installation that uses the earlier technical namespace requires the controlled procedure in docs/provider-setup.md; there are no earlier-name aliases or automatic conversion of that stored data. Restrict access externally during that replacement, including settings, identity links, access rules, provider URLs and private-media metadata.
 
-1. Upload portalweave-sso-1.4.0.zip or copy the portalweave-sso directory into wp-content/plugins.
+1. Upload portalweave-sso-1.4.1.zip or copy the portalweave-sso directory into wp-content/plugins.
 2. Activate PortalWeave SSO: OAuth 2.0 & OpenID Connect Login and open PortalWeave SSO in the WordPress admin sidebar.
 3. Add a provider, register the displayed callback URL and enter its details. Use Test connection on the final review step before saving the provider.
 4. Saved providers also offer Test SSO Config to inspect returned attributes. Configure mappings and test an ordinary user before enforcing login.
@@ -105,6 +105,12 @@ Run wp portalweave-sso recover (or --network), or temporarily define PORTALWEAVE
 No. Re-enter credentials on a new installation. Same-site restores retain existing credentials.
 
 == Changelog ==
+= 1.4.1 =
+* Preserve requested post-login destinations for SSO buttons and automatic WordPress sign-in, ahead of the configured default.
+* Add an ordered list of redirect query parameter names, with redirect_to always supported and all destinations checked against the redirect allowlist.
+* Encode nested redirect queries and fragments correctly in sign-in and sign-out links.
+* Expand the plugin listing name to PortalWeave SSO: OAuth 2.0 & OpenID Connect Login.
+
 = 1.4.0 =
 * Add GitHub bug reporting links to site/network plugin lists and Tools & support.
 * Bundle Spanish, French, German, Brazilian Portuguese, Simplified Chinese, Traditional Chinese and Japanese catalogs, with 333 translated interface messages and common errors per locale; remaining text uses English.
@@ -161,6 +167,9 @@ Initial multi-provider OAuth/OIDC, access policy, provisioning and operations re
 Includes private-media recovery, privacy-policy guidance, data export/erasure and administrator-controlled retention.
 
 == Upgrade Notice ==
+= 1.4.1 =
+Fixes redirect_to handling and preserves nested destination queries. Configure alternate redirect parameter names in Login & logout. Existing settings and credentials are retained.
+
 = 1.4.0 =
 Adds seven partial interface translations and GitHub bug reporting links. Choose your WordPress site or profile language to use them. Custom wording and existing settings are retained; untranslated technical text uses English.
 
