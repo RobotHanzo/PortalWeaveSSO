@@ -230,6 +230,78 @@ portalweave_sso_test('Moderation and guest expiry block authentication without c
     }
 });
 
+portalweave_sso_test('Guest deadlines reject existing browser sessions before cleanup', function () {
+    $cookies = $_COOKIE;
+    $posts = [];
+    $users = [];
+    try {
+        foreach (['guest', 'permanent'] as $kind) {
+            $users[$kind] = wp_insert_user(['user_login' => 'cookie_' . $kind . '_' . bin2hex(random_bytes(5)), 'user_pass' => wp_generate_password(40), 'role' => 'subscriber']);
+            portalweave_sso_assert(!is_wp_error($users[$kind]), 'Cookie fixture user failed');
+        }
+        $posts[] = wp_insert_post(['post_title' => 'Guest-only fixture', 'post_status' => 'publish']);
+        update_post_meta($posts[0], '_portalweave_sso_rule', ['login' => true]);
+        $upload = wp_upload_bits('guest-private-' . bin2hex(random_bytes(5)) . '.txt', null, 'Private guest fixture');
+        portalweave_sso_assert(empty($upload['error']), 'Guest upload fixture failed');
+        $posts[] = wp_insert_attachment(['post_title' => 'Protected guest attachment', 'post_status' => 'inherit', 'post_parent' => $posts[0]], $upload['file']);
+        portalweave_sso_assert($posts[0] > 0 && $posts[1] > 0, 'Guest content/media fixtures failed');
+        update_post_meta($posts[1], '_portalweave_sso_protected', 1);
+        portalweave_sso_assert(\PortalWeaveSSO\Access::is_protected($posts[1]), 'Guest media protection fixture failed');
+        $resolve = static function (string $cookie): int {
+            unset($_COOKIE[AUTH_COOKIE], $_COOKIE[SECURE_AUTH_COOKIE]);
+            $_COOKIE[LOGGED_IN_COOKIE] = $cookie;
+            unset($GLOBALS['current_user']);
+            return get_current_user_id();
+        };
+        $guest = $users['guest'];
+        update_user_meta($guest, '_portalweave_sso_guest_expires', time() + 300);
+        $cookie = wp_generate_auth_cookie($guest, time() + 2 * DAY_IN_SECONDS, 'logged_in');
+        portalweave_sso_assert($resolve($cookie) === $guest, 'Unexpired guest cookie rejected');
+        portalweave_sso_assert(\PortalWeaveSSO\Access::can_post($posts[0]) && \PortalWeaveSSO\Access::can_post($posts[1]), 'Active guest lost permitted content/media');
+        foreach ([time(), time() - 3600, -1] as $deadline) {
+            update_user_meta($guest, '_portalweave_sso_guest_expires', $deadline);
+            portalweave_sso_assert(wp_validate_auth_cookie($cookie, 'logged_in') === $guest, 'Fixture cookie expired independently of guest policy');
+            portalweave_sso_assert($resolve($cookie) === 0, 'Expired guest retained cookie authentication before cleanup');
+            portalweave_sso_assert(!\PortalWeaveSSO\Access::can_post($posts[0]) && !\PortalWeaveSSO\Access::can_post($posts[1]), 'Expired guest retained restricted content/media access');
+        }
+        $permanent = $users['permanent'];
+        portalweave_sso_assert($resolve(wp_generate_auth_cookie($permanent, time() + HOUR_IN_SECONDS, 'logged_in')) === $permanent, 'Permanent account cookie rejected');
+        portalweave_sso_assert(\PortalWeaveSSO\Access::can_post($posts[0]), 'Permanent account lost ordinary access');
+        portalweave_sso_assert(get_userdata($guest)->roles === ['subscriber'], 'Expiry changed guest roles');
+    } finally {
+        $_COOKIE = $cookies;
+        wp_set_current_user(0);
+        foreach ($posts as $post) { wp_delete_post($post, true); }
+        foreach ($users as $id) { if (is_int($id)) { wp_delete_user($id); } }
+    }
+});
+
+portalweave_sso_test('WordPress session issuance caps guest lifetime and preserves permanent sessions', function () {
+    $id = wp_insert_user(['user_login' => 'guest_lifetime_' . bin2hex(random_bytes(5)), 'user_pass' => wp_generate_password(40), 'role' => 'subscriber']);
+    portalweave_sso_assert(!is_wp_error($id), 'Lifetime fixture user failed');
+    $issued = [];
+    $capture = static function ($cookie, $expire, $expiration, $user_id, $scheme, $token) use (&$issued) {
+        $issued = ['expiration' => $expiration, 'token' => $token];
+    };
+    add_action('set_logged_in_cookie', $capture, 10, 6);
+    try {
+        $deadline = time() + 300;
+        update_user_meta($id, '_portalweave_sso_guest_expires', $deadline);
+        foreach ([false, true] as $remember) {
+            wp_set_auth_cookie($id, $remember, true);
+            portalweave_sso_assert($issued['expiration'] <= $deadline && $issued['expiration'] > time(), 'Guest session exceeded its deadline');
+            $session = WP_Session_Tokens::get_instance($id)->get($issued['token']);
+            portalweave_sso_assert($session['expiration'] === $issued['expiration'], 'Server session did not share cookie expiration');
+        }
+        delete_user_meta($id, '_portalweave_sso_guest_expires');
+        wp_set_auth_cookie($id, false, true);
+        portalweave_sso_assert($issued['expiration'] >= time() + DAY_IN_SECONDS, 'Permanent session lifetime was shortened');
+    } finally {
+        remove_action('set_logged_in_cookie', $capture, 10);
+        wp_delete_user($id);
+    }
+});
+
 portalweave_sso_test('Native WordPress abilities register eight tools and enforce permission again at execution', function () {
     if (!function_exists('wp_get_abilities')) {
         portalweave_sso_assert(!function_exists('wp_register_ability'), 'Native ability discovery is unexpectedly missing');

@@ -1,6 +1,41 @@
 <?php
 /** Real-network add-on isolation; run only from the guarded multisite runner. */
 
+portalweave_sso_test('multisite: guest cookie admission respects global expiry without revoking shared sessions', function () {
+    global $portalweave_sso_blog_a, $portalweave_sso_blog_b;
+    $id = wp_insert_user(['user_login' => 'guest_cookie_network_' . bin2hex(random_bytes(5)), 'user_pass' => wp_generate_password(40), 'role' => 'subscriber']);
+    portalweave_sso_assert(!is_wp_error($id), 'Network guest fixture failed');
+    $depth = count($GLOBALS['_wp_switched_stack'] ?? []);
+    // Supply an authenticated ID after core's cookie/API callbacks, as a credential backend would.
+    $identity = static fn() => $id;
+    add_filter('determine_current_user', $identity, 21);
+    try {
+        add_user_to_blog($portalweave_sso_blog_b, $id, 'subscriber');
+        $manager = WP_Session_Tokens::get_instance($id);
+        $token = $manager->create(time() + HOUR_IN_SECONDS);
+        $credential = WP_Application_Passwords::create_new_application_password($id, ['name' => 'Disposable shared guest regression']);
+        portalweave_sso_assert(is_array($credential), 'Network API fixture failed');
+        foreach ([$portalweave_sso_blog_a, $portalweave_sso_blog_b] as $blog) {
+            switch_to_blog($blog);
+            update_user_meta($id, '_portalweave_sso_guest_expires', time() + 300);
+            portalweave_sso_assert(apply_filters('determine_current_user', false) === $id, 'Active guest rejected on a member site');
+            update_user_meta($id, '_portalweave_sso_guest_expires', time());
+            portalweave_sso_assert(apply_filters('determine_current_user', false) === 0, 'Expired guest admitted on another blog');
+            portalweave_sso_assert($manager->verify($token), 'Request admission destroyed a shared session');
+            portalweave_sso_assert(count(WP_Application_Passwords::get_user_application_passwords($id)) === 1, 'Request admission deleted global API credentials');
+            portalweave_sso_assert(get_userdata($id)->roles === ['subscriber'], 'Request admission changed site roles');
+            delete_user_meta($id, '_portalweave_sso_guest_expires');
+            portalweave_sso_assert(apply_filters('determine_current_user', false) === $id, 'Permanent account rejected on a member site');
+            restore_current_blog();
+        }
+    } finally {
+        remove_filter('determine_current_user', $identity, 21);
+        while (count($GLOBALS['_wp_switched_stack'] ?? []) > $depth) { restore_current_blog(); }
+        require_once ABSPATH . 'wp-admin/includes/ms.php';
+        wpmu_delete_user($id);
+    }
+});
+
 portalweave_sso_test('multisite: SCIM credentials and resource ownership are isolated between blogs', function () {
     global $portalweave_sso_blog_a, $portalweave_sso_blog_b;
     $original_blog = get_current_blog_id();
