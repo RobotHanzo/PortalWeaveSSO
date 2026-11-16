@@ -28,6 +28,8 @@ These are recorded-event counts, not unique people or authentication attempts. D
 
 The separate Audit logs view paginates all retained personal audit rows, newest first, with 50 rows per page. Its CSV export independently includes up to the latest 5,000 rows. Selecting an overview period does not filter that view or its export, or change collection/retention preferences. Existing administrator permissions, scoped saving, collection choices and cleanup remain in effect.
 
+Local failures recorded through WordPress's `wp_login_failed` hook retain only a fixed, recognized reason and, when WordPress identifies it, a login-page, XML-RPC or REST context in the error code. For example, `portalweave_sso_local_login_incorrect_password` identifies a login-page password mismatch. Attempted usernames/emails are unverified and are not stored or looked up to associate a failure with an account. Error messages, error data and unrecognized error codes are not retained. Query strings and fragments remain excluded even when they select a REST endpoint. These events do not cover every authentication mechanism: native REST application-password failures do not emit `wp_login_failed`.
+
 ## Cookies and retention
 
 | Cookie or record | Lifetime and handling |

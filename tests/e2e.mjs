@@ -190,6 +190,49 @@ async function assertDraftUnchanged(jar, before, cookies, saved, subject) {
     }
 }
 
+await test('HTTPS local login and XML-RPC failures export distinct reasons once without submitted credentials', async () => {
+    const { jar: admin } = await administrator();
+    const auditCsv = async () => {
+        const page = await request('/wp-admin/admin.php?page=portalweave-sso&tab=reports&activity_view=audit', admin);
+        assert.equal(page.status, 200);
+        const link = [...page.body.matchAll(/<a\b[^>]*\bhref="([^"]+)"/gi)]
+            .map(match => new URL(match[1].replace(/&amp;|&#0*38;|&#x0*26;/gi, '&'), origin))
+            .find(url => url.searchParams.get('action') === 'portalweave_sso_export' && url.searchParams.get('kind') === 'audit');
+        assert.ok(link, 'The administrator audit export link is missing');
+        const csv = await request(link.href, admin);
+        assert.equal(csv.status, 200);
+        assert.match(csv.headers['content-type'], /text\/csv/);
+        return csv.body;
+    };
+    const failureRows = csv => csv.split('\r\n').filter(row => row.includes(',"local_failure",'));
+    const before = failureRows(await auditCsv()).length;
+    const name = `e2e_audit_missing_${randomBytes(8).toString('hex')}`;
+    const secret = `e2e-audit-private-${randomBytes(16).toString('hex')}`;
+    const jar = new Cookies();
+    await request('/wp-login.php', jar);
+    const login = await request(`/wp-login.php?code=${secret}`, jar, {
+        method: 'POST', body: new URLSearchParams({ log: name, pwd: secret, testcookie: '1' }).toString(),
+        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    });
+    assert.equal(login.status, 200);
+    noAuthCookies(login);
+    const xmlrpc = await request(`/xmlrpc.php?token=${secret}`, new Cookies(), {
+        method: 'POST', headers: { 'Content-Type': 'text/xml' },
+        body: `<?xml version="1.0"?><methodCall><methodName>wp.getUsersBlogs</methodName><params><param><value><string>${name}</string></value></param><param><value><string>${secret}</string></value></param></params></methodCall>`,
+    });
+    assert.equal(xmlrpc.status, 200);
+    assert.match(xmlrpc.body, /<fault>/);
+    noAuthCookies(xmlrpc);
+    const csv = await auditCsv();
+    const rows = failureRows(csv);
+    assert.equal(rows.length, before + 2, 'A failed HTTP authentication was duplicated or omitted');
+    assert.equal(rows.filter(row => row.endsWith('"portalweave_sso_local_login_invalid_username"')
+        && row.includes(`"${origin}/wp-login.php"`)).length, 1);
+    assert.equal(rows.filter(row => row.endsWith('"portalweave_sso_local_xmlrpc_invalid_username"')
+        && row.includes(`"${origin}/xmlrpc.php"`)).length, 1);
+    assert.ok(!csv.includes(name) && !csv.includes(secret), 'The exported audit retained submitted credentials or query secrets');
+});
+
 await test('HTTPS authorization-code PKCE login preserves initiator and creates subscriber session', async () => {
     const jar = new Cookies();
     const authorize = await start(jar);

@@ -29,7 +29,7 @@ final class Display
                 Audit::record('local_login', '', $user);
             }
         }, 20, 3);
-        add_action('wp_login_failed', static fn($name) => Audit::record('local_failure', '', null, 'portalweave_sso_local_credentials'));
+        add_action('wp_login_failed', [Audit::class, 'local_failure'], 10, 2);
         add_action('wp_logout', static fn($id) => Audit::record('local_logout', '', $id));
         add_action('show_user_profile', [self::class, 'profile']);
         add_action('edit_user_profile', [self::class, 'profile']);
