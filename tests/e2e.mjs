@@ -225,6 +225,11 @@ await test('WordPress login destinations and configured aliases survive buttons,
         const directResult = await request(callback(directAuthorize), directJar);
         assert.equal(directResult.status, 302, directResult.body.slice(0, 1200));
         assert.equal(directResult.headers.location, `${origin}/direct/?one=1&two=2`, 'Direct SSO start ignored a configured alias');
+        const malformedJar = new Cookies();
+        const malformedAuthorize = await start(malformedJar, { url: '/?portalweave_sso_action=login&app=e2e&redirect_to%5B%5D=%2Farray%2F' });
+        const malformedResult = await request(callback(malformedAuthorize), malformedJar);
+        assert.equal(malformedResult.status, 302, malformedResult.body.slice(0, 1200));
+        assert.equal(malformedResult.headers.location, `${origin}/default-login/`, 'Malformed canonical parameter bypassed the default');
         for (const mode of ['buttons', 'single_flow', 'disable_wp_login']) {
             await save({ single_flow: mode === 'single_flow' ? '1' : '0', disable_wp_login: mode === 'disable_wp_login' ? '1' : '0' });
             const cases = [
@@ -234,7 +239,9 @@ await test('WordPress login destinations and configured aliases survive buttons,
                 [{ redirect_to: '/canonical/', next: '/alias/' }, `${origin}/canonical/`],
                 [{ redirect_to: 'https://evil.example/capture', next: '/safe/' }, `${origin}/safe/`],
                 [{ next: 'https://evil.example/capture' }, `${origin}/default-login/`],
-                [{ 'redirect_to[]': '/array/' }, `${origin}/default-login/`],
+                // WordPress 6.5 handles redirect_to before login_form and cannot render an array value.
+                // A configured alias exercises our malformed-input handling across every supported version.
+                [{ 'next[]': '/array/' }, `${origin}/default-login/`],
                 [{}, `${origin}/default-login/`],
             ];
             for (const [params, expected] of cases) {
@@ -244,7 +251,7 @@ await test('WordPress login destinations and configured aliases survive buttons,
                 if (mode === 'buttons') {
                     assert.equal(login.status, 200);
                     const href = login.body.match(/<a\b(?=[^>]*\bclass="[^"]*portalweave-sso-button\b)[^>]*\bhref="([^"]+)"/i)?.[1];
-                    assert.ok(href, 'WordPress login SSO button missing');
+                    assert.ok(href, `WordPress login SSO button missing for ${JSON.stringify(params)}`);
                     target = href.replace(/&amp;|&#0*38;|&#x0*26;/gi, '&');
                 } else {
                     assert.equal(login.status, 302, login.body.slice(0, 1200));

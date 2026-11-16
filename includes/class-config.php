@@ -561,7 +561,7 @@ final class Redirect
     public static function requested(?array $request = null): string
     {
         if ($request === null) {
-            // phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Public navigation preference only; scalar, length and shared URL validation follow before use. GET takes precedence over POST; cookies are excluded.
+            // phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Public navigation preference only; scalar, length and shared URL validation follow before use. GET takes precedence over POST; cookies are excluded.
             $request = $_GET + $_POST;
         }
         // Internal login links always use WordPress's canonical parameter.
