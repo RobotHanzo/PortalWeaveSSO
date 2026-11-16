@@ -163,9 +163,7 @@ final class Display
         if ($title) {
             $html .= '<p class="portalweave-sso-label">' . esc_html($title) . '</p>';
         }
-        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Navigation preference only; Redirect::validate() enforces the configured allowlist before use.
-        $requested = isset($_REQUEST['redirect_to']) && is_string($_REQUEST['redirect_to']) ? esc_url_raw(wp_unslash($_REQUEST['redirect_to'])) : '';
-        $redirect = ($args['redirect'] ?? '') ?: ($settings['login_redirect'] ?: ($requested ?: Redirect::current()));
+        $redirect = ($args['redirect'] ?? '') ?: (Redirect::requested() ?: ($settings['login_redirect'] ?: Redirect::current()));
         $popup = ($args['popup'] ?? '') !== '' ? filter_var($args['popup'], FILTER_VALIDATE_BOOLEAN) : $settings['popup'];
         $theme = in_array($style['theme'], ['default', 'white', 'hover', 'custom', 'smart'], true) ? $style['theme'] : 'default';
         $shape = in_array($style['shape'], ['round', 'round-edge', 'round_edge', 'square', 'long'], true) ? str_replace('_', '-', $style['shape']) : 'round-edge';

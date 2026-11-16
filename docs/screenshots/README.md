@@ -1,5 +1,7 @@
 # Product screenshot maintenance
 
+`login-settings.png` was refreshed on 2026-11-16 using PortalWeave SSO 1.4.0 in a disposable WordPress 7.1.4 fixture. It shows the saved redirect query parameter list with a fictional Sample work account provider. The image was reviewed for framing, credentials, personal data, nonces and server paths before copying; temporary capture framing and fixture settings were restored afterwards. This sample configuration does not establish an external provider connection.
+
 `appearance.png` and `wordpress-button-style.png` were refreshed on 2026-11-11 using PortalWeave SSO 1.3.1 in a disposable WordPress 7.1.4 fixture. They show the prefixed shortcode, structured controls and a fictional Example provider preview after removal of custom CSS input. The WordPress appearance choice was saved in that fixture. Both captures were reviewed for framing, credentials, nonces, server paths and personal data; the capture wrapper was removed afterwards.
 
 These PNGs were captured in disposable WordPress 7.1.4 fixtures. The full gallery was retaken on 2026-11-07 using PortalWeave SSO 1.2.0, including a genuine multisite fixture for network enforcement and anonymous contexts for public sign-in. Providers, accounts, domains and audit records are fictional examples; they do not establish successful registration or authentication with an external provider.

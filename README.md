@@ -96,9 +96,9 @@ Each provider can use an uploaded logo from the WordPress media library or an HT
 
 ![Provider login-button settings with an uploaded sample logo selected, its preview, and the save reminder](docs/screenshots/provider-logo.png)
 
-Choose a default provider, popup behavior and post-login destinations.
+Choose a default provider, popup behavior and post-login destinations. Configure accepted redirect parameter names such as `redirect_to`, `return_to` and `next`; see [redirects after sign-in](docs/provider-setup.md#redirects-after-sign-in). The sample settings below do not demonstrate a verified provider connection.
 
-![Sign-in and logout behavior settings](docs/screenshots/login-settings.png)
+![Sign-in and logout settings with a fictional work provider and configurable redirect query parameters](docs/screenshots/login-settings.png)
 
 With confirmation enabled, choose site-only sign-out or sign out of both this site and the named identity provider. Go back keeps the current session active. This sample provider has a configured logout endpoint; the image does not demonstrate a live provider connection.
 

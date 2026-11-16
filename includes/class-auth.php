@@ -27,7 +27,7 @@ final class Auth {
     public static function login_url($app_id, $redirect = '', $test = false, $popup = false) {
         $args = ['portalweave_sso_action' => 'login', 'app' => sanitize_key($app_id)];
         if ($redirect !== '') {
-            $args['redirect_to'] = Redirect::validate($redirect);
+            $args['redirect_to'] = rawurlencode(Redirect::validate($redirect));
         }
         if ($popup) {
             $args['popup'] = '1';
@@ -42,7 +42,7 @@ final class Auth {
     public static function logout_url($redirect = '') {
         $args = ['portalweave_sso_action' => 'logout', '_wpnonce' => wp_create_nonce('portalweave_sso_logout')];
         if ($redirect !== '') {
-            $args['redirect_to'] = Redirect::validate($redirect);
+            $args['redirect_to'] = rawurlencode(Redirect::validate($redirect));
         }
         return add_query_arg($args, home_url('/'));
     }
@@ -165,7 +165,7 @@ final class Auth {
         if (in_array($grant, ['implicit', 'password'], true) && empty($app['legacy_grants'])) {
             self::fail(new \WP_Error('portalweave_sso_legacy_disabled', __('This legacy grant is disabled. Use Authorization Code with PKCE.', 'portalweave-sso')), $id);
         }
-        $redirect = self::input($_GET, 'redirect_to'); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Public login navigation only; the redirect allowlist below validates the destination independently of authentication.
+        $redirect = Redirect::requested($_GET); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Public navigation only; requested() validates each destination against the redirect allowlist.
         if ($redirect === '') {
             $redirect = (string) Config::get('login_redirect', home_url('/'));
         }

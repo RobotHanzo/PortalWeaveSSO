@@ -202,6 +202,71 @@ await test('HTTPS authorization-code PKCE login preserves initiator and creates 
     assert.deepEqual(identity.roles, ['subscriber']);
 });
 
+await test('WordPress login destinations and configured aliases survive buttons, automatic SSO and callback', async () => {
+    const { jar: admin } = await administrator();
+    const save = async (values) => {
+        const screen = await request('/wp-admin/admin.php?page=portalweave-sso&tab=login', admin);
+        assert.equal(screen.status, 200);
+        assert.match(screen.body, /name="settings\[redirect_parameters\]"/);
+        const nonce = screen.body.match(/<input\b(?=[^>]*\bname="_wpnonce")(?=[^>]*\bvalue="([a-f0-9]+)")[^>]*>/i)?.[1];
+        assert.ok(nonce, 'Login settings nonce missing');
+        const params = new URLSearchParams({ action: 'portalweave_sso_save', _wpnonce: nonce,
+            portalweave_sso_complete: '1', portalweave_sso_screen: 'login' });
+        for (const [key, value] of Object.entries(values)) params.set(`settings[${key}]`, value);
+        const result = await request('/wp-admin/admin-post.php', admin, { method: 'POST', body: params.toString(),
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded' } });
+        assert.equal(result.status, 302, result.body.slice(0, 1200));
+        assert.ok(result.headers.location?.includes('portalweave_sso_notice=saved'), result.headers.location);
+    };
+    try {
+        await save({ redirect_parameters: 'redirect_to\nreturn_to\nnext', login_redirect: `${origin}/default-login/` });
+        const directJar = new Cookies();
+        const directAuthorize = await start(directJar, { url: '/?portalweave_sso_action=login&app=e2e&next=%2Fdirect%2F%3Fone%3D1%26two%3D2' });
+        const directResult = await request(callback(directAuthorize), directJar);
+        assert.equal(directResult.status, 302, directResult.body.slice(0, 1200));
+        assert.equal(directResult.headers.location, `${origin}/direct/?one=1&two=2`, 'Direct SSO start ignored a configured alias');
+        for (const mode of ['buttons', 'single_flow', 'disable_wp_login']) {
+            await save({ single_flow: mode === 'single_flow' ? '1' : '0', disable_wp_login: mode === 'disable_wp_login' ? '1' : '0' });
+            const cases = [
+                [{ redirect_to: `${origin}/wp-admin/` }, `${origin}/wp-admin/`],
+                [{ return_to: '/members/?page=2&sort=name' }, `${origin}/members/?page=2&sort=name`],
+                [{ next: '/next/' }, `${origin}/next/`],
+                [{ redirect_to: '/canonical/', next: '/alias/' }, `${origin}/canonical/`],
+                [{ redirect_to: 'https://evil.example/capture', next: '/safe/' }, `${origin}/safe/`],
+                [{ next: 'https://evil.example/capture' }, `${origin}/default-login/`],
+                [{ 'redirect_to[]': '/array/' }, `${origin}/default-login/`],
+                [{}, `${origin}/default-login/`],
+            ];
+            for (const [params, expected] of cases) {
+                const jar = new Cookies();
+                const login = await request(`/wp-login.php?${new URLSearchParams(params)}`, jar);
+                let target;
+                if (mode === 'buttons') {
+                    assert.equal(login.status, 200);
+                    const href = login.body.match(/<a\b(?=[^>]*\bclass="[^"]*portalweave-sso-button\b)[^>]*\bhref="([^"]+)"/i)?.[1];
+                    assert.ok(href, 'WordPress login SSO button missing');
+                    target = href.replace(/&amp;|&#0*38;|&#x0*26;/gi, '&');
+                } else {
+                    assert.equal(login.status, 302, login.body.slice(0, 1200));
+                    target = login.headers.location;
+                }
+                assert.equal(new URL(target).searchParams.get('redirect_to'), expected, `${mode}: destination lost at login`);
+                const authorize = await start(jar, { url: target });
+                const result = await request(callback(authorize), jar);
+                assert.equal(result.status, 302, result.body.slice(0, 1200));
+                assert.equal(result.headers.location, expected, `${mode}: destination lost at callback`);
+            }
+        }
+        await save({ single_flow: '1', disable_wp_login: '0', login_redirect: '', redirect_parameters: '' });
+        const fallback = await request('/wp-login.php?next=%2Fremoved%2F');
+        assert.equal(new URL(fallback.headers.location).searchParams.get('redirect_to'), `${origin}/`, 'Empty settings returned to the login page');
+        const canonical = await request('/wp-login.php?redirect_to=%2Fwp-admin%2F');
+        assert.equal(new URL(canonical.headers.location).searchParams.get('redirect_to'), `${origin}/wp-admin/`, 'Clearing aliases broke redirect_to');
+    } finally {
+        await save({ single_flow: '0', disable_wp_login: '0', login_redirect: '', redirect_parameters: 'redirect_to' });
+    }
+});
+
 await test('Forged callback state fails before a session is created', async () => {
     const result = await request('/?portalweave_sso_action=callback&state=attacker-selected-state&code=forged');
     assert.equal(result.status, 403);
