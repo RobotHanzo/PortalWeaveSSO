@@ -709,8 +709,7 @@ final class Extensions {
             $state = bin2hex(random_bytes(32));
             $binding = bin2hex(random_bytes(32));
             $nonce = bin2hex(random_bytes(32));
-            // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- The optional login destination is validated against the administrator's explicit URL allowlist.
-            $redirect = isset($_GET['redirect_to']) && is_string($_GET['redirect_to']) ? esc_url_raw(wp_unslash($_GET['redirect_to'])) : '';
+            $redirect = Redirect::requested($_GET); // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Public navigation only; requested() validates each destination against the redirect allowlist.
             set_transient('portalweave_sso_jwt_state_' . hash('sha256', $state), ['app' => $id, 'binding' => hash('sha256', $binding), 'nonce' => $nonce,
                 'redirect' => Redirect::validate($redirect, home_url('/')), 'expires' => time() + 300], 300);
             setcookie('__Secure-portalweave-sso-jwt', $binding, ['expires' => time() + 300, 'path' => '/', 'secure' => true, 'httponly' => true, 'samesite' => 'None']);

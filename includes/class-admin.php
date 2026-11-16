@@ -312,7 +312,7 @@ final class Admin {
         if (isset($input['new_app'])) {
             $input['new_app'] = $providers[''];
         }
-        foreach (['redirect_allowlist', 'allowed_domains', 'blocked_domains', 'shared_sites'] as $key) {
+        foreach (['redirect_allowlist', 'redirect_parameters', 'allowed_domains', 'blocked_domains', 'shared_sites'] as $key) {
             if (isset($input[$key])) {
                 $input[$key] = self::lines($input[$key]);
             }
@@ -806,6 +806,7 @@ final class Admin {
             self::check('settings[' . $key . ']', $settings[$key], $label, $help);
         }
         self::field('settings[login_redirect]', $settings['login_redirect'], __('Default redirect after login', 'portalweave-sso'), 'url');
+        self::field('settings[redirect_parameters]', implode("\n", $settings['redirect_parameters']), __('Redirect query parameters', 'portalweave-sso'), 'textarea', __('One parameter name per line, for example redirect_to, return_to or next. The first valid destination overrides the default login redirect. redirect_to is always checked first; additional names are checked in the listed order. Destinations must pass the redirect allowlist.', 'portalweave-sso'));
         self::field('settings[logout_redirect]', $settings['logout_redirect'], __('Default redirect after logout', 'portalweave-sso'), 'url');
         self::field('settings[redirect_allowlist]', implode("\n", $settings['redirect_allowlist']), __('Allowed redirect URLs', 'portalweave-sso'), 'textarea', __('One HTTPS origin or path prefix per line. Paths use a boundary check; example https://portal.example.com/members/.', 'portalweave-sso'));
         } elseif ($screen === 'access') {

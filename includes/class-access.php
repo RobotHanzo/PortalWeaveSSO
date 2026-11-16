@@ -86,7 +86,7 @@ final class Access
         return true;
     }
 
-    private static function deny(): void
+    private static function deny(string $redirect = ''): void
     {
         nocache_headers();
         if (is_user_logged_in()) {
@@ -94,7 +94,7 @@ final class Access
         }
         $app = Config::get('default_app');
         if ($app && !empty(Config::app($app)['enabled'])) {
-            wp_safe_redirect(Auth::login_url($app, Redirect::current()), 302, 'PortalWeave SSO');
+            wp_safe_redirect(Auth::login_url($app, $redirect ?: Redirect::current()), 302, 'PortalWeave SSO');
             exit;
         }
         auth_redirect();
@@ -136,7 +136,7 @@ final class Access
             return;
         }
         if (Config::get('disable_wp_login') || Config::get('single_flow')) {
-            self::deny();
+            self::deny(Redirect::requested() ?: Redirect::validate(Config::get('login_redirect', '')));
         }
     }
 

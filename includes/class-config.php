@@ -109,7 +109,7 @@ final class Config
             'apps' => [], 'default_app' => '', 'network_enforced' => false,
             'force_auth' => false, 'restrict_site' => false, 'disable_wp_login' => false,
             'single_flow' => false, 'popup' => false, 'login_redirect' => '', 'logout_redirect' => '',
-            'redirect_allowlist' => [], 'logout_confirmation' => true, 'allowed_domains' => [], 'blocked_domains' => [],
+            'redirect_allowlist' => [], 'redirect_parameters' => ['redirect_to'], 'logout_confirmation' => true, 'allowed_domains' => [], 'blocked_domains' => [],
             'debug' => false, 'audit_enabled' => true, 'audit_ip' => false,
             'audit_retention_days' => 90, 'abilities_enabled' => false, 'delete_data_on_uninstall' => false,
             'button' => ['theme' => 'default', 'shape' => 'round-edge', 'text' => 'Sign in with {app}',
@@ -157,6 +157,7 @@ final class Config
         $settings['button'] = array_intersect_key((array) $settings['button'], self::defaults()['button']);
         // Recursive merging must never resurrect removed providers.
         $settings['apps'] = is_array($stored['apps'] ?? null) ? $stored['apps'] : [];
+        $settings['redirect_parameters'] = $stored['redirect_parameters'] ?? self::defaults()['redirect_parameters'];
         foreach ($settings['apps'] as $id => &$app) {
             $app = array_replace(self::app_defaults(), $app, ['id' => (string) $id]);
             foreach (['client_secret', 'jwt_secret'] as $key) {
@@ -222,6 +223,19 @@ final class Config
             }
         }
         $settings = self::bools($settings, ['network_enforced', 'force_auth', 'restrict_site', 'disable_wp_login', 'single_flow', 'popup', 'logout_confirmation', 'debug', 'audit_enabled', 'audit_ip', 'abilities_enabled', 'delete_data_on_uninstall']);
+        $parameters = $settings['redirect_parameters'];
+        if ((!is_string($parameters) && !is_array($parameters)) || (is_array($parameters) && count(array_filter($parameters, 'is_string')) !== count($parameters))) {
+            return new \WP_Error('portalweave_sso_redirect_parameters', __('Redirect parameters must be a list of query parameter names.', 'portalweave-sso'));
+        }
+        $settings['redirect_parameters'] = array_values(array_unique(self::list($parameters)));
+        if (count($settings['redirect_parameters']) > 32) {
+            return new \WP_Error('portalweave_sso_redirect_parameters', __('Enter at most 32 redirect parameter names.', 'portalweave-sso'));
+        }
+        foreach ($settings['redirect_parameters'] as $parameter) {
+            if (!preg_match('/^[a-zA-Z][a-zA-Z0-9_-]{0,63}$/D', $parameter)) {
+                return new \WP_Error('portalweave_sso_redirect_parameters', __('Redirect parameter names must start with a letter and contain at most 64 letters, digits, underscores or dashes.', 'portalweave-sso'));
+            }
+        }
         foreach (['redirect_allowlist', 'shared_sites'] as $key) {
             $settings[$key] = self::list($settings[$key]);
             foreach ($settings[$key] as $url) {
@@ -541,6 +555,28 @@ final class Redirect
     public static function same_origin(string $a, string $b): bool
     {
         return self::origin($a) !== '' && self::origin($a) === self::origin($b);
+    }
+
+    /** Query/form navigation only: cookies cannot supply a login destination. */
+    public static function requested(?array $request = null): string
+    {
+        if ($request === null) {
+            // phpcs:ignore WordPress.Security.NonceVerification.Recommended, WordPress.Security.NonceVerification.Missing, WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- Public navigation preference only; scalar, length and shared URL validation follow before use. GET takes precedence over POST; cookies are excluded.
+            $request = $_GET + $_POST;
+        }
+        // Internal login links always use WordPress's canonical parameter.
+        $parameters = array_unique(array_merge(['redirect_to'], Config::get('redirect_parameters', ['redirect_to'])));
+        foreach ($parameters as $parameter) {
+            if (!isset($request[$parameter]) || !is_string($request[$parameter]) || strlen($request[$parameter]) > 8192) {
+                continue;
+            }
+            // An invalid preference must let the next parameter or default win.
+            $url = self::validate(wp_unslash($request[$parameter]), '#invalid');
+            if ($url !== '#invalid') {
+                return $url;
+            }
+        }
+        return '';
     }
 
     public static function validate($url, string $fallback = ''): string

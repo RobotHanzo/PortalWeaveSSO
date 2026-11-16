@@ -8,7 +8,7 @@ final class AdminSettings
 {
     private const FIELDS = [
         'providers' => ['apps', 'new_app', 'provider_setup'],
-        'login' => ['default_app', 'force_auth', 'disable_wp_login', 'single_flow', 'popup', 'logout_confirmation', 'login_redirect', 'logout_redirect', 'redirect_allowlist'],
+        'login' => ['default_app', 'force_auth', 'disable_wp_login', 'single_flow', 'popup', 'logout_confirmation', 'login_redirect', 'logout_redirect', 'redirect_allowlist', 'redirect_parameters'],
         'access' => ['restrict_site', 'allowed_domains', 'blocked_domains', 'content_rules', 'protected_media', 'network_enforced'],
         'appearance' => ['button', 'wp_login_button'],
         'modules' => ['modules', 'scim_token', 'clear_scim_token', 'shared_secret', 'clear_shared_secret', 'shared_cookie_domain', 'shared_sites', 'guest_ttl', 'abilities_enabled'],

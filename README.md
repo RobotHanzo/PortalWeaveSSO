@@ -1,10 +1,10 @@
-# <img src="assets/branding/logo.png" width="48" height="48" alt=""> PortalWeave SSO
+# <img src="assets/branding/logo.png" width="48" height="48" alt=""> PortalWeave SSO: OAuth 2.0 & OpenID Connect Login
 
 ![PortalWeave SSO — OAuth & OpenID Connect for WordPress](.wordpress-org/banner-1544x500.png)
 
 [![CI](https://github.com/RobotHanzo/PortalWeaveSSO/actions/workflows/verify.yml/badge.svg)](https://github.com/RobotHanzo/PortalWeaveSSO/actions/workflows/verify.yml)
 
-Download the [v1.4.0 plugin ZIP](https://github.com/RobotHanzo/PortalWeaveSSO/releases/download/v1.4.0/portalweave-sso-1.4.0.zip), with [release notes](https://github.com/RobotHanzo/PortalWeaveSSO/releases/tag/v1.4.0) and a [SHA-256 checksum](https://github.com/RobotHanzo/PortalWeaveSSO/releases/download/v1.4.0/portalweave-sso-1.4.0.zip.sha256).
+Download the [v1.4.1 plugin ZIP](https://github.com/RobotHanzo/PortalWeaveSSO/releases/download/v1.4.1/portalweave-sso-1.4.1.zip), with [release notes](https://github.com/RobotHanzo/PortalWeaveSSO/releases/tag/v1.4.1) and a [SHA-256 checksum](https://github.com/RobotHanzo/PortalWeaveSSO/releases/download/v1.4.1/portalweave-sso-1.4.1.zip.sha256).
 
 Add OAuth 2.0 and OpenID Connect sign-in to WordPress with multiple identity providers, guided setup, account mapping and access policies for content and private media. Manage login appearance, optional integrations and activity from the WordPress administrator screens.
 
@@ -18,7 +18,7 @@ Common interface text is available in Spanish, French, German, Brazilian Portugu
 
 ## Quick start
 
-1. [Download the plugin ZIP](https://github.com/RobotHanzo/PortalWeaveSSO/releases/download/v1.4.0/portalweave-sso-1.4.0.zip), upload it through **Plugins → Add New → Upload Plugin**, and activate **PortalWeave SSO**.
+1. [Download the plugin ZIP](https://github.com/RobotHanzo/PortalWeaveSSO/releases/download/v1.4.1/portalweave-sso-1.4.1.zip), upload it through **Plugins → Add New → Upload Plugin**, and activate **PortalWeave SSO: OAuth 2.0 & OpenID Connect Login**.
 2. Open **PortalWeave SSO → Identity providers → Add provider** from the WordPress admin sidebar. Follow the service's guide, register its callback URL and save your credentials. Run **Test SSO Config**, configure account mappings and test a regular user before enforcing login.
 3. Add `[portalweave_sso_login]` to a page, use the **PortalWeave SSO login** widget, or sign in through the WordPress and WooCommerce login buttons.
 
@@ -96,9 +96,9 @@ Each provider can use an uploaded logo from the WordPress media library or an HT
 
 ![Provider login-button settings with an uploaded sample logo selected, its preview, and the save reminder](docs/screenshots/provider-logo.png)
 
-Choose a default provider, popup behavior and post-login destinations.
+Choose a default provider, popup behavior and post-login destinations. Configure accepted redirect parameter names such as `redirect_to`, `return_to` and `next`; see [redirects after sign-in](docs/provider-setup.md#redirects-after-sign-in). The sample settings below do not demonstrate a verified provider connection.
 
-![Sign-in and logout behavior settings](docs/screenshots/login-settings.png)
+![Sign-in and logout settings with a fictional work provider and configurable redirect query parameters](docs/screenshots/login-settings.png)
 
 With confirmation enabled, choose site-only sign-out or sign out of both this site and the named identity provider. Go back keeps the current session active. This sample provider has a configured logout endpoint; the image does not demonstrate a live provider connection.
 

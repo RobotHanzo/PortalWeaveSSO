@@ -1,10 +1,18 @@
 # PortalWeave SSO provider setup and administrator guide
 
-Install `portalweave-sso-1.4.0.zip` through **Plugins → Add New → Upload Plugin**, activate **PortalWeave SSO**, and open **PortalWeave SSO** in the WordPress admin sidebar. On multisite, **Network Admin → PortalWeave SSO** can enforce a network-wide policy. Each WordPress network has its own network option.
+Install `portalweave-sso-1.4.1.zip` through **Plugins → Add New → Upload Plugin**, activate **PortalWeave SSO: OAuth 2.0 & OpenID Connect Login**, and open **PortalWeave SSO** in the WordPress admin sidebar. On multisite, **Network Admin → PortalWeave SSO** can enforce a network-wide policy. Each WordPress network has its own network option.
 
 The assigned directory slug and text domain are `portalweave-sso`. Use the `[portalweave_sso_login]` shortcode, `PORTALWEAVE_SSO_*` server configuration constants, `PortalWeaveSSO` PHP namespace and `wp portalweave-sso` commands.
 
 SSO requires HTTPS. Configure WordPress's HTTPS detection for a trusted reverse proxy when TLS terminates there. Keep `AUTH_KEY`, `SECURE_AUTH_KEY` and the WordPress salts stable: stored secrets and tokens depend on them for encryption. Changing them requires re-entering credentials and signing in again. Include this server configuration in your protected recovery backup.
+
+## Redirects after sign-in
+
+Open **PortalWeave SSO → Login & logout** and configure **Redirect query parameters** with one query parameter name per line, for example `redirect_to`, `return_to` and `next`. WordPress's `redirect_to` is always checked first; additional names are checked in the listed order. Names are case-sensitive and must start with a letter, followed by letters, digits, underscores or dashes (up to 64 characters, at most 32 names).
+
+For example, `https://your-site.example/wp-login.php?redirect_to=https%3A%2F%2Fyour-site.example%2Fwp-admin%2F` preserves the requested dashboard destination through both the SSO buttons and automatic single sign-in. After adding `next`, `https://your-site.example/wp-login.php?next=%2Fmembers%2F` works too. This controls navigation after successful authentication; it does not grant access to the destination.
+
+An explicit shortcode `redirect` takes precedence over request parameters. The first valid request destination takes precedence over **Default redirect after login**. Empty, non-string, oversized and unapproved destinations are ignored. Destinations on the same site are accepted; external destinations still require **Allowed redirect URLs**. Existing provider attribute redirect rules and the login redirect filter can override the destination at completion. Removing all configured names disables alternate names while retaining `redirect_to` for WordPress and internal SSO links. Without a request destination or configured default, buttons return to the initiating page and automatic WordPress sign-in returns to the site home page.
 
 ## Languages
 
