@@ -20,6 +20,8 @@ final class Extensions {
         add_filter('portalweave_sso_pre_authenticate', [self::class, 'account_check'], 10, 3);
         add_filter('authenticate', [self::class, 'local_account_check'], 99, 3);
         add_action('wp_authenticate_application_password_errors', [self::class, 'application_password_check'], 10, 2);
+        add_filter('determine_current_user', [self::class, 'guest_current_user'], 99);
+        add_filter('auth_cookie_expiration', [self::class, 'guest_cookie_expiration'], 99, 2);
         add_filter('portalweave_sso_login_redirect', [self::class, 'attribute_redirect'], 10, 4);
         add_filter('get_avatar_data', [self::class, 'avatar'], 10, 2);
         add_action('show_user_profile', [self::class, 'moderation_profile']);
@@ -566,7 +568,7 @@ final class Extensions {
         if (get_user_meta($user->ID, self::scim_meta('active'), true) === '0' || get_user_meta($user->ID, '_portalweave_sso_scim_active', true) === '0') {
             return new \WP_Error('portalweave_sso_account_inactive', 'This account has been deactivated by the identity provider.');
         }
-        $expires = (int) get_user_meta($user->ID, '_portalweave_sso_guest_expires', true);
+        $expires = self::guest_expiry($user->ID);
         if ($expires && $expires <= time()) {
             return new \WP_Error('portalweave_sso_guest_expired', 'This guest account has expired.');
         }
@@ -589,6 +591,26 @@ final class Extensions {
 
     public static function local_account_check($user, $username = '', $password = '') {
         return self::account_check($user);
+    }
+
+    private static function guest_expiry(int $user_id): int {
+        return (int) get_user_meta($user_id, '_portalweave_sso_guest_expires', true);
+    }
+
+    /** Existing cookies must lose admission at the deadline, independently of cron or cookie grace periods. */
+    public static function guest_current_user($user_id) {
+        if (!$user_id) {
+            return $user_id;
+        }
+        $expires = self::guest_expiry((int) $user_id);
+        // Read metadata directly: asking for the current user here would recurse.
+        return $expires && $expires <= time() ? 0 : $user_id;
+    }
+
+    /** All SSO and native cookie issuers share WordPress's server-session expiration filter. */
+    public static function guest_cookie_expiration(int $length, int $user_id): int {
+        $expires = self::guest_expiry($user_id);
+        return $expires ? min($length, max(0, $expires - time())) : $length;
     }
 
     public static function application_password_check(\WP_Error $error, \WP_User $user): void {
