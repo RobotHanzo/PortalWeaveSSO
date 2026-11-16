@@ -193,6 +193,7 @@ final class Access
     {
         // WP_Comment_Query combines post__in and post__not_in. Exclude parents
         // before pagination/counting, including explicitly included comments.
+        // phpcs:ignore WordPressVIPMinimum.Performance.WPQueryParams.PostNotIn_post__not_in -- Exclude denied parent posts before REST comment pagination and totals; filtering returned comments would leak counts.
         $args['post__not_in'] = array_unique(array_merge((array) ($args['post__not_in'] ?? []), self::denied_ids()));
         return $args;
     }
