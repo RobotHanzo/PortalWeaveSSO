@@ -3,7 +3,7 @@ Tags: oauth, openid-connect, sso, scim, login
 Requires at least: 6.5
 Tested up to: 7.1
 Requires PHP: 8.1
-Stable tag: 1.4.1
+Stable tag: 1.4.2
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -70,7 +70,7 @@ Deactivation preserves data. Uninstall preserves settings unless the administrat
 == Installation ==
 Upgrades from PortalWeave SSO 1.0.1 retain existing configuration. Replacing an installation that uses the earlier technical namespace requires the controlled procedure in docs/provider-setup.md; there are no earlier-name aliases or automatic conversion of that stored data. Restrict access externally during that replacement, including settings, identity links, access rules, provider URLs and private-media metadata.
 
-1. Upload portalweave-sso-1.4.1.zip or copy the portalweave-sso directory into wp-content/plugins.
+1. Upload portalweave-sso-1.4.2.zip or copy the portalweave-sso directory into wp-content/plugins.
 2. Activate PortalWeave SSO: OAuth 2.0 & OpenID Connect Login and open PortalWeave SSO in the WordPress admin sidebar.
 3. Add a provider, register the displayed callback URL and enter its details. Use Test connection on the final review step before saving the provider.
 4. Saved providers also offer Test SSO Config to inspect returned attributes. Configure mappings and test an ordinary user before enforcing login.
@@ -105,6 +105,11 @@ Run wp portalweave-sso recover (or --network), or temporarily define PORTALWEAVE
 No. Re-enter credentials on a new installation. Same-site restores retain existing credentials.
 
 == Changelog ==
+= 1.4.2 =
+* Record specific, allowlisted local authentication failure reasons and WordPress login-page, XML-RPC or REST context when available.
+* Keep attempted identities, arbitrary error payloads and query credentials out of audit and diagnostic records.
+* Document failure-code interpretation and authentication coverage, with real login/XML-RPC export regression checks.
+
 = 1.4.1 =
 * Preserve requested post-login destinations for SSO buttons and automatic WordPress sign-in, ahead of the configured default.
 * Add an ordered list of redirect query parameter names, with redirect_to always supported and all destinations checked against the redirect allowlist.
@@ -167,6 +172,9 @@ Initial multi-provider OAuth/OIDC, access policy, provisioning and operations re
 Includes private-media recovery, privacy-policy guidance, data export/erasure and administrator-controlled retention.
 
 == Upgrade Notice ==
+= 1.4.2 =
+New local failure audit events include safe, specific reasons and request context. Existing audit history, credentials, collection preferences and retention are preserved.
+
 = 1.4.1 =
 Fixes redirect_to handling and preserves nested destination queries. Configure alternate redirect parameter names in Login & logout. Existing settings and credentials are retained.
 
