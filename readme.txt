@@ -1,9 +1,9 @@
 === PortalWeave SSO: OAuth 2.0 & OpenID Connect Login ===
 Tags: oauth, openid-connect, sso, scim, login
 Requires at least: 6.5
-Tested up to: 7.1
+Tested up to: 7.2
 Requires PHP: 8.1
-Stable tag: 1.4.3
+Stable tag: 1.4.4
 License: GPLv2 or later
 License URI: https://www.gnu.org/licenses/gpl-2.0.html
 
@@ -70,7 +70,7 @@ Deactivation preserves data. Uninstall preserves settings unless the administrat
 == Installation ==
 Upgrades from PortalWeave SSO 1.0.1 retain existing configuration. Replacing an installation that uses the earlier technical namespace requires the controlled procedure in docs/provider-setup.md; there are no earlier-name aliases or automatic conversion of that stored data. Restrict access externally during that replacement, including settings, identity links, access rules, provider URLs and private-media metadata.
 
-1. Upload portalweave-sso-1.4.3.zip or copy the portalweave-sso directory into wp-content/plugins.
+1. Upload portalweave-sso-1.4.4.zip or copy the portalweave-sso directory into wp-content/plugins.
 2. Activate PortalWeave SSO: OAuth 2.0 & OpenID Connect Login and open PortalWeave SSO in the WordPress admin sidebar.
 3. Add a provider, register the displayed callback URL and enter its details. Use Test connection on the final review step before saving the provider.
 4. Saved providers also offer Test SSO Config to inspect returned attributes. Configure mappings and test an ordinary user before enforcing login.
@@ -105,6 +105,10 @@ Run wp portalweave-sso recover (or --network), or temporarily define PORTALWEAVE
 No. Re-enter credentials on a new installation. Same-site restores retain existing credentials.
 
 == Changelog ==
+= 1.4.4 =
+* Declare compatibility with WordPress 7.2 and PHP 8.6; the readme now reports Tested up to 7.2.
+* Verified sign-in, access policy, private media, REST comment rules, native abilities and multisite against the WordPress 7.2 release candidate. No settings or behavior changes.
+
 = 1.4.3 =
 * Enforce guest account deadlines for existing browser sessions independently of scheduled cleanup, and cap newly issued session lifetimes.
 * Apply parent-post access rules to REST comment items, collections, embedded discussions, totals and mutation responses.
@@ -177,6 +181,9 @@ Initial multi-provider OAuth/OIDC, access policy, provisioning and operations re
 Includes private-media recovery, privacy-policy guidance, data export/erasure and administrator-controlled retention.
 
 == Upgrade Notice ==
+= 1.4.4 =
+Compatibility update for WordPress 7.2 and PHP 8.6. No settings, credentials, roles or behavior change.
+
 = 1.4.3 =
 Security update: closes guest-session expiry bypass and restricted-comment REST disclosure. Existing settings, roles and credentials are retained.
 
